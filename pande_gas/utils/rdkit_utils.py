@@ -128,12 +128,12 @@ def generate_conformers(mol, n_conformers=1, rmsd_threshold=0.5):
     cids = AllChem.EmbedMultipleConfs(mol, n_conformers,
                                       pruneRmsThresh=rmsd_threshold)
     assert mol.GetNumConformers() >= 1
-    cids = np.asarray(cids, dtype='intc')
+    cids = np.asarray(cids, dtype=int)
 
     # minimize conformers and get energies
     energy = np.zeros(cids.size, dtype=float)
     for cid in cids:
-        ff = AllChem.UFFGetMoleculeForceField(mol, confId=cid)
+        ff = AllChem.UFFGetMoleculeForceField(mol, confId=int(cid))
         ff.Minimize()
         energy[cid] = ff.CalcEnergy()
 
