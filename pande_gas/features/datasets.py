@@ -9,7 +9,7 @@ __license__ = "BSD 3-clause"
 import numpy as np
 
 from pylearn2.datasets import DenseDesignMatrix
-from pylearn2.space import CompositeSpace, VectorSpace
+from pylearn2.space import CompositeSpace
 from pylearn2.utils.iteration import FiniteDatasetIterator, safe_izip
 
 from pande_gas.utils import rdkit_utils as rd
@@ -209,5 +209,5 @@ def reshape_features(features):
     """
     s = features.shape
     new_shape = (np.prod(s[:2]),) + s[2:]
-    rval = np.reshape(features, new_shape)
+    rval = np.ma.reshape(features, new_shape)
     return rval
