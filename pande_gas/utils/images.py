@@ -28,21 +28,21 @@ def read_pixels(filename, mode=None, max_size=None):
     return get_pixels(im, mode, max_size)
 
 
-def read_pixels_from_string(string, mode=None, max_size=None):
-    """Read pixels from a binary string.
+def get_image_from_string(string, max_size=None):
+    """Get image from a binary string.
 
     Parameters
     ----------
     string : str
         Binary image string.
-    mode : str, optional
-        Image mode. For example, 'RGB' or 'P' (8-bit).
     max_size : int, optional
         Scale images such that no dimension is larger than max_size.
     """
     b = io.BytesIO(string)
     im = Image.open(b)
-    return get_pixels(im, mode, max_size)
+    if max_size is not None:
+        im = downscale(im, max_size)
+    return im
 
 
 def get_pixels(image, mode=None, max_size=None):
@@ -62,7 +62,7 @@ def get_pixels(image, mode=None, max_size=None):
         if image.mode != mode:
             image = image.convert(mode)
     if max_size is not None:
-        downscale(image, max_size)
+        image = downscale(image, max_size)
     pixels = np.asarray(image)
     return pixels
 
@@ -79,6 +79,8 @@ def downscale(image, max_size):
     max_size : int
         Maximum image size in any dimension.
     """
+    if max(image.size) <= max_size:
+        return image.copy()
     im = image.copy()
     im.thumbnail((max_size, max_size), resample=Image.ANTIALIAS)
     return im

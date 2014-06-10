@@ -26,8 +26,8 @@ def test_read_pixels():
     assert np.array_equal(p, images.read_pixels(filename))
 
 
-def test_read_pixels_from_string():
-    """Read pixels from binary string."""
+def test_get_image_from_string():
+    """Load an image from binary string."""
     p = np.random.randint(255, size=(5, 5, 3))
     p = np.asarray(p, dtype='uint8')
     im = Image.fromarray(p, mode='RGB')
@@ -35,7 +35,8 @@ def test_read_pixels_from_string():
     im.save(filename)
     with open(filename) as f:
         string = f.read()
-    assert np.array_equal(p, images.read_pixels_from_string(string))
+    im = images.get_image_from_string(string)
+    assert np.array_equal(p, images.get_pixels(im))
 
 
 def test_downscale():

@@ -75,5 +75,5 @@ class MolImage(Featurizer):
         png_args = ['convert', '-alpha', 'off', 'svg:-', 'png:-']
         png = subprocess.check_output(png_args, stdin=echo(svg),
                                       stderr=devnull)
-        im = images.read_pixels_from_string(png, max_size=max(self.shape))
+        im = images.get_image_from_string(png, max_size=min(self.shape))
         return im
