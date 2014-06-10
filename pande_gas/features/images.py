@@ -28,6 +28,8 @@ class MolImage(Featurizer):
     """
     def __init__(self, shape=None, flatten=True):
         self.shape = shape
+        if not flatten:
+            self.topo_view = True
         self.flatten = flatten
 
     def _featurize(self, mol):
