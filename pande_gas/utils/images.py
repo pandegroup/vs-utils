@@ -11,43 +11,27 @@ import numpy as np
 from PIL import Image
 
 
-def read_pixels(filename, mode=None, max_size=None):
+def load(string):
     """
-    Read pixels from an image file.
-
-    Parameters
-    ----------
-    filename : str
-        Image filename.
-    mode : str, optional
-        Image mode. For example, 'RGB' or 'P' (8-bit).
-    max_size : int, optional
-        Scale images such that no dimension is larger than max_size.
-    """
-    im = Image.open(filename)
-    return get_pixels(im, mode, max_size)
-
-
-def get_image_from_string(string, max_size=None):
-    """Get image from a binary string.
+    Load an image from a file or binary string.
 
     Parameters
     ----------
     string : str
-        Binary image string.
-    max_size : int, optional
-        Scale images such that no dimension is larger than max_size.
+        Filename or binary string.
     """
-    b = io.BytesIO(string)
-    im = Image.open(b)
-    if max_size is not None:
-        im = downscale(im, max_size)
+    try:
+        im = Image.open(string)
+    except TypeError:
+        b = io.BytesIO(string)
+        im = Image.open(b)
     return im
 
 
-def get_pixels(image, mode=None, max_size=None):
+def get_pixels(image, mode=None):
     """
-    Extract pixels from an image.
+    Extract pixels from an image, possibly after converting to the given
+    mode.
 
     Parameters
     ----------
@@ -55,14 +39,9 @@ def get_pixels(image, mode=None, max_size=None):
         Image.
     mode : str, optional
         Image mode. For example, 'RGB' or 'P' (8-bit).
-    max_size : int, optional
-        Scale images such that no dimension is larger than max_size.
     """
-    if mode is not None:
-        if image.mode != mode:
-            image = image.convert(mode)
-    if max_size is not None:
-        image = downscale(image, max_size)
+    if mode is not None and image.mode != mode:
+        image = image.convert(mode)
     pixels = np.asarray(image)
     return pixels
 
@@ -114,25 +93,3 @@ def pad(image, shape, fill=255):
     padded = np.pad(pixels, pad_width, 'constant', constant_values=fill)
     im = Image.fromarray(padded, mode=image.mode)
     return im
-
-
-def pad_batch(images, fill=255):
-    """
-    Pad a set of images to the minimum common shape.
-
-    Parameters
-    ----------
-    images : list
-        Images to pad.
-    fill : int, optional (default 255)
-        Intensity value for added pixels.
-    """
-    h = 0
-    w = 0
-    for image in images:
-        h = max(h, image.size[1])
-        w = max(w, image.size[0])
-    padded = []
-    for i, image in enumerate(images):
-        padded.append(pad(image, (h, w), fill))
-    return padded

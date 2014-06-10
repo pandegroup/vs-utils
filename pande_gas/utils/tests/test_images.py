@@ -16,17 +16,18 @@ def test_get_pixels():
     assert np.array_equal(p, images.get_pixels(im))
 
 
-def test_read_pixels():
-    """Read pixels from image file."""
+def test_load_file():
+    """Load an image from a file."""
     p = np.random.randint(255, size=(5, 5, 3))
     p = np.asarray(p, dtype='uint8')
     im = Image.fromarray(p, mode='RGB')
     _, filename = tempfile.mkstemp(suffix='.png')
     im.save(filename)
-    assert np.array_equal(p, images.read_pixels(filename))
+    im = images.load(filename)
+    assert np.array_equal(p, images.get_pixels(im))
 
 
-def test_get_image_from_string():
+def test_load_string():
     """Load an image from binary string."""
     p = np.random.randint(255, size=(5, 5, 3))
     p = np.asarray(p, dtype='uint8')
@@ -35,7 +36,7 @@ def test_get_image_from_string():
     im.save(filename)
     with open(filename) as f:
         string = f.read()
-    im = images.get_image_from_string(string)
+    im = images.load(string)
     assert np.array_equal(p, images.get_pixels(im))
 
 
@@ -69,23 +70,3 @@ def test_pad_fail():
     except AssertionError:
         return True
     raise AssertionError
-
-
-def test_pad_batch():
-    """Pad a set of images to a common shape."""
-    imgs = []
-    h = 0
-    w = 0
-    for i in xrange(10):
-        size = tuple(np.random.randint(5, 10, size=2)) + (3,)
-        if size[0] > h:
-            h = size[0]
-        if size[1] > w:
-            w = size[1]
-        p = np.random.randint(255, size=size)
-        p = np.asarray(p, dtype='uint8')
-        im = Image.fromarray(p, mode='RGB')
-        imgs.append(im)
-    imgs = images.pad_batch(imgs)
-    for im in imgs:
-        assert im.size == (w, h)
