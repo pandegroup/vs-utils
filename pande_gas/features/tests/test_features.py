@@ -25,4 +25,3 @@ def test_flatten_conformers():
     assert rval.shape == (1, 1)
 
 test_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
-
