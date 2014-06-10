@@ -19,6 +19,10 @@ def read_pixels(filename, mode=None, max_size=None):
     ----------
     filename : str
         Image filename.
+    mode : str, optional
+        Image mode. For example, 'RGB' or 'P' (8-bit).
+    max_size : int, optional
+        Scale images such that no dimension is larger than max_size.
     """
     im = Image.open(filename)
     return get_pixels(im, mode, max_size)
@@ -31,6 +35,10 @@ def read_pixels_from_string(string, mode=None, max_size=None):
     ----------
     string : str
         Binary image string.
+    mode : str, optional
+        Image mode. For example, 'RGB' or 'P' (8-bit).
+    max_size : int, optional
+        Scale images such that no dimension is larger than max_size.
     """
     b = io.BytesIO(string)
     im = Image.open(b)
@@ -45,9 +53,9 @@ def get_pixels(image, mode=None, max_size=None):
     ----------
     image : PIL Image
         Image.
-    mode : str or None
+    mode : str, optional
         Image mode. For example, 'RGB' or 'P' (8-bit).
-    max_size : int or None
+    max_size : int, optional
         Scale images such that no dimension is larger than max_size.
     """
     if mode is not None:

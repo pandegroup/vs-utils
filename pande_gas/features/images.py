@@ -6,36 +6,72 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
-import io
-from PIL import Image
 import os
 import subprocess
 
+from rdkit import Chem
 
-def image_from_smiles(smiles):
+from pande_gas.features import Featurizer
+from pande_gas.utils import images
+
+
+class MolImage(Featurizer):
     """
-    Generate a PNG image from a SMILES string. Uses OpenBabel to generate
-    an SVG (which gives uniform scaling) and ImageMagick convert to
-    generate a PNG.
-
-    Note that we call OpenBabel using Popen to avoid entanglements with the
-    GPL.
-
-    See http://stackoverflow.com/questions/13332268 for details on the
-    echo function.
+    Molecule images.
 
     Parameters
     ----------
-    smiles : str
-        Canonical SMILES string.
+    shape : tuple of ints, optional
+        Shape of generated images.
+    flatten : bool, optional (default False)
+        Whether to flatten the pixel array.
     """
-    devnull = open(os.devnull, 'w')
-    echo = lambda string: subprocess.Popen(['echo', string],
-                                           stdout=subprocess.PIPE).stdout
-    svg_args = ['obabel', '-ican', '-osvg', '-d', '-xd']
-    svg = subprocess.check_output(svg_args, stdin=echo(smiles), stderr=devnull)
-    png_args = ['convert', '-alpha', 'off', 'svg:-', 'png:-']
-    png = subprocess.check_output(png_args, stdin=echo(svg), stderr=devnull)
-    b = io.BytesIO(png)
-    im = Image.open(b)
-    return im
+    def __init__(self, shape=None, flatten=True):
+        self.shape = shape
+        self.flatten = flatten
+
+    def _featurize(self, mol):
+        """
+        Generate an image for the given molecule and return pixels.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        smiles = Chem.MolToSmiles(mol)
+        im = self.image_from_smiles(smiles)
+        im = images.pad(im, self.shape)
+        pixels = images.get_pixels(im)
+        if self.flatten:
+            pixels = pixels.ravel()
+        return pixels
+
+    def image_from_smiles(self, smiles):
+        """
+        Generate a PNG image from a SMILES string. Uses OpenBabel to
+        generate an SVG (which gives uniform scaling) and ImageMagick
+        convert to generate a PNG.
+
+        Note that we call OpenBabel using Popen to avoid entanglements with
+        the GNU GPL.
+
+        See http://stackoverflow.com/questions/13332268 for details on the
+        echo function.
+
+        Parameters
+        ----------
+        smiles : str
+            SMILES string.
+        """
+        devnull = open(os.devnull, 'w')
+        echo = lambda string: subprocess.Popen(['echo', string],
+                                               stdout=subprocess.PIPE).stdout
+        svg_args = ['obabel', '-ican', '-osvg', '-d', '-xd']
+        svg = subprocess.check_output(svg_args, stdin=echo(smiles),
+                                      stderr=devnull)
+        png_args = ['convert', '-alpha', 'off', 'svg:-', 'png:-']
+        png = subprocess.check_output(png_args, stdin=echo(svg),
+                                      stderr=devnull)
+        im = images.read_pixels_from_string(png, max_size=max(self.shape))
+        return im
