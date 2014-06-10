@@ -55,14 +55,14 @@ def get_pixels(image, mode=None, max_size=None):
             image = image.convert(mode)
     if max_size is not None:
         downscale(image, max_size)
-    pixels = np.asarray(image, dtype='uint8')
-    #pixels = np.atleast_3d(pixels)  # maintain channels convention
+    pixels = np.asarray(image)
     return pixels
 
 
 def downscale(image, max_size):
     """
-    Shrink an image while maintaining aspect ratio.
+    Shrink an image while maintaining aspect ratio. Returns a copy of the
+    original image.
 
     Parameters
     ----------
@@ -71,24 +71,28 @@ def downscale(image, max_size):
     max_size : int
         Maximum image size in any dimension.
     """
-    image.thumbnail((max_size, max_size), resample=Image.ANTIALIAS)
+    im = image.copy()
+    im.thumbnail((max_size, max_size), resample=Image.ANTIALIAS)
+    return im
 
 
-def pad(pixels, shape, fill=255):
+def pad(image, shape, fill=255):
     """
     Pad an image, where the first two axes are height and width,
-    respectively.
+    respectively. Returns a copy of the original image.
 
     Parameters
     ----------
-    pixels : ndarray
-        Array of pixels, possibly with multiple channels (on third axis).
+    image : PIL Image
+        Image.
     shape : tuple of ints
         Desired height and width.
-    fill : int
+    fill : int, optional (default 255)
         Intensity value for added pixels.
     """
+    pixels = get_pixels(image)
     current = pixels.shape[:2]
+    assert current[0] <= shape[0] and current[1] <= shape[1]
     pad_width = []
     for i in xrange(2):
         diff = shape[i] - current[i]
@@ -98,7 +102,8 @@ def pad(pixels, shape, fill=255):
     while len(pad_width) < pixels.ndim:
         pad_width.append((0, 0))
     padded = np.pad(pixels, pad_width, 'constant', constant_values=fill)
-    return padded
+    im = Image.fromarray(padded, mode=image.mode)
+    return im
 
 
 def pad_batch(images, fill=255):
@@ -107,22 +112,17 @@ def pad_batch(images, fill=255):
 
     Parameters
     ----------
-    images : list of ndarrays
+    images : list
         Images to pad.
-    fill : int
+    fill : int, optional (default 255)
         Intensity value for added pixels.
     """
     h = 0
     w = 0
     for image in images:
-        h = max(h, image.shape[0])
-        w = max(w, image.shape[1])
-    shape = (len(images), h, w)
-    if images[0].ndim > 2:
-        shape += tuple(images[0].shape[2:])
-    padded = np.zeros(shape, dtype='uint8')
+        h = max(h, image.size[1])
+        w = max(w, image.size[0])
+    padded = []
     for i, image in enumerate(images):
-        padded[i] = pad(image, (h, w), fill)
-    if padded.ndim == 3:
-        padded = np.expand_dims(padded, 3)
+        padded.append(pad(image, (h, w), fill))
     return padded
