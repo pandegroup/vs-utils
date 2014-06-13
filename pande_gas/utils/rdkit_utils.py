@@ -9,6 +9,7 @@ __license__ = "BSD 3-clause"
 from copy import deepcopy
 import gzip
 import numpy as np
+import warnings
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -58,12 +59,14 @@ def read(filename, mol_format=None):
             mols.append(mol)
     f.close()
 
-    # combine conformers (identical SMILES strings)
+    # combine conformers (contiguous identical SMILES strings)
     combined = []
     smiles = np.asarray([Chem.MolToSmiles(mol, isomericSmiles=True,
                                           canonical=True) for mol in mols])
     for s in np.unique(smiles):
         this = np.where(smiles == s)[0]
+        if not np.all(np.diff(this) == 1):
+            warnings.warn("Combining non-contiguous conformers in " + filename)
         mol = deepcopy(mols[this[0]])
         for i in this[1:]:
             for conf in mols[i].GetConformers():
