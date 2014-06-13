@@ -6,6 +6,7 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
+from copy import deepcopy
 import gzip
 import numpy as np
 
@@ -13,29 +14,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 
-def read(filename, mol_format=None, return_generator=False):
-    """
-    Read molecules. Supports SDF or SMILES format.
-
-    Parameters
-    ----------
-    filename : str
-        Filename.
-    mol_format : str, optional
-        Molecule file format. Currently supports 'sdf' and 'smi'.
-    return_generator : bool, optional (default False)
-        Whether to return a Mol generator. If False, all molecules are read
-        into memory and an ndarray is returned.
-    """
-    mols = read_generator(filename, mol_format)
-    if return_generator:
-        return mols
-    else:
-        mols = np.asarray(list(mols))
-        return mols
-
-
-def read_generator(filename, mol_format=None):
+def read(filename, mol_format=None):
     """
     Read molecules. Supports SDF or SMILES format.
 
@@ -46,6 +25,7 @@ def read_generator(filename, mol_format=None):
     mol_format : str, optional
         Molecule file format. Currently supports 'sdf' and 'smi'.
     """
+    mols = []
     if mol_format is None:
         if filename.endswith(('.sdf', '.sdf.gz')):
             mol_format = 'sdf'
@@ -63,7 +43,7 @@ def read_generator(filename, mol_format=None):
         f = open(filename)
     if mol_format == 'sdf':
         for mol in Chem.ForwardSDMolSupplier(f):
-            yield mol
+            mols.append(mol)
     elif mol_format == 'smi':
         lines = [line.strip().split() for line in f.readlines()]
         for line in lines:
@@ -75,8 +55,22 @@ def read_generator(filename, mol_format=None):
             mol = Chem.MolFromSmiles(smiles)
             if name is not None:
                 mol.SetProp('_Name', name)
-            yield mol
+            mols.append(mol)
     f.close()
+
+    # combine conformers (identical SMILES strings)
+    combined = []
+    smiles = np.asarray([Chem.MolToSmiles(mol, isomericSmiles=True,
+                                          canonical=True) for mol in mols])
+    for s in np.unique(smiles):
+        this = np.where(smiles == s)[0]
+        mol = deepcopy(mols[this[0]])
+        for i in this[1:]:
+            for conf in mols[i].GetConformers():
+                mol.AddConformer(conf)
+        combined.append(mol)
+    combined = np.asarray(combined)
+    return combined
 
 
 def write(mols, filename):

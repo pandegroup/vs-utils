@@ -52,6 +52,19 @@ def test_read_smi_gz():
     os.remove(filename)
 
 
+def test_read_multiconformer():
+    """Read multiconformer SDF file."""
+    mol = Chem.MolFromMolBlock(test_sdf)
+    mol = rd.generate_conformers(mol, n_conformers=10)
+    assert mol.GetNumConformers() > 1
+    _, filename = tempfile.mkstemp(suffix='.sdf')
+    rd.write([mol], filename)
+    mols = rd.read(filename)
+    assert len(mols) == 1
+    assert mols[0].GetNumConformers() == mol.GetNumConformers()
+    os.remove(filename)
+
+
 def test_write_sdf():
     """Write SDF file."""
     _, filename = tempfile.mkstemp(suffix='.sdf')
