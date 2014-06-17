@@ -29,6 +29,8 @@ class CircularFingerprint(Featurizer):
         Whether to use feature information instead of atom information; see
         RDKit docs for more info.
     """
+    name = 'circular'
+
     def __init__(self, radius=2, size=1024, chiral=False, bonds=False,
                  features=False):
         self.radius = radius

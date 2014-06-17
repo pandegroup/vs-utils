@@ -33,6 +33,7 @@ class CoulombMatrix(Featurizer):
         Random seed.
     """
     conformers = True
+    name = 'coulomb_matrix'
 
     def __init__(self, max_atoms=None, randomize=True, n_samples=1, seed=None):
         self.max_atoms = max_atoms
