@@ -9,6 +9,39 @@ __license__ = "BSD 3-clause"
 import numpy as np
 
 
+def get_featurizers():
+    """Compile a dict mapping strings to featurizer classes."""
+    from .basic import MolecularWeight
+    from .coulomb_matrices import CoulombMatrix
+    from .fingerprints import CircularFingerprint
+    from .images import MolImage
+
+    featurizers = {}
+    for klass in Featurizer.__subclasses__():
+        assert klass.name is not None, (klass.__name__ +
+                                        " 'name' attribute is None.")
+        if isinstance(klass.name, list):
+            for name in klass.name:
+                assert name not in featurizers
+                featurizers[name] = klass
+        else:
+            assert klass.name not in featurizers
+            featurizers[klass.name] = klass
+    return featurizers
+
+
+def resolve_featurizer(name):
+    """
+    Resolve featurizer class from a string.
+
+    Parameters
+    ----------
+    name : str
+        Featurizer name.
+    """
+    return get_featurizers()[name]
+
+
 class Featurizer(object):
     """
     Abstract class for calculating a set of features for a molecule.
@@ -26,11 +59,14 @@ class Featurizer(object):
         first two axes of the feature matrix will index molecules and
         conformers, respectively. If False, features will be calculated
         once for each molecule.
+    name : str or list
+        Name (or names) of this featurizer (used for scripting).
     topo_view : bool (default False)
         Whether the calculated features represent a topological view of the
         data.
     """
     conformers = False
+    name = None
     topo_view = False
 
     def featurize(self, mols):

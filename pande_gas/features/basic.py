@@ -15,6 +15,8 @@ class MolecularWeight(Featurizer):
     """
     Molecular weight.
     """
+    name = ['mw', 'molecular_weight']
+
     def _featurize(self, mol):
         """
         Calculate molecular weight.
