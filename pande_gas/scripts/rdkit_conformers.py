@@ -17,14 +17,14 @@ def main():
     confs = Parallel(n_jobs=args.n_jobs, verbose=5)(
         delayed(rd.generate_conformers)(mol, args.n_conformers,
                                         args.rmsd_threshold)
-        for mol in rd.read(args.input))
+        for mol in rd.read_mols(args.input))
     passed = []
     for i, mol in enumerate(confs):
         if mol is None:
             print '{} failed.'.format(mol.GetProp('_Name'))
             continue
         passed.append(mol)
-    rd.write(passed, args.output)
+    rd.write_mols(passed, args.output)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

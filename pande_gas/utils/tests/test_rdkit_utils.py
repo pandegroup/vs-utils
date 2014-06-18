@@ -18,7 +18,7 @@ def test_read_sdf():
     with open(filename, 'wb') as f:
         f.write(test_sdf)
     n_atoms = Chem.MolFromMolBlock(test_sdf).GetNumAtoms()
-    assert rd.read(filename)[0].GetNumAtoms() == n_atoms
+    assert rd.read_mols(filename)[0].GetNumAtoms() == n_atoms
     os.remove(filename)
 
 
@@ -28,7 +28,7 @@ def test_read_sdf_gz():
     with gzip.open(filename, 'wb') as f:
         f.write(test_sdf)
     n_atoms = Chem.MolFromMolBlock(test_sdf).GetNumAtoms()
-    assert rd.read(filename)[0].GetNumAtoms() == n_atoms
+    assert rd.read_mols(filename)[0].GetNumAtoms() == n_atoms
     os.remove(filename)
 
 
@@ -38,7 +38,7 @@ def test_read_smi():
     with open(filename, 'wb') as f:
         f.write(test_smiles)
     n_atoms = Chem.MolFromSmiles(test_smiles.split()[0]).GetNumAtoms()
-    assert rd.read(filename)[0].GetNumAtoms() == n_atoms
+    assert rd.read_mols(filename)[0].GetNumAtoms() == n_atoms
     os.remove(filename)
 
 
@@ -48,7 +48,20 @@ def test_read_smi_gz():
     with gzip.open(filename, 'wb') as f:
         f.write(test_smiles)
     n_atoms = Chem.MolFromSmiles(test_smiles.split()[0]).GetNumAtoms()
-    assert rd.read(filename)[0].GetNumAtoms() == n_atoms
+    assert rd.read_mols(filename)[0].GetNumAtoms() == n_atoms
+    os.remove(filename)
+
+
+def test_read_multiconformer():
+    """Read multiconformer SDF file."""
+    mol = Chem.MolFromMolBlock(test_sdf)
+    mol = rd.generate_conformers(mol, n_conformers=10)
+    assert mol.GetNumConformers() > 1
+    _, filename = tempfile.mkstemp(suffix='.sdf')
+    rd.write_mols([mol], filename)
+    mols = rd.read_mols(filename)
+    assert len(mols) == 1
+    assert mols[0].GetNumConformers() == mol.GetNumConformers()
     os.remove(filename)
 
 
@@ -56,8 +69,8 @@ def test_write_sdf():
     """Write SDF file."""
     _, filename = tempfile.mkstemp(suffix='.sdf')
     mol = Chem.MolFromSmiles(test_smiles.split()[0])
-    rd.write(mol, filename)
-    assert rd.read(filename)[0].GetNumAtoms() == mol.GetNumAtoms()
+    rd.write_mols(mol, filename)
+    assert rd.read_mols(filename)[0].GetNumAtoms() == mol.GetNumAtoms()
     os.remove(filename)
 
 
@@ -65,8 +78,8 @@ def test_write_sdf_gz():
     """Write SDF file."""
     _, filename = tempfile.mkstemp(suffix='.sdf.gz')
     mol = Chem.MolFromSmiles(test_smiles.split()[0])
-    rd.write(mol, filename)
-    assert rd.read(filename)[0].GetNumAtoms() == mol.GetNumAtoms()
+    rd.write_mols(mol, filename)
+    assert rd.read_mols(filename)[0].GetNumAtoms() == mol.GetNumAtoms()
     os.remove(filename)
 
 

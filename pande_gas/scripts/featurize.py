@@ -31,7 +31,7 @@ class HelpFormatter(argparse.RawTextHelpFormatter):
 
 
 def main():
-    mols = rd.read(args.input)
+    mols = rd.read_mols(args.input)
     names = [mol.GetProp('_Name') for mol in mols]
     featurizer = args.klass(**vars(args.featurizer_kwargs))
     features = featurizer.featurize(mols)
