@@ -70,9 +70,18 @@ if __name__ == '__main__':
             kwargs = {}
             try:
                 kwargs['default'] = defaults[i-len(args)]
+                kwargs['type'] = type(kwargs['default'])
             except IndexError:
                 kwargs['required'] = True
-            command.add_argument("--{}".format(arg), **kwargs)
+            if 'type' in kwargs and kwargs['type'] == bool:
+                if kwargs['default']:
+                    command.add_argument('--no-{}'.format(arg), dest=arg,
+                                         action='store_false')
+                else:
+                    command.add_argument('--{}'.format(arg),
+                                         action='store_true')
+            else:
+                command.add_argument('--{}'.format(arg), **kwargs)
     args = argparse.Namespace()
     args.featurizer_kwargs = parser.parse_args()
     for arg in ['input', 'output', 'klass', 'labels']:
