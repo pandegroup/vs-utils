@@ -15,7 +15,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 
-def read(filename, mol_format=None):
+def read_mols(filename, mol_format=None):
     """
     Read molecules. Supports SDF or SMILES format.
 
@@ -25,6 +25,10 @@ def read(filename, mol_format=None):
         Filename.
     mol_format : str, optional
         Molecule file format. Currently supports 'sdf' and 'smi'.
+
+    Returns
+    -------
+    An ndarray containing RDMol objects.
     """
     mols = []
     if mol_format is None:
@@ -76,7 +80,7 @@ def read(filename, mol_format=None):
     return combined
 
 
-def write(mols, filename):
+def write_mols(mols, filename):
     """
     Write SDF molecules.
 

@@ -19,7 +19,7 @@ from pande_gas.utils import rdkit_utils as rd
 
 def main():
     """Generate coulomb matrices for molecules."""
-    mols = rd.read(args.input)
+    mols = rd.read_mols(args.input)
     featurizer = CoulombMatrix(randomize=args.randomize,
                                n_samples=args.n_samples, seed=args.seed)
     x = featurizer(mols)
