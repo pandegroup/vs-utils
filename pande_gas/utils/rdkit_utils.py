@@ -71,7 +71,7 @@ def read_mols(filename, mol_format=None):
         this = np.where(smiles == s)[0]
         if not np.all(np.diff(this) == 1):
             warnings.warn("Combining non-contiguous conformers in " + filename)
-        mol = deepcopy(mols[this[0]])
+        mol = Chem.Mol(mols[this[0]])  # create a copy
         for i in this[1:]:
             for conf in mols[i].GetConformers():
                 mol.AddConformer(conf)
