@@ -26,6 +26,8 @@ class MolImage(Featurizer):
     flatten : bool, optional (default False)
         Whether to flatten the pixel array.
     """
+    name = 'image'
+
     def __init__(self, shape=None, flatten=True):
         self.shape = shape
         if not flatten:
