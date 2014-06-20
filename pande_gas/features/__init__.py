@@ -78,18 +78,12 @@ class Featurizer(object):
         mols : iterable
             RDKit Mol objects.
         """
-        x = None
-        for i, mol in enumerate(mols):
-            features = self._featurize(mol)
-            if not hasattr(features, 'shape'):
-                features = np.asarray(features)
-            if x is None:
-                x = self.get_container(mols, features.shape)
-            if self.conformers:
-                x[i, :max(mol.GetNumConformers(), 1)] = features
-            else:
-                x[i] = features
-        return x
+        features = [self._featurize(mol) for mol in mols]
+        if self.conformers:
+            features = self.conformer_container(mols, features)
+        else:
+            features = np.asarray(features)
+        return features
 
     def _featurize(self, mol):
         """
@@ -113,26 +107,24 @@ class Featurizer(object):
         """
         return self.featurize(mols)
 
-    def get_container(self, mols, shape):
+    def conformer_container(self, mols, features):
         """
-        Initialize a masked feature container.
+        Put features into a container with an extra dimension for
+        conformers. Conformer indices that are not used are masked.
 
         Parameters
         ----------
         mols : iterable
             RDKit Mol objects.
-        shape : tuple or int
-            Shape or number of features for each conformer.
+        features : iterable
+            Features calculated for molecules.
         """
-        if isinstance(shape, int):
-            shape = (shape,)
-        if self.conformers:
-            max_confs = max([mol.GetNumConformers() for mol in mols])
-            if not max_confs:
-                max_confs = 1
-            # max_confs replaces shape[0]
-            shape = (len(mols), max_confs) + shape[1:]
-        else:
-            shape = (len(mols),) + shape
-        rval = np.ma.masked_all(shape)
-        return rval
+        max_confs = max([mol.GetNumConformers() for mol in mols])
+        if not max_confs:
+            max_confs = 1
+        # max_confs replaces shape[0]
+        shape = (len(mols), max_confs) + features[0].shape[1:]
+        x = np.ma.masked_all(shape)
+        for i, (mol, mol_features) in enumerate(zip(mols, features)):
+            x[i, :max(mol.GetNumConformers(), 1)] = mol_features
+        return x
