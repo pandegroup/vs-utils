@@ -6,13 +6,14 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
+import numpy as np
 import os
 import subprocess
 
 from rdkit import Chem
 
 from pande_gas.features import Featurizer
-from pande_gas.utils import images
+from pande_gas.utils import image_utils
 
 
 class MolImage(Featurizer):
@@ -30,29 +31,38 @@ class MolImage(Featurizer):
     name = 'image'
 
     def __init__(self, max_size=32, flatten=True):
-        self.shape = (max_size, max_size)
+        self.max_size = max_size
         if not flatten:
             self.topo_view = True
         self.flatten = flatten
 
-    def _featurize(self, mol):
+    def featurize(self, mols):
         """
-        Generate an image for the given molecule and return pixels.
+        Generate images for molecules and extract pixels. This class can't
+        use _featurize because pad_size needs to be calculated from the
+        ensemble of images for mols.
 
         Parameters
         ----------
-        mol : RDKit Mol
-            Molecule.
+        mols : iterable
+            RDKit Mol objects.
         """
-        smiles = Chem.MolToSmiles(mol)
-        im = self.image_from_smiles(smiles)
-        im = images.pad(im, self.shape)
-        pixels = images.get_pixels(im)
+        smiles = [Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+                  for mol in mols]
+        images = map(self.image_from_smiles, smiles)
+        pad_size = max([max(image.size) for image in images])
+        padded = [image_utils.pad(image, (pad_size, pad_size))
+                  for image in images]
+        scaled = [image_utils.downscale(image, self.max_size)
+                  for image in padded]
+        pixels = map(image_utils.get_pixels, scaled)
         if self.flatten:
-            pixels = pixels.ravel()
+            pixels = [p.ravel() for p in pixels]
+        pixels = np.asarray(pixels)
         return pixels
 
-    def image_from_smiles(self, smiles):
+    @staticmethod
+    def image_from_smiles(smiles):
         """
         Generate a PNG image from a SMILES string. Uses OpenBabel to
         generate an SVG (which gives uniform scaling) and ImageMagick
@@ -78,6 +88,5 @@ class MolImage(Featurizer):
         png_args = ['convert', '-alpha', 'off', 'svg:-', 'png:-']
         png = subprocess.check_output(png_args, stdin=echo(svg),
                                       stderr=devnull)
-        im = images.load(png)
-        im = images.downscale(im, min(self.shape))
+        im = image_utils.load(png)
         return im
