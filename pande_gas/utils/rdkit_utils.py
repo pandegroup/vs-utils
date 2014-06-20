@@ -6,7 +6,6 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
-from collections import OrderedDict
 import gzip
 import numpy as np
 import warnings
@@ -23,7 +22,7 @@ def read_mols(filename, mol_format=None, remove_salts=True):
     Molecular conformers are combined into a single molecule. The criteria
     for conformers are:
     * Identical SMILES strings
-    * Identical compound names
+    * Identical compound names (a warning is given if compounds lack names)
     * Contiguous in the file
 
     Parameters
