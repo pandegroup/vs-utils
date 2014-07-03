@@ -69,7 +69,7 @@ class MolImage(Featurizer):
         devnull = open(os.devnull, 'w')
         echo = lambda string: subprocess.Popen(['echo', string],
                                                stdout=subprocess.PIPE).stdout
-        png_args = ['obabel', '-ican', '-opng', '-xd',
+        png_args = ['obabel', '-ican', '-opng', '-xd', '-xC',
                     '-xp {}'.format(self.size)]
         png = subprocess.check_output(png_args, stdin=echo(smiles),
                                       stderr=devnull)
