@@ -7,6 +7,7 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import numpy as np
+import types
 
 
 def get_featurizers():
@@ -78,6 +79,8 @@ class Featurizer(object):
         mols : iterable
             RDKit Mol objects.
         """
+        if self.conformers and isinstance(mols, types.GeneratorType):
+            mols = list(mols)
         features = [self._featurize(mol) for mol in mols]
         if self.conformers:
             features = self.conformer_container(mols, features)
