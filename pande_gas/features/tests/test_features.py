@@ -2,9 +2,9 @@
 Test featurizer class.
 """
 from rdkit import Chem
+from rdkit_utils import serial
 
 from pande_gas.features.basic import MolecularWeight
-from pande_gas.utils import rdkit_utils as rd
 
 
 def test_featurizer():
@@ -18,7 +18,7 @@ def test_featurizer():
 def test_flatten_conformers():
     """Flatten a multiconformer molecule."""
     mol = Chem.MolFromSmiles(test_smiles)
-    mol = rd.generate_conformers(mol, 1)
+    mol = serial.generate_conformers(mol, 1)
     assert mol.GetNumConformers() > 0
     f = MolecularWeight()
     rval = f([mol])

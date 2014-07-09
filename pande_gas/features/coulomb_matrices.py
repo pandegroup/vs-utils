@@ -12,7 +12,6 @@ import numpy as np
 
 from pande_gas.features import Featurizer
 from pande_gas.utils import pad_array
-from pande_gas.utils.rdkit_utils import interatomic_distances
 
 
 class CoulombMatrix(Featurizer):
@@ -86,7 +85,7 @@ class CoulombMatrix(Featurizer):
         z = [atom.GetAtomicNum() for atom in mol.GetAtoms()]
         rval = []
         for conf in mol.GetConformers():
-            d = interatomic_distances(conf)
+            d = self.get_interatomic_distances(conf)
             m = np.zeros((n_atoms, n_atoms))
             for i in xrange(mol.GetNumAtoms()):
                 for j in xrange(mol.GetNumAtoms()):
@@ -135,3 +134,25 @@ class CoulombMatrix(Featurizer):
             new = m[p][:, p]  # permute rows first, then columns
             rval.append(new)
         return rval
+
+    @staticmethod
+    def get_interatomic_distances(conf):
+        """
+        Get interatomic distances for atoms in a molecular conformer.
+
+        Parameters
+        ----------
+        conf : RDKit Conformer
+            Molecule conformer.
+        """
+        n_atoms = conf.GetNumAtoms()
+        coords = [conf.GetAtomPosition(i) for i in xrange(n_atoms)]
+        d = np.zeros((n_atoms, n_atoms), dtype=float)
+        for i in xrange(n_atoms):
+            for j in xrange(n_atoms):
+                if i < j:
+                    d[i, j] = coords[i].Distance(coords[j])
+                    d[j, i] = d[i, j]
+                else:
+                    continue
+        return d
