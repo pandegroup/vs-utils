@@ -7,6 +7,7 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import numpy as np
+import types
 
 
 def get_featurizers():
@@ -78,18 +79,14 @@ class Featurizer(object):
         mols : iterable
             RDKit Mol objects.
         """
-        x = None
-        for i, mol in enumerate(mols):
-            features = self._featurize(mol)
-            if not hasattr(features, 'shape'):
-                features = np.asarray(features)
-            if x is None:
-                x = self.get_container(mols, features.shape)
-            if self.conformers:
-                x[i, :max(mol.GetNumConformers(), 1)] = features
-            else:
-                x[i] = features
-        return x
+        if self.conformers and isinstance(mols, types.GeneratorType):
+            mols = list(mols)
+        features = [self._featurize(mol) for mol in mols]
+        if self.conformers:
+            features = self.conformer_container(mols, features)
+        else:
+            features = np.asarray(features)
+        return features
 
     def _featurize(self, mol):
         """
@@ -113,26 +110,41 @@ class Featurizer(object):
         """
         return self.featurize(mols)
 
-    def get_container(self, mols, shape):
+    def conformer_container(self, mols, features):
         """
-        Initialize a masked feature container.
+        Put features into a container with an extra dimension for
+        conformers. Conformer indices that are not used are masked.
+
+        For example, if mols contains 3 molecules with 1, 2, 5 conformers,
+        respectively, then the final container will have 3 entries on its
+        first axis and 5 entries on its second axis. The remaining axes
+        correspond to feature dimensions.
 
         Parameters
         ----------
         mols : iterable
             RDKit Mol objects.
-        shape : tuple or int
-            Shape or number of features for each conformer.
+        features : list
+            Features calculated for molecule conformers. Each element
+            corresponds to the features for a molecule and should be an
+            ndarray with conformers on the first axis.
         """
-        if isinstance(shape, int):
-            shape = (shape,)
-        if self.conformers:
-            max_confs = max([mol.GetNumConformers() for mol in mols])
-            if not max_confs:
-                max_confs = 1
-            # max_confs replaces shape[0]
-            shape = (len(mols), max_confs) + shape[1:]
-        else:
-            shape = (len(mols),) + shape
-        rval = np.ma.masked_all(shape)
-        return rval
+
+        # get the maximum number of conformers
+        max_confs = max([mol.GetNumConformers() for mol in mols])
+        if not max_confs:
+            max_confs = 1
+
+        # construct the new container
+        # - first axis = # mols
+        # - second axis = max # conformers
+        # - remaining axes = determined by feature shape
+        shape = (len(mols), max_confs) + features[0].shape[1:]
+        x = np.ma.masked_all(shape)
+
+        # fill in the container
+        for i, (mol, mol_features) in enumerate(zip(mols, features)):
+            n_confs = max(mol.GetNumConformers(), 1)
+            x[i, :n_confs] = mol_features
+
+        return x

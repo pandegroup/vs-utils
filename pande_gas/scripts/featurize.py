@@ -11,9 +11,10 @@ import argparse
 import cPickle
 import inspect
 
+from rdkit_utils import serial
+
 from pande_gas.features import get_featurizers
 from pande_gas.utils import h5
-from pande_gas.utils import rdkit_utils as rd
 
 
 class HelpFormatter(argparse.RawTextHelpFormatter):
@@ -31,7 +32,7 @@ class HelpFormatter(argparse.RawTextHelpFormatter):
 
 
 def main():
-    mols = rd.read_mols(args.input)
+    mols = list(serial.read_mols_from_file(args.input))
     names = [mol.GetProp('_Name') for mol in mols]
     featurizer = args.klass(**vars(args.featurizer_kwargs))
     features = featurizer.featurize(mols)
