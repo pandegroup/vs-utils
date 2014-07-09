@@ -61,7 +61,9 @@ class CoulombMatrix(Featurizer):
 
     def _featurize(self, mol):
         """
-        Calculate Coulomb matrices for molecules.
+        Calculate Coulomb matrices for molecules. If extra randomized
+        matrices are generated, they are treated as if they are features
+        for additional conformers.
 
         Parameters
         ----------
@@ -70,6 +72,7 @@ class CoulombMatrix(Featurizer):
         """
         features = self.coulomb_matrix(mol)
         features = [f[np.triu_indices_from(f)] for f in features]
+        features = np.asarray(features)
         return features
 
     def coulomb_matrix(self, mol):
@@ -103,6 +106,7 @@ class CoulombMatrix(Featurizer):
             else:
                 m = pad_array(m, self.max_atoms)
                 rval.append(m)
+        rval = np.asarray(rval)
         return rval
 
     def randomize_coulomb_matrix(self, m):
