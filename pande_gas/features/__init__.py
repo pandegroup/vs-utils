@@ -146,5 +146,5 @@ class Featurizer(object):
         for i, (mol, mol_features) in enumerate(zip(mols, features)):
             n_confs = max(mol.GetNumConformers(), 1)
             x[i, :n_confs] = mol_features
-            
+
         return x
