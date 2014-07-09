@@ -115,19 +115,36 @@ class Featurizer(object):
         Put features into a container with an extra dimension for
         conformers. Conformer indices that are not used are masked.
 
+        For example, if mols contains 3 molecules with 1, 2, 5 conformers,
+        respectively, then the final container will have 3 entries on its
+        first axis and 5 entries on its second axis. The remaining axes
+        correspond to feature dimensions.
+
         Parameters
         ----------
         mols : iterable
             RDKit Mol objects.
-        features : iterable
-            Features calculated for molecules.
+        features : list
+            Features calculated for molecule conformers. Each element
+            corresponds to the features for a molecule and should be an
+            ndarray with conformers on the first axis.
         """
+
+        # get the maximum number of conformers
         max_confs = max([mol.GetNumConformers() for mol in mols])
         if not max_confs:
             max_confs = 1
-        # max_confs replaces shape[0]
+
+        # construct the new container
+        # - first axis = # mols
+        # - second axis = max # conformers
+        # - remaining axes = determined by feature shape
         shape = (len(mols), max_confs) + features[0].shape[1:]
         x = np.ma.masked_all(shape)
+
+        # fill in the container
         for i, (mol, mol_features) in enumerate(zip(mols, features)):
-            x[i, :max(mol.GetNumConformers(), 1)] = mol_features
+            n_confs = max(mol.GetNumConformers(), 1)
+            x[i, :n_confs] = mol_features
+            
         return x
