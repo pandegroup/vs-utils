@@ -12,11 +12,18 @@ import warnings
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from rdkit.Chem.SaltRemover import SaltRemover
 
 
-def read_mols(filename, mol_format=None):
+def read_mols(filename, mol_format=None, remove_salts=True):
     """
     Read molecules. Supports SDF or SMILES format.
+
+    Molecular conformers are combined into a single molecule. The criteria
+    for conformers are:
+    * Identical SMILES strings
+    * Identical compound names (a warning is given if compounds lack names)
+    * Contiguous in the file
 
     Parameters
     ----------
@@ -24,6 +31,8 @@ def read_mols(filename, mol_format=None):
         Filename.
     mol_format : str, optional
         Molecule file format. Currently supports 'sdf' and 'smi'.
+    remove_salts : bool, optional (default True)
+        Whether to remove salts.
 
     Returns
     -------
@@ -62,18 +71,40 @@ def read_mols(filename, mol_format=None):
             mols.append(mol)
     f.close()
 
-    # combine conformers (contiguous identical SMILES strings)
-    combined = []
+    # remove salts
+    if remove_salts:
+        salt_remover = SaltRemover()
+        mols = [salt_remover.StripMol(mol) for mol in mols]
+
+    # combine conformers
     smiles = np.asarray([Chem.MolToSmiles(mol, isomericSmiles=True,
                                           canonical=True) for mol in mols])
-    for s in np.unique(smiles):
-        this = np.where(smiles == s)[0]
-        if not np.all(np.diff(this) == 1):
-            warnings.warn("Combining non-contiguous conformers in " + filename)
-        mol = Chem.Mol(mols[this[0]])  # create a copy
-        for i in this[1:]:
-            for conf in mols[i].GetConformers():
-                mol.AddConformer(conf)
+    names = []
+    for mol in mols:
+        if mol.HasProp('_Name'):
+            names.append(mol.GetProp('_Name'))
+        else:
+            names.append(None)
+    to_combine = [[mols[0]]]
+    idx = 0
+    for i in xrange(1, smiles.size):
+        if smiles[i] == smiles[i - 1] and names[i] == names[i - 1]:
+            if names[i] is None:
+                warnings.warn("Combining conformers for unnamed molecules.")
+            to_combine[idx].append(mols[i])
+        else:
+            to_combine.append([mols[i]])
+            idx += 1
+
+    combined = []
+    for mols in to_combine:
+        if len(mols) == 1:
+            mol, = mols
+        else:
+            mol = Chem.Mol(mols[0])
+            for other in mols[1:]:
+                for conf in other.GetConformers():
+                    mol.AddConformer(conf)
         combined.append(mol)
     combined = np.asarray(combined)
     return combined
