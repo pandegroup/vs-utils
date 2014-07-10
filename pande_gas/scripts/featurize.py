@@ -10,11 +10,11 @@ __license__ = "BSD 3-clause"
 import argparse
 import cPickle
 import inspect
+import gzip
 
 from rdkit_utils import serial
 
 from pande_gas.features import get_featurizers
-from pande_gas.utils import h5
 
 
 class HelpFormatter(argparse.RawTextHelpFormatter):
@@ -42,7 +42,13 @@ def main():
             labels = cPickle.load(f)
         assert len(labels) == len(mols)
         data['y'] = labels
-    h5.dump(data, args.output, attrs=vars(args.featurizer_kwargs))
+    data['args'] = args
+    if args.output.endswith('.gz'):
+        f = gzip.open(args.output, 'wb')
+    else:
+        f = open(args.output, 'wb')
+    cPickle.dump(data, f, cPickle.HIGHEST_PROTOCOL)
+    f.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=HelpFormatter)
@@ -51,7 +57,7 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--labels',
                         help='Molecule labels.')
     parser.add_argument('output',
-                        help='Output (HDF5) filename.')
+                        help='Output filename (.pkl or .pkl.gz).')
 
     # featurizer subcommands
     featurizers = get_featurizers()
