@@ -139,7 +139,7 @@ class Featurizer(object):
         # - first axis = # mols
         # - second axis = max # conformers
         # - remaining axes = determined by feature shape
-        shape = (len(mols), max_confs) + features[0].shape[1:]
+        shape = (len(mols), max_confs) + features[0][0].shape
         x = np.ma.masked_all(shape)
 
         # fill in the container
