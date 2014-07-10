@@ -29,7 +29,7 @@ def test_circular():
     # run script
     _, output_filename = tempfile.mkstemp(suffix='.pkl.gz')
     input_args = [input_filename, '-t', targets_filename, output_filename,
-                  'circular']
+                  'circular', '--size', '2048']
     args = parse_args(input_args)
     main(args.klass, args.input, args.output, args.targets,
          vars(args.featurizer_kwargs))
@@ -37,7 +37,7 @@ def test_circular():
     # check output file
     with gzip.open(output_filename) as f:
         data = cPickle.load(f)
-    assert data['features'].shape == (2, 1024)
+    assert data['features'].shape == (2, 2048)
     assert data['y'] == targets
     assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
 
