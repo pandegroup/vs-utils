@@ -23,13 +23,13 @@ class MolImage(Featurizer):
     ----------
     size : int, optional (default 32)
         Size (in any dimension) of generated images.
-    flatten : bool, optional (default True)
+    flatten : bool, optional (default False)
         Whether to flatten the pixel array. If False, the features for each
         molecule will be a 3D array.
     """
     name = 'image'
 
-    def __init__(self, size=32, flatten=True):
+    def __init__(self, size=32, flatten=False):
         self.size = size
         if not flatten:
             self.topo_view = True

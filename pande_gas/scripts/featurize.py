@@ -54,7 +54,8 @@ def parse_args(input_args=None):
             kwargs = {}
             try:
                 kwargs['default'] = defaults[i-len(args)]
-                kwargs['type'] = type(kwargs['default'])
+                if kwargs['default'] is not None:
+                    kwargs['type'] = type(kwargs['default'])
             except IndexError:
                 kwargs['required'] = True
             if 'type' in kwargs and kwargs['type'] == bool:
@@ -106,10 +107,7 @@ def main(featurizer_class, input_filename, output_filename,
     featurizer_kwargs : dict, optional
         Keyword arguments passed to featurizer.
     """
-
-    # read molecules and extract names
-    mols = list(serial.read_mols_from_file(input_filename))
-    names = [mol.GetProp('_Name') for mol in mols]
+    mols, names = read_mols_and_names(input_filename)
 
     # featurize molecules
     if featurizer_kwargs is None:
@@ -130,6 +128,34 @@ def main(featurizer_class, input_filename, output_filename,
                     'featurizer_kwargs': featurizer_kwargs}
 
     # write output file
+    write_output_file(data, output_filename)
+
+
+def read_mols_and_names(input_filename):
+    """
+    Read molecules and molecule names from an input file.
+
+    Parameters
+    ----------
+    input_filename : str
+        Filename containing molecules.
+    """
+    mols = list(serial.read_mols_from_file(input_filename))
+    names = [mol.GetProp('_Name') for mol in mols]
+    return mols, names
+
+
+def write_output_file(data, output_filename):
+    """
+    Pickle output data, possibly to a compressed file.
+
+    Parameters
+    ----------
+    data : object
+        Object to pickle in output file.
+    output_filename : str
+        Output filename. Should end with .pkl or .pkl.gz.
+    """
     if output_filename.endswith('.gz'):
         f = gzip.open(output_filename, 'wb')
     else:
