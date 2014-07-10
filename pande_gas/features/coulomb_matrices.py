@@ -12,7 +12,6 @@ import numpy as np
 
 from pande_gas.features import Featurizer
 from pande_gas.utils import pad_array
-from pande_gas.utils.rdkit_utils import interatomic_distances
 
 
 class CoulombMatrix(Featurizer):
@@ -62,7 +61,9 @@ class CoulombMatrix(Featurizer):
 
     def _featurize(self, mol):
         """
-        Calculate Coulomb matrices for molecules.
+        Calculate Coulomb matrices for molecules. If extra randomized
+        matrices are generated, they are treated as if they are features
+        for additional conformers.
 
         Parameters
         ----------
@@ -71,6 +72,7 @@ class CoulombMatrix(Featurizer):
         """
         features = self.coulomb_matrix(mol)
         features = [f[np.triu_indices_from(f)] for f in features]
+        features = np.asarray(features)
         return features
 
     def coulomb_matrix(self, mol):
@@ -86,7 +88,7 @@ class CoulombMatrix(Featurizer):
         z = [atom.GetAtomicNum() for atom in mol.GetAtoms()]
         rval = []
         for conf in mol.GetConformers():
-            d = interatomic_distances(conf)
+            d = self.get_interatomic_distances(conf)
             m = np.zeros((n_atoms, n_atoms))
             for i in xrange(mol.GetNumAtoms()):
                 for j in xrange(mol.GetNumAtoms()):
@@ -104,6 +106,7 @@ class CoulombMatrix(Featurizer):
             else:
                 m = pad_array(m, self.max_atoms)
                 rval.append(m)
+        rval = np.asarray(rval)
         return rval
 
     def randomize_coulomb_matrix(self, m):
@@ -135,3 +138,25 @@ class CoulombMatrix(Featurizer):
             new = m[p][:, p]  # permute rows first, then columns
             rval.append(new)
         return rval
+
+    @staticmethod
+    def get_interatomic_distances(conf):
+        """
+        Get interatomic distances for atoms in a molecular conformer.
+
+        Parameters
+        ----------
+        conf : RDKit Conformer
+            Molecule conformer.
+        """
+        n_atoms = conf.GetNumAtoms()
+        coords = [conf.GetAtomPosition(i) for i in xrange(n_atoms)]
+        d = np.zeros((n_atoms, n_atoms), dtype=float)
+        for i in xrange(n_atoms):
+            for j in xrange(n_atoms):
+                if i < j:
+                    d[i, j] = coords[i].Distance(coords[j])
+                    d[j, i] = d[i, j]
+                else:
+                    continue
+        return d

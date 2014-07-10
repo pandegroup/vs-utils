@@ -12,14 +12,15 @@ __license__ = "BSD 3-clause"
 import argparse
 import cPickle
 
+from rdkit_utils import serial
+
 from pande_gas.features.coulomb_matrices import CoulombMatrix
 from pande_gas.utils import h5
-from pande_gas.utils import rdkit_utils as rd
 
 
 def main():
     """Generate coulomb matrices for molecules."""
-    mols = rd.read_mols(args.input)
+    mols = serial.read_mols_from_file(args.input)
     featurizer = CoulombMatrix(randomize=args.randomize,
                                n_samples=args.n_samples, seed=args.seed)
     x = featurizer(mols)
