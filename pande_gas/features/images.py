@@ -6,7 +6,6 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
-import os
 import subprocess
 
 from rdkit import Chem
@@ -65,7 +64,7 @@ class MolImage(Featurizer):
         """
         png_args = ['obabel', '-ican', '-opng', '-xd', '-xC',
                     '-xp {}'.format(self.size)]
-        p = subprocess.Popen(png_args, stdin=subprocess.PIPE, 
+        p = subprocess.Popen(png_args, stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         png, _ = p.communicate(smiles)
         im = image_utils.load(png)
