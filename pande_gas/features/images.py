@@ -63,10 +63,10 @@ class MolImage(Featurizer):
         smiles : str
             SMILES string.
         """
-        devnull = open(os.devnull, 'w')
         png_args = ['obabel', '-ican', '-opng', '-xd', '-xC',
                     '-xp {}'.format(self.size)]
-        p = subprocess.Popen(png_args, stdin=subprocess.PIPE, stderr=devnull)
+        p = subprocess.Popen(png_args, stdin=subprocess.PIPE, 
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         png, _ = p.communicate(smiles)
         im = image_utils.load(png)
         return im
