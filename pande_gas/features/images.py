@@ -55,11 +55,8 @@ class MolImage(Featurizer):
         """
         Generate a PNG image from a SMILES string using OpenBabel.
 
-        Note that we call OpenBabel using Popen to avoid entanglements with
-        the GNU GPL.
-
-        See http://stackoverflow.com/questions/13332268 for details on the
-        echo function.
+        Note that we call OpenBabel using subprocss to avoid entanglements
+        with the GNU GPL.
 
         Parameters
         ----------
@@ -67,11 +64,9 @@ class MolImage(Featurizer):
             SMILES string.
         """
         devnull = open(os.devnull, 'w')
-        echo = lambda string: subprocess.Popen(['echo', string],
-                                               stdout=subprocess.PIPE).stdout
         png_args = ['obabel', '-ican', '-opng', '-xd', '-xC',
                     '-xp {}'.format(self.size)]
-        png = subprocess.check_output(png_args, stdin=echo(smiles),
-                                      stderr=devnull)
+        p = subprocess.Popen(png_args, stdin=subprocess.PIPE, stderr=devnull)
+        png, _ = p.communicate(smiles)
         im = image_utils.load(png)
         return im
