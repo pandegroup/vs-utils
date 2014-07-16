@@ -6,9 +6,7 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
-import subprocess
-
-from rdkit import Chem
+from rdkit.Chem import Draw
 
 from pande_gas.features import Featurizer
 from pande_gas.utils import image_utils
@@ -43,29 +41,9 @@ class MolImage(Featurizer):
         mol : RDKit Mol
             Molecule.
         """
-        smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
-        image = self.image_from_smiles(smiles)
+        dim = (self.size, self.size)
+        image = Draw.MolToImage(mol, dim, fitImage=True)
         pixels = image_utils.get_pixels(image)
         if self.flatten:
             pixels = pixels.ravel()
         return pixels
-
-    def image_from_smiles(self, smiles):
-        """
-        Generate a PNG image from a SMILES string using OpenBabel.
-
-        Note that we call OpenBabel using subprocss to avoid entanglements
-        with the GNU GPL.
-
-        Parameters
-        ----------
-        smiles : str
-            SMILES string.
-        """
-        png_args = ['obabel', '-ican', '-opng', '-xd', '-xC',
-                    '-xp {}'.format(self.size)]
-        p = subprocess.Popen(png_args, stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        png, _ = p.communicate(smiles)
-        im = image_utils.load(png)
-        return im
