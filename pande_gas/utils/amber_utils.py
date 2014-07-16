@@ -143,23 +143,25 @@ class PBSA(object):
             f.write(self.get_pbsa_parameter_file())
 
         # run PBSA
-        args = ['pbsa', '-i', param_filename, '-o', 'pbsa.out', '-pqr',
+        _, output_filename = tempfile.mkstemp(suffix='.out', dir=self.temp_dir)
+        os.remove(output_filename)  # PBSA won't overwrite output filename
+        args = ['pbsa', '-i', param_filename, '-o', output_filename, '-pqr',
                 pqr_filename]
         try:
             subprocess.check_call(args, cwd=self.temp_dir,
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE)
         except subprocess.CalledProcessError as e:
-            with open(os.path.join(self.temp_dir, 'pbsa.out')) as f:
-                e.output = f.read()
-                print e.output
+            with open(output_filename) as f:
+                output = f.read()
+                print output
             raise e
 
         # extract ESP grid
         with open(os.path.join(self.temp_dir, 'pbsa.phi')) as f:
-            grid = self.parse_esp_grid(f)
+            grid, center = self.parse_esp_grid(f)
 
-        return grid
+        return grid, center
 
     def get_pbsa_parameter_file(self):
         """
@@ -173,8 +175,8 @@ class PBSA(object):
         &pb
         npbverb=1,  ! be verbose
         phiout=1, phiform=1,  ! write grid to Amber ASCII file
-        space={space},  ! grid spacing
         istrng={istrng},  ! ionic strength
+        space={space},  ! grid spacing
         xmin={xmin}, xmax={xmax},
         ymin={ymin}, ymax={ymax},
         zmin={zmin}, zmax={zmax},
@@ -192,8 +194,7 @@ class PBSA(object):
 
         return params
 
-    @staticmethod
-    def parse_esp_grid(grid):
+    def parse_esp_grid(self, grid):
         """
         Parse PBSA ASCII electrostatic potential grid.
 
@@ -230,8 +231,13 @@ class PBSA(object):
             else:
                 phi = np.asarray(line.split(), dtype=float)
         grid = np.reshape(phi, (xm, ym, zm), order='F')
+        center = (gox, goy, goz)
+        print "CENTER", center
 
-        return grid
+        # sanity checks
+        assert h == self.resolution
+
+        return grid, center
 
 
 class ModifiedPdbReader(PdbReader):
