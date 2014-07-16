@@ -99,6 +99,7 @@ class ESP(Featurizer):
 
             # calculate ESP grid
             grid, center = pbsa.get_esp_grid(pqr)
+            assert center == (0, 0, 0)
             grids.append(grid)
 
         grids = np.asarray(grids)
