@@ -210,7 +210,12 @@ class PBSA(object):
         np.reshape to get the 3D grid.
 
         Spatial coordinates (x, y, z) in the grid are given by
-        (gox + h * i, goy + h * j, goz + h * k)
+        (gox + h * i, goy + h * j, goz + h * k).
+
+        The grid center is therefore
+        (gox + h * (xm + 1) / 2,
+         goy + h * (ym + 1) / 2,
+         goz + h * (zm + 1) / 2).
 
         Parameters
         ----------
@@ -230,9 +235,10 @@ class PBSA(object):
                 xm, ym, zm = np.asarray(line.split(), dtype=int)
             else:
                 phi = np.asarray(line.split(), dtype=float)
-        grid = np.reshape(phi, (xm, ym, zm), order='F')
-        center = (gox, goy, goz)
-        print "CENTER", center
+        dim = (xm, ym, zm)
+        grid = np.reshape(phi, dim, order='F')
+        origin = (gox, goy, goz)
+        center = tuple(o + h * (m + 1) / 2. for o, m in zip(origin, dim))
 
         # sanity checks
         assert h == self.resolution
