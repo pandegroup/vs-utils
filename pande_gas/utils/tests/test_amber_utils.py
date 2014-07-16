@@ -36,7 +36,7 @@ def test_pbsa_esp_grid():
 
     # calculate ESP grid
     pbsa = amber_utils.PBSA()
-    grid = pbsa.get_esp_grid(pqr)
+    grid, _ = pbsa.get_esp_grid(pqr)
 
     # the grid should be cubic
     size = grid.shape[0]

@@ -98,7 +98,7 @@ class ESP(Featurizer):
             pqr = reader.pdb_to_pqr(StringIO(pdb), charges, radii)
 
             # calculate ESP grid
-            grid = pbsa.get_esp_grid(pqr)
+            grid, center = pbsa.get_esp_grid(pqr)
             grids.append(grid)
 
         grids = np.asarray(grids)
