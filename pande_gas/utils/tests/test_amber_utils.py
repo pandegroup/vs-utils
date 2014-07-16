@@ -16,16 +16,17 @@ def test_antechamber_charges_and_radii():
     mol = conformers.generate_conformers(mol)
     antechamber = amber_utils.Antechamber()
     charges, radii = antechamber.get_charges_and_radii(mol)
-    assert charges.size == 12  # 12 atoms, 6 carbon, 6 hydrogen
+    assert charges.size == 21  # 21 atoms: C_9H_8O_4
     assert np.allclose(charges.sum(), 0)  # neutral molecule
-    assert radii.size == 12  # 12 atoms
+    assert radii.size == 21  # 12 atoms
     assert np.count_nonzero(radii > 0)  # no zero radii
 
 
 def test_pbsa_esp_grid():
     """Test PBSA ESP grid."""
     mol = Chem.MolFromSmiles(test_smiles)
-    mol = conformers.generate_conformers(mol)
+    mol = conformers.generate_conformers(mol, 3)
+    assert mol.GetNumConformers() > 1
 
     # generate PQR
     reader = pdb_utils.PdbReader()
@@ -45,4 +46,4 @@ def test_pbsa_esp_grid():
     # and not be all zeros
     assert np.count_nonzero(grid)
 
-test_smiles = 'c1ccccc1'
+test_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
