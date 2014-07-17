@@ -7,7 +7,4 @@ Requirements
 ------------
 * [rdkit](http://www.rdkit.org/docs/Install.html)
 
-Additionally, image-based features require:
-
-* [OpenBabel](http://openbabel.org/wiki/Get_Open_Babel)
-* [ImageMagick](http://www.imagemagick.org/download/)
+Additionally, the electrostatic potential features require [AmberTools](http://ambermd.org/#AmberTools), which is licensed under the GNU GPL (version 3).
