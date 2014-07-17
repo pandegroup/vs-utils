@@ -57,10 +57,13 @@ class Featurizer(object):
     Class Attributes
     ----------------
     conformers : bool, optional (default False)
-        Whether features are calculated for all conformers. If True, the
-        first two axes of the feature matrix will index molecules and
-        conformers, respectively. If False, features will be calculated
-        once for each molecule.
+        Whether features are calculated for conformers. If True, the first
+        two axes of the feature matrix will index molecules and conformers,
+        respectively. If False, only molecule-level features are calculated
+        and the feature matrix will not have a separate conformer dimension.
+        This is a class attribute because some featurizers take 3D
+        conformation into account and others do not, and this is not
+        typically an instance-level decision.
     name : str or list
         Name (or names) of this featurizer (used for scripting).
     topo_view : bool (default False)
