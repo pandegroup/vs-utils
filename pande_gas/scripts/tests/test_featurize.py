@@ -69,7 +69,6 @@ def test_circular():
 
 def test_coulomb_matrix():
     """Test Coulomb matrices."""
-
     input_filename, targets_filename = setup()
 
     # run script
@@ -93,7 +92,6 @@ def test_coulomb_matrix():
 
 def test_image_features():
     """Test image features."""
-
     input_filename, targets_filename = setup()
 
     # run script
@@ -108,6 +106,29 @@ def test_image_features():
     with gzip.open(output_filename) as f:
         data = cPickle.load(f)
     assert data['features'].shape == (2, 16, 16, 3)
+    assert data['y'] == [0, 1]
+    assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+
+    # cleanup
+    cleanup([input_filename, targets_filename, output_filename])
+
+
+def test_esp():
+    """Test ESP."""
+    input_filename, targets_filename = setup()
+
+    # run script
+    _, output_filename = tempfile.mkstemp(suffix='.pkl.gz')
+    input_args = [input_filename, '-t', targets_filename, output_filename,
+                  'esp', '--size', '20']
+    args = parse_args(input_args)
+    main(args.klass, args.input, args.output, args.targets,
+         vars(args.featurizer_kwargs))
+
+    # check output file
+    with gzip.open(output_filename) as f:
+        data = cPickle.load(f)
+    assert data['features'].shape == (2, 1, 61, 61, 61)
     assert data['y'] == [0, 1]
     assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
 

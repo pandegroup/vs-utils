@@ -14,6 +14,7 @@ def get_featurizers():
     """Compile a dict mapping strings to featurizer classes."""
     from .basic import MolecularWeight
     from .coulomb_matrices import CoulombMatrix
+    from .esp import ESP
     from .fingerprints import CircularFingerprint
     from .images import MolImage
 
