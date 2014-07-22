@@ -41,8 +41,7 @@ class LocalCluster(object):
         self.cluster_id = uuid.uuid4()
         output = open(os.devnull)
         self.controller = subprocess.Popen(
-            ['ipcontroller', '--ip=*',
-             '--cluster-id={}'.format(self.cluster_id),
+            ['ipcontroller', '--cluster-id={}'.format(self.cluster_id),
              '--log-level=ERROR'])
         time.sleep(1)  # wait for controller to initialize
         for i in xrange(self.n_engines):
