@@ -39,7 +39,6 @@ class LocalCluster(object):
         Start the cluster by running ipcontroller and ipengine.
         """
         self.cluster_id = uuid.uuid4()
-        output = open(os.devnull)
         self.controller = subprocess.Popen(
             ['ipcontroller', '--cluster-id={}'.format(self.cluster_id),
              '--log-level=ERROR'])
@@ -49,7 +48,6 @@ class LocalCluster(object):
                 ['ipengine', '--cluster-id={}'.format(self.cluster_id),
                  '--log-level=ERROR'])
             self.engines.append(engine)
-        self.output = output
         time.sleep(10)  # wait for engines to initialize
 
     def stop(self):
@@ -59,4 +57,3 @@ class LocalCluster(object):
         for engine in self.engines:
             engine.terminate()
         self.controller.terminate()
-        self.output.close()
