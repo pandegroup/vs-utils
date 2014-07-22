@@ -20,7 +20,7 @@ class CoulombMatrix(Featurizer):
 
     Parameters
     ----------
-    max_atoms : int, optional
+    max_atoms : int
         Maximum number of atoms for any molecule in the dataset. Used to
         pad the Coulomb matrix.
     randomize : bool, optional (default True)
@@ -34,34 +34,13 @@ class CoulombMatrix(Featurizer):
     conformers = True
     name = 'coulomb_matrix'
 
-    def __init__(self, max_atoms=None, randomize=True, n_samples=1, seed=None):
-        if max_atoms is not None:
-            max_atoms = int(max_atoms)
-        self.max_atoms = max_atoms
+    def __init__(self, max_atoms, randomize=True, n_samples=1, seed=None):
+        self.max_atoms = int(max_atoms)
         self.randomize = randomize
         self.n_samples = n_samples
         if seed is not None:
             seed = int(seed)
         self.seed = seed
-
-    def featurize(self, mols):
-        """
-        Calculate Coulomb matrices for molecules. Also calculate max_atoms
-        for this batch, if not already set.
-
-        Parameters
-        ----------
-        mols : iterable
-            RDKit Mol objects.
-        """
-        reset = False
-        if self.max_atoms is None:
-            reset = True
-            self.max_atoms = max([mol.GetNumAtoms() for mol in mols])
-        features = super(CoulombMatrix, self).featurize(mols)
-        if reset:
-            self.max_atoms = None
-        return features
 
     def _featurize(self, mol):
         """
