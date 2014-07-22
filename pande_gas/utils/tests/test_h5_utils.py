@@ -6,7 +6,7 @@ import numpy as np
 import os
 import tempfile
 
-from pande_gas.utils import h5
+from pande_gas.utils import h5_utils
 
 
 def test_dump():
@@ -17,7 +17,7 @@ def test_dump():
     data = {}
     data['a'] = np.random.random((10, 3))
     data['b'] = np.random.randint(6, size=10)
-    h5.dump(data, filename)
+    h5_utils.dump(data, filename)
 
     # make sure we can read it
     with h5py.File(filename) as f:
