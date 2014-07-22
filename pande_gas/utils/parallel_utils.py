@@ -1,7 +1,6 @@
 """
 IPython.parallel utilities.
 """
-import os
 import subprocess
 import time
 import uuid
@@ -9,7 +8,7 @@ import uuid
 
 class LocalCluster(object):
     """
-    Start an IPython.parallel cluster on localhost.
+    Run an IPython.parallel cluster on localhost.
 
     Parameters
     ----------
