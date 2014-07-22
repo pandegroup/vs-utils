@@ -189,6 +189,7 @@ if __name__ == '__main__':
                                          'not be specified when starting a' +
                                          'new cluster.')
         cluster = LocalCluster(args.n_engines)
+        args.parallel = True
         args.cluster_id = cluster.cluster_id
 
     # cluster flags
