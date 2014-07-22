@@ -74,7 +74,8 @@ class Featurizer(object):
     name = None
     topo_view = False
 
-    def featurize(self, mols):
+    def featurize(self, mols, parallel=False, client_kwargs=None,
+                  view_flags=None):
         """
         Calculate features for molecules.
 
@@ -82,10 +83,33 @@ class Featurizer(object):
         ----------
         mols : iterable
             RDKit Mol objects.
+        parallel : bool, optional
+            Whether to train subtrainers in parallel using
+            IPython.parallel (default False).
+        client_kwargs : dict, optional
+            Keyword arguments for IPython.parallel Client.
+        view_flags : dict, optional
+            Flags for IPython.parallel LoadBalancedView.
         """
         if self.conformers and isinstance(mols, types.GeneratorType):
             mols = list(mols)
-        features = [self._featurize(mol) for mol in mols]
+
+        if parallel:
+            from IPython.parallel import Client
+
+            if client_kwargs is None:
+                client_kwargs = {}
+            if view_flags is None:
+                view_flags = {}
+            client = Client(**client_kwargs)
+            client.direct_view().use_dill()  # use dill
+            view = client.load_balanced_view()
+            view.set_flags(**view_flags)
+            call = view.map(self._featurize, mols, block=False)
+            features = call.get()
+        else:
+            features = [self._featurize(mol) for mol in mols]
+
         if self.conformers:
             features = self.conformer_container(mols, features)
         else:
@@ -103,7 +127,8 @@ class Featurizer(object):
         """
         raise NotImplementedError('Featurizer is not defined.')
 
-    def __call__(self, mols):
+    def __call__(self, mols, parallel=False, client_kwargs=None,
+                 view_flags=None):
         """
         Calculate features for molecules.
 
@@ -111,8 +136,15 @@ class Featurizer(object):
         ----------
         mols : iterable
             RDKit Mol objects.
+        parallel : bool, optional
+            Whether to train subtrainers in parallel using
+            IPython.parallel (default False).
+        client_kwargs : dict, optional
+            Keyword arguments for IPython.parallel Client.
+        view_flags : dict, optional
+            Flags for IPython.parallel LoadBalancedView.
         """
-        return self.featurize(mols)
+        return self.featurize(mols, parallel, client_kwargs, view_flags)
 
     def conformer_container(self, mols, features):
         """
