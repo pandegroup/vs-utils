@@ -4,7 +4,8 @@ Test featurizer class.
 import numpy as np
 import subprocess
 import time
-from unittest import skip
+import uuid
+from unittest import skip, TestCase
 
 from rdkit import Chem
 from rdkit_utils import conformers
@@ -30,22 +31,32 @@ def test_flatten_conformers():
     assert rval.shape == (1, 1)
 
 
-def test_parallel():
-    """Test parallel featurization."""
-    try:
-        from IPython.parallel import Client
-    except ImportError:
-        skip('Cannot import from IPython.parallel.')
-    cluster = subprocess.Popen(['ipcontroller', '--ip=*'])
-    time.sleep(1)
-    engine = subprocess.Popen(['ipengine', 'localhost'])
-    time.sleep(10)
-    mol = Chem.MolFromSmiles(test_smiles)
-    f = MolecularWeight()
-    rval = f([mol])
-    parallel_rval = f([mol], parallel=True)
-    assert np.array_equal(rval, parallel_rval)
-    engine.kill()
-    cluster.kill()
+class TestParallel(TestCase):
+    def setUp(self):
+        try:
+            from IPython.parallel import Client
+        except ImportError:
+            skip('Cannot import from IPython.parallel.')
+        self.cluster_id = uuid.uuid4()
+        self.controller = subprocess.Popen(
+            ['ipcontroller', '--ip=*',
+             '--cluster-id={}'.format(self.cluster_id)])
+        time.sleep(1)
+        self.engines = subprocess.Popen(
+            ['ipengine', '--cluster-id={}'.format(self.cluster_id)])
+        time.sleep(10)
+
+    def test_parallel(self):
+        """Test parallel featurization."""
+        mol = Chem.MolFromSmiles(test_smiles)
+        f = MolecularWeight()
+        rval = f([mol])
+        parallel_rval = f([mol], parallel=True,
+                          client_kwargs={'cluster_id': self.cluster_id})
+        assert np.array_equal(rval, parallel_rval)
+
+    def tearDown(self):
+        self.controller.terminate()
+        self.engines.terminate()
 
 test_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
