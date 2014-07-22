@@ -15,6 +15,7 @@ import gzip
 from rdkit_utils import serial
 
 from pande_gas.features import get_featurizers
+from pande_gas.utils.parallel_utils import LocalCluster
 
 
 def parse_args(input_args=None):
@@ -37,6 +38,9 @@ def parse_args(input_args=None):
                         help='Whether to use IPython.parallel.')
     parser.add_argument('-id', '--cluster-id',
                         help='IPython.parallel cluster ID.')
+    parser.add_argument('-np', '--n-engines', type=int,
+                        help='Start a local IPython.parallel cluster with ' +
+                             'this many engines.')
     parser.add_argument('output',
                         help='Output filename (.pkl or .pkl.gz).')
 
@@ -74,7 +78,7 @@ def parse_args(input_args=None):
     args = argparse.Namespace()
     args.featurizer_kwargs = parser.parse_args(input_args)
     for arg in ['input', 'output', 'klass', 'targets', 'parallel',
-                'cluster_id']:
+                'cluster_id', 'n_engines']:
         setattr(args, arg, getattr(args.featurizer_kwargs, arg))
         delattr(args.featurizer_kwargs, arg)
     return args
@@ -178,11 +182,23 @@ def write_output_file(data, output_filename):
 
 if __name__ == '__main__':
     args = parse_args()
+
+    # start a cluster
+    if args.n_engines is not None:
+        assert args.cluster_id is None, ('Cluster ID should not be should ' +
+                                         'not be specified when starting a' +
+                                         'new cluster.')
+        cluster = LocalCluster(args.n_engines)
+        args.cluster_id = cluster.cluster_id
+
+    # cluster flags
     if args.cluster_id is not None:
         client_kwargs = {'cluster_id': args.cluster_id}
     else:
         client_kwargs = None
     view_flags = {'retries': 1}
+
+    # run main function
     main(args.klass, args.input, args.output, args.targets,
          vars(args.featurizer_kwargs), args.parallel, client_kwargs,
          view_flags)

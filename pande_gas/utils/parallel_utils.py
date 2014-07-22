@@ -1,6 +1,7 @@
 """
 IPython.parallel utilities.
 """
+import os
 import subprocess
 import time
 import uuid
@@ -22,6 +23,7 @@ class LocalCluster(object):
         self.cluster_id = None
         self.controller = None
         self.engines = []
+        self.output = None
 
         # initialize the cluster
         self.start()
@@ -37,14 +39,18 @@ class LocalCluster(object):
         Start the cluster by running ipcontroller and ipengine.
         """
         self.cluster_id = uuid.uuid4()
+        output = open(os.devnull)
         self.controller = subprocess.Popen(
             ['ipcontroller', '--ip=*',
-             '--cluster-id={}'.format(self.cluster_id)])
+             '--cluster-id={}'.format(self.cluster_id),
+             '--log-level=ERROR'])
         time.sleep(1)  # wait for controller to initialize
         for i in xrange(self.n_engines):
             engine = subprocess.Popen(
-                ['ipengine', '--cluster-id={}'.format(self.cluster_id)])
+                ['ipengine', '--cluster-id={}'.format(self.cluster_id),
+                 '--log-level=ERROR'])
             self.engines.append(engine)
+        self.output = output
         time.sleep(10)  # wait for engines to initialize
 
     def stop(self):
@@ -54,3 +60,4 @@ class LocalCluster(object):
         for engine in self.engines:
             engine.terminate()
         self.controller.terminate()
+        self.output.close()
