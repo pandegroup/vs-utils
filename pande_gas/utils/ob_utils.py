@@ -52,6 +52,7 @@ class Ionizer(object):
             for conf in mol.GetConformers():
                 sdf += Chem.MolToMolBlock(mol, confId=conf.GetId(),
                                           includeStereo=True)
+                sdf += '$$$$\n'
             args = ['obabel', '-i', 'sdf', '-o', 'sdf', '-p', str(self.pH)]
             p = subprocess.Popen(args, stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE,
@@ -59,7 +60,7 @@ class Ionizer(object):
             ionized_sdf, _ = p.communicate(sdf)
             mols = serial.read_mols(StringIO(ionized_sdf), mol_format='sdf',
                                     remove_salts=False)  # no changes
-            mol = mols[0]
+            ionized_mol = list(mols)[0]
         else:
             smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
             args = ['obabel', '-i', 'can', '-o', 'can', '-p', str(self.pH)]
@@ -67,8 +68,8 @@ class Ionizer(object):
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
             ionized_smiles, _ = p.communicate(smiles)
-            mol = Chem.MolFromSmiles(ionized_smiles)
-        return mol
+            ionized_mol = Chem.MolFromSmiles(ionized_smiles)
+        return ionized_mol
 
 
 class MolImage(object):
