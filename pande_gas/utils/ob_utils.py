@@ -6,9 +6,11 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
+from StringIO import StringIO
 import subprocess
 
 from rdkit import Chem
+from rdkit_utils import serial
 
 from pande_gas.utils import image_utils
 
@@ -38,19 +40,34 @@ class Ionizer(object):
 
     def ionize(self, mol):
         """
-        Ionize a molecule.
+        Ionize a molecule while preserving 3D coordinates.
 
         Parameters
         ----------
         mol : RDMol
             Molecule.
         """
-        smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
-        args = ['obabel', '-i', 'can', '-o', 'can', '-p', str(self.pH)]
-        p = subprocess.Popen(args, stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        ionized_smiles, _ = p.communicate(smiles)
-        mol = Chem.MolFromSmiles(ionized_smiles)
+        if mol.GetNumConformers() > 0:
+            sdf = ''
+            for conf in mol.GetConformers():
+                sdf += Chem.MolToMolBlock(mol, confId=conf.GetId(),
+                                          includeStereo=True)
+            args = ['obabel', '-i', 'sdf', '-o', 'sdf', '-p', str(self.pH)]
+            p = subprocess.Popen(args, stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+            ionized_sdf, _ = p.communicate(sdf)
+            mols = serial.read_mols(StringIO(ionized_sdf), mol_format='sdf',
+                                    remove_salts=False)  # no changes
+            mol = mols[0]
+        else:
+            smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+            args = ['obabel', '-i', 'can', '-o', 'can', '-p', str(self.pH)]
+            p = subprocess.Popen(args, stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+            ionized_smiles, _ = p.communicate(smiles)
+            mol = Chem.MolFromSmiles(ionized_smiles)
         return mol
 
 
