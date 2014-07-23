@@ -13,7 +13,7 @@ def test_coulomb_matrix():
     """Test CoulombMatrix."""
     mol = Chem.MolFromSmiles(test_smiles)
     mol = conformers.generate_conformers(mol, n_conformers=1)
-    f = cm.CoulombMatrix()
+    f = cm.CoulombMatrix(mol.GetNumAtoms())
     rval = f([mol])
     size = np.triu_indices(mol.GetNumAtoms())[0].size
     assert rval.shape == (1, 1, size)
