@@ -1,6 +1,11 @@
 """
 IPython.parallel utilities.
 """
+
+__author__ = "Steven Kearnes"
+__copyright__ = "Copyright 2014, Stanford University"
+__license__ = "BSD 3-clause"
+
 import subprocess
 import time
 import uuid
