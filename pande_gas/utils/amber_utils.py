@@ -1,5 +1,5 @@
 """
-AmberTools.
+AmberTools utilities.
 """
 
 __author__ = "Steven Kearnes"
