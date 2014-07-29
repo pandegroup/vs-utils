@@ -10,8 +10,6 @@ __license__ = "BSD 3-clause"
 
 import numpy as np
 
-from rdkit import Chem
-
 from pande_gas.features import Featurizer
 from pande_gas.utils import pad_array
 
@@ -49,9 +47,6 @@ class CoulombMatrix(Featurizer):
         Calculate Coulomb matrices for molecules. If extra randomized
         matrices are generated, they are treated as if they are features
         for additional conformers.
-
-        Since Coulomb matrices are symmetric, only the (flattened) upper
-        triangular portion is returned.
 
         Parameters
         ----------
