@@ -1,16 +1,26 @@
 """
 Test topological fingerprints.
 """
+import unittest
+
 from rdkit import Chem
 
 from pande_gas.features import fingerprints as fp
 
 
-def test_circular_fingerprints():
-    """Test CircularFingerprint."""
-    mol = Chem.MolFromSmiles(test_smiles)
-    f = fp.CircularFingerprint()
-    rval = f([mol])
-    assert rval.shape == (1, f.size)
+class TestCircularFingerprint(unittest.TestCase):
+    """
+    Tests for CircularFingerprint.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
+        self.mol = Chem.MolFromSmiles(smiles)
 
-test_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
+    def test_circular_fingerprints(self):
+        """Test CircularFingerprint."""
+        f = fp.CircularFingerprint()
+        rval = f([self.mol])
+        assert rval.shape == (1, f.size)
