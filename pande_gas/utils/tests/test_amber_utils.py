@@ -3,6 +3,7 @@ Tests for amber_utils.
 """
 from cStringIO import StringIO
 import numpy as np
+import unittest
 
 from rdkit import Chem
 from rdkit_utils import conformers
@@ -10,40 +11,60 @@ from rdkit_utils import conformers
 from pande_gas.utils import amber_utils, pdb_utils
 
 
-def test_antechamber_charges_and_radii():
-    """Test Antechamber charges and radii."""
-    mol = Chem.MolFromSmiles(test_smiles)
-    mol = conformers.generate_conformers(mol)
-    antechamber = amber_utils.Antechamber()
-    charges, radii = antechamber.get_charges_and_radii(mol)
-    assert charges.size == 21  # 21 atoms: C_9H_8O_4
-    assert np.allclose(charges.sum(), 0)  # neutral molecule
-    assert radii.size == 21  # 12 atoms
-    assert np.count_nonzero(radii > 0)  # no zero radii
+class TestAmberUtils(unittest.TestCase):
+    """
+    Tests for amber_utils.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
+        mol = Chem.MolFromSmiles(smiles)
+        engine = conformers.ConformerGenerator(max_conformers=1)
+        self.mol = engine.generate_conformers(mol)
+        assert self.mol.GetNumConformers() > 0
 
 
-def test_pbsa_esp_grid():
-    """Test PBSA ESP grid."""
-    mol = Chem.MolFromSmiles(test_smiles)
-    mol = conformers.generate_conformers(mol, 3)
-    assert mol.GetNumConformers() > 1
+class TestAntechamber(TestAmberUtils):
+    """
+    Tests for Antechamber.
+    """
+    def test_antechamber_charges_and_radii(self):
+        """
+        Test Antechamber charges and radii.
+        """
+        antechamber = amber_utils.Antechamber()
+        charges, radii = antechamber.get_charges_and_radii(self.mol)
+        assert charges.size == 21  # 21 atoms: C_9H_8O_4
+        assert np.allclose(charges.sum(), 0)  # neutral molecule
+        assert radii.size == 21  # 12 atoms
+        assert np.count_nonzero(radii > 0)  # no zero radii
 
-    # generate PQR
-    reader = pdb_utils.PdbReader()
-    antechamber = amber_utils.Antechamber()
-    charges, radii = antechamber.get_charges_and_radii(mol)
-    pdb = Chem.MolToPDBBlock(mol)
-    pqr = reader.pdb_to_pqr(StringIO(pdb), charges, radii)
 
-    # calculate ESP grid
-    pbsa = amber_utils.PBSA()
-    grid, _ = pbsa.get_esp_grid(pqr)
+class TestPBSA(TestAmberUtils):
+    """
+    Test PBSA.
+    """
+    def test_pbsa_esp_grid(self):
+        """
+        Test PBSA ESP grid.
+        """
 
-    # the grid should be cubic
-    size = grid.shape[0]
-    assert grid.shape == (size, size, size), grid.shape
+        # generate PQR
+        reader = pdb_utils.PdbReader()
+        antechamber = amber_utils.Antechamber()
+        charges, radii = antechamber.get_charges_and_radii(self.mol)
+        pdb = Chem.MolToPDBBlock(self.mol)
+        pqr = reader.pdb_to_pqr(StringIO(pdb), charges, radii)
 
-    # and not be all zeros
-    assert np.count_nonzero(grid)
+        # calculate ESP grid
+        pbsa = amber_utils.PBSA()
+        grid, _ = pbsa.get_esp_grid(pqr)
 
-test_smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
+        # the grid should be cubic
+        size = grid.shape[0]
+        assert grid.shape == (size, size, size), grid.shape
+
+        # and not be all zeros
+        assert np.count_nonzero(grid)
