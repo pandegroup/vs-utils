@@ -1,7 +1,7 @@
 """
 Generate coulomb matrices for molecules.
 
-See _Montavon et al., New Journal of Physics_ __15__ (2013) 095003.
+See Montavon et al., _New Journal of Physics_ __15__ (2013) 095003.
 """
 
 __author__ = "Steven Kearnes"
@@ -9,6 +9,8 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import numpy as np
+
+from rdkit import Chem
 
 from pande_gas.features import Featurizer
 from pande_gas.utils import pad_array
@@ -23,6 +25,8 @@ class CoulombMatrix(Featurizer):
     max_atoms : int
         Maximum number of atoms for any molecule in the dataset. Used to
         pad the Coulomb matrix.
+    remove_hydrogens : bool, optional (default True)
+        Whether to remove hydrogens before constructing Coulomb matrix.
     randomize : bool, optional (default True)
         Whether to randomize Coulomb matrices to remove dependence on atom
         index order.
@@ -34,8 +38,10 @@ class CoulombMatrix(Featurizer):
     conformers = True
     name = 'coulomb_matrix'
 
-    def __init__(self, max_atoms, randomize=True, n_samples=1, seed=None):
+    def __init__(self, max_atoms, remove_hydrogens=True, randomize=True,
+                 n_samples=1, seed=None):
         self.max_atoms = int(max_atoms)
+        self.remove_hydrogens = remove_hydrogens
         self.randomize = randomize
         self.n_samples = n_samples
         if seed is not None:
@@ -47,6 +53,9 @@ class CoulombMatrix(Featurizer):
         Calculate Coulomb matrices for molecules. If extra randomized
         matrices are generated, they are treated as if they are features
         for additional conformers.
+
+        Since Coulomb matrices are symmetric, only the (flattened) upper
+        triangular portion is returned.
 
         Parameters
         ----------
@@ -67,6 +76,8 @@ class CoulombMatrix(Featurizer):
         mol : RDKit Mol
             Molecule.
         """
+        if self.remove_hydrogens:
+            mol = Chem.RemoveHs(mol)
         n_atoms = mol.GetNumAtoms()
         z = [atom.GetAtomicNum() for atom in mol.GetAtoms()]
         rval = []

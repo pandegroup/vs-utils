@@ -139,7 +139,7 @@ def main(featurizer_class, input_filename, output_filename,
             targets = cPickle.load(f)
         assert len(targets) == len(mols)
         data['y'] = targets
-    data['args'] = {'featurizer_class': featurizer_class,
+    data['args'] = {'featurizer_class': featurizer_class.__name__,
                     'input_filename': input_filename,
                     'target_filename': target_filename,
                     'featurizer_kwargs': featurizer_kwargs}
@@ -157,7 +157,10 @@ def read_mols_and_names(input_filename):
     input_filename : str
         Filename containing molecules.
     """
-    mols = list(serial.read_mols_from_file(input_filename))
+    reader = serial.MolReader()
+    reader.open(input_filename)
+    mols = list(reader.get_mols())
+    reader.close()
     names = [mol.GetProp('_Name') for mol in mols]
     return mols, names
 
