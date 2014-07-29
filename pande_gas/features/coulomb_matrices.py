@@ -25,8 +25,6 @@ class CoulombMatrix(Featurizer):
     max_atoms : int
         Maximum number of atoms for any molecule in the dataset. Used to
         pad the Coulomb matrix.
-    remove_hydrogens : bool, optional (default True)
-        Whether to remove hydrogens before constructing Coulomb matrix.
     randomize : bool, optional (default True)
         Whether to randomize Coulomb matrices to remove dependence on atom
         index order.
@@ -38,10 +36,8 @@ class CoulombMatrix(Featurizer):
     conformers = True
     name = 'coulomb_matrix'
 
-    def __init__(self, max_atoms, remove_hydrogens=True, randomize=True,
-                 n_samples=1, seed=None):
+    def __init__(self, max_atoms, randomize=True, n_samples=1, seed=None):
         self.max_atoms = int(max_atoms)
-        self.remove_hydrogens = remove_hydrogens
         self.randomize = randomize
         self.n_samples = n_samples
         if seed is not None:
@@ -76,8 +72,6 @@ class CoulombMatrix(Featurizer):
         mol : RDKit Mol
             Molecule.
         """
-        if self.remove_hydrogens:
-            mol = Chem.RemoveHs(mol)
         n_atoms = mol.GetNumAtoms()
         z = [atom.GetAtomicNum() for atom in mol.GetAtoms()]
         rval = []
