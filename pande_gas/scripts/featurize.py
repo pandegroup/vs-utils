@@ -157,7 +157,9 @@ def read_mols_and_names(input_filename):
     input_filename : str
         Filename containing molecules.
     """
-    mols = list(serial.read_mols_from_file(input_filename))
+    reader = serial.MolReader()
+    with reader.open(input_filename) as r:
+        mols = list(r.get_mols())
     names = [mol.GetProp('_Name') for mol in mols]
     return mols, names
 
