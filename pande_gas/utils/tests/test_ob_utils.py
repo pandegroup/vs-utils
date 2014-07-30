@@ -19,17 +19,22 @@ class TestIonizer(unittest.TestCase):
         Set up tests.
         """
         smiles = 'CC(C)Cc1ccc([C@H](C)C(=O)O)cc1'
-        self.mol = Chem.MolFromSmiles(smiles)
+        mol = Chem.MolFromSmiles(smiles)
+
+        # generate conformers
+        engine = conformers.ConformerGenerator(max_conformers=1)
+        self.mol = engine.generate_conformers(mol)
 
         # ionize the oxygen manually
-        self.ionized_mol = Chem.Mol(self.mol)  # create a copy
+        ionized_mol = Chem.Mol(self.mol)  # create a copy
         found = False
-        for atom in self.ionized_mol.GetAtoms():
-            if atom.GetAtomicNum() == 8 and atom.GetNumImplicitHs() == 1:
+        for atom in ionized_mol.GetAtoms():
+            if atom.GetAtomicNum() == 8 and atom.GetTotalDegree() == 2:
                 atom.SetFormalCharge(-1)
                 atom.SetNoImplicit(True)
                 found = True
         assert found
+        self.ionized_mol = Chem.RemoveHs(ionized_mol)
 
         self.ionizer = ob_utils.Ionizer()
 
@@ -37,6 +42,7 @@ class TestIonizer(unittest.TestCase):
         """
         Test Ionizer on molecules without 3D coordinates.
         """
+        self.mol.RemoveAllConformers()
         assert self.mol.GetNumConformers() == 0
 
         # make sure Ionizer calls the right method
@@ -57,22 +63,14 @@ class TestIonizer(unittest.TestCase):
         Make sure ionization preserves heavy atom coordinates.
         """
 
-        # generate conformers
-        engine = conformers.ConformerGenerator(max_conformers=1)
-        mol = engine.generate_conformers(self.mol)
-        assert mol.GetNumConformers() > 0
-        ref_mol = engine.generate_conformers(self.ionized_mol)
-        assert ref_mol.GetNumConformers() > 0
-        ref_mol = Chem.RemoveHs(ref_mol)
-
         # make sure Ionizer calls the right method
-        assert self.ionizer(mol).ToBinary() != self.ionizer._ionize_2d(
-            mol).ToBinary()
-        assert self.ionizer(mol).ToBinary() == self.ionizer._ionize_3d(
-            mol).ToBinary()
+        assert self.ionizer(self.mol).ToBinary() != self.ionizer._ionize_2d(
+            self.mol).ToBinary()
+        assert self.ionizer(self.mol).ToBinary() == self.ionizer._ionize_3d(
+            self.mol).ToBinary()
 
         # compare molecule SMILES
-        ionized_mol = self.ionizer(mol)
+        ionized_mol = self.ionizer(self.mol)
         ionized_mol = Chem.RemoveHs(ionized_mol)
         assert Chem.MolToSmiles(
             ionized_mol, isomericSmiles=True) == Chem.MolToSmiles(
@@ -80,9 +78,10 @@ class TestIonizer(unittest.TestCase):
 
         # compare heavy atom coordinates
         assert ionized_mol.GetNumConformers() > 0
-        assert ionized_mol.GetNumConformers() == ref_mol.GetNumConformers()
+        assert (ionized_mol.GetNumConformers() ==
+                self.ionized_mol.GetNumConformers())
         for a, b in zip(ionized_mol.GetConformers(),
-                        ref_mol.GetConformers()):
+                        self.ionized_mol.GetConformers()):
             for atom in ionized_mol.GetAtoms():
                 if atom.GetAtomicNum() == 1:
                     continue  # hydrogens tend to move
