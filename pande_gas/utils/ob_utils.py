@@ -55,7 +55,7 @@ class Ionizer(object):
 
     def _ionize_2d(self, mol):
         """
-        Ionize a molecule without conformers.
+        Ionize a molecule without preserving conformers.
 
         Parameters
         ----------
@@ -73,13 +73,14 @@ class Ionizer(object):
 
     def _ionize_3d(self, mol):
         """
-        Ionize a molecule with conformers.
+        Ionize a molecule while preserving conformers.
 
         Parameters
         ----------
         mol : RDMol
             Molecule.
         """
+        assert mol.GetNumConformers() > 0
         sdf = ''
         for conf in mol.GetConformers():
             sdf += Chem.MolToMolBlock(mol, confId=conf.GetId(),

@@ -18,17 +18,16 @@ class TestIonizer(unittest.TestCase):
         """
         Set up tests.
         """
-        engine = conformers.ConformerGenerator(max_conformers=1)
         smiles = 'CC(C)Cc1ccc([C@H](C)C(=O)O)cc1'
-        mol = Chem.MolFromSmiles(smiles)
-        self.mol = engine.generate_conformers(mol)
+        self.mol = Chem.MolFromSmiles(smiles)
 
         # ionize the oxygen manually
         self.ionized_mol = Chem.Mol(self.mol)  # create a copy
         found = False
         for atom in self.ionized_mol.GetAtoms():
-            if atom.GetAtomicNum() == 8 and atom.GetDegree() == 2:
+            if atom.GetAtomicNum() == 8 and atom.GetNumImplicitHs() == 1:
                 atom.SetFormalCharge(-1)
+                atom.SetNoImplicit(True)
                 found = True
         assert found
 
@@ -38,45 +37,61 @@ class TestIonizer(unittest.TestCase):
         """
         Test Ionizer on molecules without 3D coordinates.
         """
-        self.mol.RemoveAllConformers()
-        mol = Chem.RemoveHs(self.mol)
         assert self.mol.GetNumConformers() == 0
-        self.ionized_mol.RemoveAllConformers()
-        ref_mol = Chem.RemoveHs(self.ionized_mol)
 
-        # make sure it calls the right method
-        assert self.ionizer(mol).ToBinary() == self.ionizer._ionize_2d(
-            mol).ToBinary()
+        # make sure Ionizer calls the right method
+        try:
+            self.ionizer._ionize_3d(self.mol)
+            raise ValueError('Molecule should not have conformers.')
+        except AssertionError:
+            pass
 
         # compare molecule SMILES
-        ionized_mol = self.ionizer(mol)
+        ionized_mol = self.ionizer(self.mol)
         assert Chem.MolToSmiles(
             ionized_mol, isomericSmiles=True) == Chem.MolToSmiles(
-                ref_mol, isomericSmiles=True)
+                self.ionized_mol, isomericSmiles=True)
 
     def test_ionizer_conformers(self):
         """
         Make sure ionization preserves heavy atom coordinates.
         """
-        assert self.mol.GetNumConformers() > 0
 
-        # make sure it calls the right method
-        assert self.ionizer(self.mol).ToBinary() == self.ionizer._ionize_3d(
-            self.mol).ToBinary()
+        # generate conformers
+        engine = conformers.ConformerGenerator(max_conformers=1)
+        mol = engine.generate_conformers(self.mol)
+        assert mol.GetNumConformers() > 0
+        ref_mol = engine.generate_conformers(self.ionized_mol)
+        assert ref_mol.GetNumConformers() > 0
+        ref_mol = Chem.RemoveHs(ref_mol)
 
-        # compare atomic coordinates
-        ionized_mol = self.ionizer(self.mol)
+        # make sure Ionizer calls the right method
+        assert self.ionizer(mol).ToBinary() != self.ionizer._ionize_2d(
+            mol).ToBinary()
+        assert self.ionizer(mol).ToBinary() == self.ionizer._ionize_3d(
+            mol).ToBinary()
+
+        # compare molecule SMILES
+        ionized_mol = self.ionizer(mol)
+        ionized_mol = Chem.RemoveHs(ionized_mol)
+        assert Chem.MolToSmiles(
+            ionized_mol, isomericSmiles=True) == Chem.MolToSmiles(
+                self.ionized_mol, isomericSmiles=True)
+
+        # compare heavy atom coordinates
         assert ionized_mol.GetNumConformers() > 0
-        assert self.ionized_mol.GetNumConformers() > 0
+        assert ionized_mol.GetNumConformers() == ref_mol.GetNumConformers()
         for a, b in zip(ionized_mol.GetConformers(),
-                        self.ionized_mol.GetConformers()):
+                        ref_mol.GetConformers()):
             for atom in ionized_mol.GetAtoms():
                 if atom.GetAtomicNum() == 1:
                     continue  # hydrogens tend to move
                 idx = atom.GetIdx()
-                assert np.allclose(
-                    list(a.GetAtomPosition(idx)), list(b.GetAtomPosition(idx)),
-                    atol=0.00009)  # obabel rounds to four digits
+                a_pos = list(a.GetAtomPosition(idx))
+                b_pos = list(b.GetAtomPosition(idx))
+
+                # obabel rounds to four digits
+                assert np.allclose(a_pos, b_pos, atol=0.00009), (a_pos, b_pos)
 
 
 class TestMolImage(unittest.TestCase):
