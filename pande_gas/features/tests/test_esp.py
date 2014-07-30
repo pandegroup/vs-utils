@@ -38,4 +38,3 @@ class TestESP(unittest.TestCase):
         assert rval.shape[:2] == (2, 1)
         size = rval.shape[2]
         assert rval.shape[2:] == (size, size, size)
-

@@ -10,7 +10,6 @@ from StringIO import StringIO
 import subprocess
 
 from rdkit import Chem
-from rdkit.Chem import AllChem
 from rdkit_utils import serial
 
 from pande_gas.utils import image_utils
