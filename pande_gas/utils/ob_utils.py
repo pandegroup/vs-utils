@@ -10,6 +10,7 @@ from StringIO import StringIO
 import subprocess
 
 from rdkit import Chem
+from rdkit.Chem import AllChem
 from rdkit_utils import serial
 
 from pande_gas.utils import image_utils
@@ -48,27 +49,52 @@ class Ionizer(object):
             Molecule.
         """
         if mol.GetNumConformers() > 0:
-            sdf = ''
-            for conf in mol.GetConformers():
-                sdf += Chem.MolToMolBlock(mol, confId=conf.GetId(),
-                                          includeStereo=True)
-                sdf += '$$$$\n'
-            args = ['obabel', '-i', 'sdf', '-o', 'sdf', '-p', str(self.pH)]
-            p = subprocess.Popen(args, stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
-            ionized_sdf, _ = p.communicate(sdf)
-            mols = serial.read_mols(StringIO(ionized_sdf), mol_format='sdf',
-                                    remove_salts=False)  # no changes
-            ionized_mol = list(mols)[0]
+            return self._ionize_3d(mol)
         else:
-            smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
-            args = ['obabel', '-i', 'can', '-o', 'can', '-p', str(self.pH)]
-            p = subprocess.Popen(args, stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
-            ionized_smiles, _ = p.communicate(smiles)
-            ionized_mol = Chem.MolFromSmiles(ionized_smiles)
+            return self._ionize_2d(mol)
+
+    def _ionize_2d(self, mol):
+        """
+        Ionize a molecule without conformers.
+
+        Parameters
+        ----------
+        mol : RDMol
+            Molecule.
+        """
+        smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+        args = ['obabel', '-i', 'can', '-o', 'can', '-p', str(self.pH)]
+        p = subprocess.Popen(args, stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        ionized_smiles, _ = p.communicate(smiles)
+        ionized_mol = Chem.MolFromSmiles(ionized_smiles)
+        return ionized_mol
+
+    def _ionize_3d(self, mol):
+        """
+        Ionize a molecule with conformers.
+
+        Parameters
+        ----------
+        mol : RDMol
+            Molecule.
+        """
+        sdf = ''
+        for conf in mol.GetConformers():
+            sdf += Chem.MolToMolBlock(mol, confId=conf.GetId(),
+                                      includeStereo=True)
+            sdf += '$$$$\n'
+        args = ['obabel', '-i', 'sdf', '-o', 'sdf', '-p', str(self.pH)]
+        p = subprocess.Popen(args, stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        ionized_sdf, _ = p.communicate(sdf)
+        reader = serial.MolReader(StringIO(ionized_sdf), mol_format='sdf',
+                                  remove_salts=False)  # no changes
+        mols = list(reader.get_mols())
+        assert len(mols) == 1
+        ionized_mol, = mols
         return ionized_mol
 
 
