@@ -71,7 +71,7 @@ class Antechamber(object):
                                               dir=self.temp_dir)
         args = ['antechamber', '-i', input_filename, '-fi', 'sdf', '-o',
                 output_filename, '-fo', 'mpdb', '-c', self.charge_type, '-nc',
-                net_charge]
+                str(net_charge)]  # all arguments must be strings
         subprocess.check_call(args, cwd=self.temp_dir, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE)
 
