@@ -83,14 +83,11 @@ class TestIonizer(unittest.TestCase):
         for a, b in zip(ionized_mol.GetConformers(),
                         self.ionized_mol.GetConformers()):
             for atom in ionized_mol.GetAtoms():
-                if atom.GetAtomicNum() == 1:
-                    continue  # hydrogens tend to move
                 idx = atom.GetIdx()
                 a_pos = list(a.GetAtomPosition(idx))
                 b_pos = list(b.GetAtomPosition(idx))
-
-                # obabel rounds to four digits
-                assert np.allclose(a_pos, b_pos, atol=0.00009), (a_pos, b_pos)
+                b_pos = np.around(b_pos, 4)  # obabel rounds to four digits
+                assert np.array_equal(a_pos, b_pos)
 
 
 class TestMolImage(unittest.TestCase):
