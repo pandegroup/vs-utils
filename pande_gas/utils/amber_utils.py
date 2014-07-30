@@ -50,25 +50,28 @@ class Antechamber(object):
         written to SDF and Antechamber writes out a modified PDB (mpdb)
         containing charge and radius information.
 
-        For multiconformer molecules, charges are calculated using the
-        first conformer and then assigned to the remaining conformers.
+        Note that Antechamber only processes the first molecule or
+        conformer in the input file.
 
         Parameters
         ----------
         mol : RDMol
             Molecule.
         """
+        net_charge = self.get_net_charge(mol)
 
         # write molecule to temporary file
         _, input_filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
-        Chem.MolToMolFile(mol, input_filename)
+        writer = Chem.SDWriter(input_filename)
+        writer.write(mol)
+        writer.close()
 
         # calculate charges and radii with Antechamber
-        # (antechamber forks and calls SQM also)
         _, output_filename = tempfile.mkstemp(suffix='.mpdb',
                                               dir=self.temp_dir)
         args = ['antechamber', '-i', input_filename, '-fi', 'sdf', '-o',
-                output_filename, '-fo', 'mpdb', '-c', self.charge_type]
+                output_filename, '-fo', 'mpdb', '-c', self.charge_type, '-nc',
+                str(net_charge)]  # all arguments must be strings
         subprocess.check_call(args, cwd=self.temp_dir, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE)
 
@@ -78,6 +81,21 @@ class Antechamber(object):
             charges, radii = reader.get_charges_and_radii(f)
 
         return charges, radii
+
+    @staticmethod
+    def get_net_charge(mol):
+        """
+        Calculate the net charge on a molecule.
+
+        Parameters
+        ----------
+        mol : RDMol
+            Molecule.
+        """
+        net_charge = 0
+        for atom in mol.GetAtoms():
+            net_charge += atom.GetFormalCharge()
+        return net_charge
 
 
 class PBSA(object):

@@ -15,6 +15,7 @@ from rdkit.Chem import rdGeometry, rdMolTransforms
 from pande_gas.features import Featurizer
 from pande_gas.utils import amber_utils
 from pande_gas.utils.pdb_utils import PdbReader
+from pande_gas.utils.ob_utils import Ionizer
 
 
 class ESP(Featurizer):
@@ -35,16 +36,22 @@ class ESP(Featurizer):
     ionic_strength : float, optional (default 150.)
         Ionic strength of the solvent, in mM. Corresponds to PBSA istrng
         parameter.
+    ionize : bool, optional (default True)
+        Whether to ionize molecules prior to calculation of ESP.
+    pH : float, optional (default 7.4)
+        Ionization pH.
     """
     conformers = True
     name = 'esp'
 
     def __init__(self, size=30., resolution=0.5, nb_cutoff=5.,
-                 ionic_strength=150.):
+                 ionic_strength=150., ionize=True, pH=7.4):
         self.size = float(size)
         self.resolution = float(resolution)
         self.nb_cutoff = float(nb_cutoff)
         self.ionic_strength = float(ionic_strength)
+        self.ionize = ionize
+        self.pH = pH
 
     def _featurize(self, mol):
         """
@@ -109,6 +116,7 @@ class ESP(Featurizer):
         """
         Prepare molecule for electrostatic potential calculation.
 
+        * Ionize molecule (optional).
         * Add hydrogens (with coordinates), since RDKit readers strip
             hydrogens by default.
         * Center and align the molecule.
@@ -118,6 +126,9 @@ class ESP(Featurizer):
         mol : RDMol
             Molecule.
         """
+        if self.ionize:
+            ionizer = Ionizer(self.pH)
+            mol = ionizer(mol)
         mol = Chem.AddHs(mol, addCoords=True)
         center = rdGeometry.Point3D(0, 0, 0)
         for conf in mol.GetConformers():

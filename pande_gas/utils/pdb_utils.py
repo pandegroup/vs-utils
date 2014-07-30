@@ -103,7 +103,7 @@ class PdbReader(object):
                 pqr_fields = []
                 for field in pdb_fields:
                     value = fields[field]
-                    if not value:
+                    if value == '':
                         value = '?'
                     pqr_fields.append(str(value))
                 pqr_fields.append(str(charges[i]))
