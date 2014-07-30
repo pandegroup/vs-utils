@@ -63,12 +63,18 @@ class Antechamber(object):
         _, input_filename = tempfile.mkstemp(suffix='.sdf', dir=self.temp_dir)
         Chem.MolToMolFile(mol, input_filename)
 
+        # calculate net charge
+        net_charge = 0
+        for atom in mol.GetAtoms():
+            net_charge += atom.GetFormalCharge()
+
         # calculate charges and radii with Antechamber
         # (antechamber forks and calls SQM also)
         _, output_filename = tempfile.mkstemp(suffix='.mpdb',
                                               dir=self.temp_dir)
         args = ['antechamber', '-i', input_filename, '-fi', 'sdf', '-o',
-                output_filename, '-fo', 'mpdb', '-c', self.charge_type]
+                output_filename, '-fo', 'mpdb', '-c', self.charge_type, '-nc',
+                net_charge]
         subprocess.check_call(args, cwd=self.temp_dir, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE)
 
