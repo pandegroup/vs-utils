@@ -56,6 +56,21 @@ class TestPBSA(TestAmberUtils):
         antechamber = amber_utils.Antechamber()
         self.charges, self.radii = antechamber.get_charges_and_radii(self.mol)
 
+    def test_mol_to_pqr(self):
+        """
+        Test PBSA.mol_to_pqr.
+        """
+        pdb = """HEADER    First atom from 4NIP (modified)
+ATOM      1  N   GLY A   1       4.168   1.038   6.389  1.00 21.86           N
+END
+"""
+        pqr = """COMPND    First atom from 4NIP (modified)
+ATOM 1 N GLY A 1 4.168 1.038 6.389 -0.35 2.3
+END
+"""
+        mol = Chem.MolFromPDBBlock(pdb)
+        assert amber_utils.PBSA.mol_to_pqr(mol, [-0.35], [2.3]) == pqr
+
     def test_pbsa_esp_grid(self):
         """
         Test PBSA.get_esp_grid.

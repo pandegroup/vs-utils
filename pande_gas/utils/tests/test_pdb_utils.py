@@ -15,8 +15,9 @@ class TestPDBUtils(unittest.TestCase):
         """
         Set up tests.
         """
-        self.pdb = """HEADER First atom from 4NIP (modified)
+        self.pdb = """HEADER    First atom from 4NIP (modified)
 ATOM      1  N   GLY A   1       4.168   1.038   6.389  1.00 21.86           N
+END
 """
 
     def test_parse_atom_record(self):
@@ -47,7 +48,8 @@ ATOM      1  N   GLY A   1       4.168   1.038   6.389  1.00 21.86           N
         """Test PDB to PQR conversion."""
         reader = pdb_utils.PdbReader()
         pqr = reader.pdb_to_pqr(StringIO(self.pdb), [-0.35], [2.3])
-        ref_pqr = """HEADER First atom from 4NIP (modified)
+        ref_pqr = """HEADER    First atom from 4NIP (modified)
 ATOM 1 N GLY A 1 4.168 1.038 6.389 -0.35 2.3
+END
 """
         assert pqr == ref_pqr, pqr
