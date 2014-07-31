@@ -6,7 +6,6 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
-from cStringIO import StringIO
 import numpy as np
 
 from rdkit import Chem
@@ -14,7 +13,6 @@ from rdkit.Chem import rdGeometry, rdMolTransforms
 
 from pande_gas.features import Featurizer
 from pande_gas.utils import amber_utils
-from pande_gas.utils.pdb_utils import PdbReader
 from pande_gas.utils.ob_utils import Ionizer
 
 
@@ -98,14 +96,8 @@ class ESP(Featurizer):
         pbsa = amber_utils.PBSA(self.size, self.resolution, self.nb_cutoff,
                                 self.ionic_strength)
         for conf in mol.GetConformers():
-
-            # generate a PQR file for this conformer
-            pdb = Chem.MolToPDBBlock(mol, confId=conf.GetId())
-            reader = PdbReader()
-            pqr = reader.pdb_to_pqr(StringIO(pdb), charges, radii)
-
-            # calculate ESP grid
-            grid, center = pbsa.get_esp_grid(pqr)
+            grid, center = pbsa.get_esp_grid(mol, charges, radii,
+                                             conf_id=conf.GetId())
             assert center == (0, 0, 0)
             grids.append(grid)
 

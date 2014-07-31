@@ -46,21 +46,43 @@ class TestPBSA(TestAmberUtils):
     """
     Test PBSA.
     """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        super(TestPBSA, self).setUp()
+
+        # get charges and radii
+        antechamber = amber_utils.Antechamber()
+        self.charges, self.radii = antechamber.get_charges_and_radii(self.mol)
+
     def test_pbsa_esp_grid(self):
         """
-        Test PBSA ESP grid.
+        Test PBSA.get_esp_grid.
         """
+        # calculate ESP grid
+        pbsa = amber_utils.PBSA()
+        grid, _ = pbsa.get_esp_grid(self.mol, self.charges, self.radii)
 
-        # generate PQR
+        # the grid should be cubic
+        size = grid.shape[0]
+        assert grid.shape == (size, size, size), grid.shape
+
+        # and not be all zeros
+        assert np.count_nonzero(grid)
+
+    def test_pbsa_esp_grid_from_pqr(self):
+        """
+        Test PBSA.get_esp_grid_from_pqr.
+        """
+        # write PQR
         reader = pdb_utils.PdbReader()
-        antechamber = amber_utils.Antechamber()
-        charges, radii = antechamber.get_charges_and_radii(self.mol)
         pdb = Chem.MolToPDBBlock(self.mol)
-        pqr = reader.pdb_to_pqr(StringIO(pdb), charges, radii)
+        pqr = reader.pdb_to_pqr(StringIO(pdb), self.charges, self.radii)
 
         # calculate ESP grid
         pbsa = amber_utils.PBSA()
-        grid, _ = pbsa.get_esp_grid(pqr)
+        grid, _ = pbsa.get_esp_grid_from_pqr(pqr)
 
         # the grid should be cubic
         size = grid.shape[0]

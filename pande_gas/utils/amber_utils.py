@@ -7,6 +7,7 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 from collections import OrderedDict
+from cStringIO import StringIO
 import numpy as np
 import os
 import shutil
@@ -72,8 +73,18 @@ class Antechamber(object):
         args = ['antechamber', '-i', input_filename, '-fi', 'sdf', '-o',
                 output_filename, '-fo', 'mpdb', '-c', self.charge_type, '-nc',
                 str(net_charge)]  # all arguments must be strings
-        subprocess.check_call(args, cwd=self.temp_dir, stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE)
+        try:
+            subprocess.check_call(args, cwd=self.temp_dir,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            name = ''
+            if mol.HasProp('_Name'):
+                name = mol.GetProp('_Name')
+            print "Antechamber: molecule '{}' failed.".format(name)
+            with open(input_filename) as f:
+                print f.read()
+            raise e
 
         # extract charges and radii
         reader = ModifiedPdbReader()
@@ -136,14 +147,58 @@ class PBSA(object):
         """
         shutil.rmtree(self.temp_dir)
 
-    def get_esp_grid(self, pqr):
+    def get_esp_grid(self, mol, charges, radii, conf_id=None):
         """
-        Use PBSA to calculate the electrostatic potential grid for a
-        molecule.
+        Use PBSA to calculate an electrostatic potential grid for a
+        molecule conformer.
 
-        PBSA requires file input and output, so we provide a PQR for the
-        molecule (one conformer only) and the grid is written is ASCII
-        format to pbsa.phi.
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        charges : array_like
+            Atomic partial charges.
+        radii : array_like
+            Atomic radii.
+        conf_id : int, optional
+            Conformer ID.
+        """
+        # generate a PQR file for this conformer
+        pqr = self.mol_to_pqr(mol, charges, radii, conf_id=conf_id)
+
+        # get ESP grid
+        grid = self.get_esp_grid_from_pqr(pqr)
+        return grid
+
+    @staticmethod
+    def mol_to_pqr(mol, charges, radii, conf_id=None):
+        """
+        Generate a PQR block for a molecule conformer.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        charges : array_like
+            Atomic partial charges.
+        radii : array_like
+            Atomic radii.
+        conf_id : int, optional
+            Conformer ID.
+        """
+        if conf_id is None:
+            conf_id = -1
+        pdb = Chem.MolToPDBBlock(mol, confId=conf_id)
+        reader = PdbReader()
+        pqr = reader.pdb_to_pqr(StringIO(pdb), charges, radii)
+        return pqr
+
+    def get_esp_grid_from_pqr(self, pqr):
+        """
+        Use PBSA to calculate an electrostatic potential grid for a
+        molecule (one conformer only) in PQR format.
+
+        The grid is written is ASCII format to pbsa.phi.
 
         Parameters
         ----------
@@ -171,8 +226,7 @@ class PBSA(object):
                                   stderr=subprocess.PIPE)
         except subprocess.CalledProcessError as e:
             with open(output_filename) as f:
-                output = f.read()
-                print output
+                print f.read()
             raise e
 
         # extract ESP grid
