@@ -46,21 +46,58 @@ class TestPBSA(TestAmberUtils):
     """
     Test PBSA.
     """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        super(TestPBSA, self).setUp()
+
+        # get charges and radii
+        antechamber = amber_utils.Antechamber()
+        self.charges, self.radii = antechamber.get_charges_and_radii(self.mol)
+
+    def test_mol_to_pqr(self):
+        """
+        Test PBSA.mol_to_pqr.
+        """
+        pdb = """HEADER    First atom from 4NIP (modified)
+ATOM      1  N   GLY A   1       4.168   1.038   6.389  1.00 21.86           N
+END
+"""
+        pqr = """COMPND    First atom from 4NIP (modified)
+ATOM 1 N GLY A 1 4.168 1.038 6.389 -0.35 2.3
+END
+"""
+        mol = Chem.MolFromPDBBlock(pdb)
+        assert amber_utils.PBSA.mol_to_pqr(mol, [-0.35], [2.3]) == pqr
+
     def test_pbsa_esp_grid(self):
         """
-        Test PBSA ESP grid.
+        Test PBSA.get_esp_grid.
         """
+        # calculate ESP grid
+        pbsa = amber_utils.PBSA()
+        grid, _ = pbsa.get_esp_grid(self.mol, self.charges, self.radii)
 
-        # generate PQR
+        # the grid should be cubic
+        size = grid.shape[0]
+        assert grid.shape == (size, size, size), grid.shape
+
+        # and not be all zeros
+        assert np.count_nonzero(grid)
+
+    def test_pbsa_esp_grid_from_pqr(self):
+        """
+        Test PBSA.get_esp_grid_from_pqr.
+        """
+        # write PQR
         reader = pdb_utils.PdbReader()
-        antechamber = amber_utils.Antechamber()
-        charges, radii = antechamber.get_charges_and_radii(self.mol)
         pdb = Chem.MolToPDBBlock(self.mol)
-        pqr = reader.pdb_to_pqr(StringIO(pdb), charges, radii)
+        pqr = reader.pdb_to_pqr(StringIO(pdb), self.charges, self.radii)
 
         # calculate ESP grid
         pbsa = amber_utils.PBSA()
-        grid, _ = pbsa.get_esp_grid(pqr)
+        grid, _ = pbsa.get_esp_grid_from_pqr(pqr)
 
         # the grid should be cubic
         size = grid.shape[0]

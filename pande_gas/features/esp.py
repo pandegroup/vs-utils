@@ -6,7 +6,6 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
-from cStringIO import StringIO
 import numpy as np
 
 from rdkit import Chem
@@ -14,7 +13,6 @@ from rdkit.Chem import rdGeometry, rdMolTransforms
 
 from pande_gas.features import Featurizer
 from pande_gas.utils import amber_utils
-from pande_gas.utils.pdb_utils import PdbReader
 from pande_gas.utils.ob_utils import Ionizer
 
 
@@ -40,18 +38,23 @@ class ESP(Featurizer):
         Whether to ionize molecules prior to calculation of ESP.
     pH : float, optional (default 7.4)
         Ionization pH.
+    align : bool, optional (default False)
+        Whether to canonicalize the orientation of molecules. This requires
+        removal and readdition of hydrogens. This is usually not required
+        when working with conformers retrieved from PubChem.
     """
     conformers = True
     name = 'esp'
 
     def __init__(self, size=30., resolution=0.5, nb_cutoff=5.,
-                 ionic_strength=150., ionize=True, pH=7.4):
+                 ionic_strength=150., ionize=True, pH=7.4, align=False):
         self.size = float(size)
         self.resolution = float(resolution)
         self.nb_cutoff = float(nb_cutoff)
         self.ionic_strength = float(ionic_strength)
         self.ionize = ionize
         self.pH = pH
+        self.align = align
 
     def _featurize(self, mol):
         """
@@ -98,14 +101,8 @@ class ESP(Featurizer):
         pbsa = amber_utils.PBSA(self.size, self.resolution, self.nb_cutoff,
                                 self.ionic_strength)
         for conf in mol.GetConformers():
-
-            # generate a PQR file for this conformer
-            pdb = Chem.MolToPDBBlock(mol, confId=conf.GetId())
-            reader = PdbReader()
-            pqr = reader.pdb_to_pqr(StringIO(pdb), charges, radii)
-
-            # calculate ESP grid
-            grid, center = pbsa.get_esp_grid(pqr)
+            grid, center = pbsa.get_esp_grid(mol, charges, radii,
+                                             conf_id=conf.GetId())
             assert center == (0, 0, 0)
             grids.append(grid)
 
@@ -126,11 +123,19 @@ class ESP(Featurizer):
         mol : RDMol
             Molecule.
         """
+
+        # ionization
         if self.ionize:
             ionizer = Ionizer(self.pH)
             mol = ionizer(mol)
+
+        # orientation
+        if self.align:
+            mol = Chem.RemoveHs(mol)  # canonicalization fails with hydrogens
+            center = rdGeometry.Point3D(0, 0, 0)
+            for conf in mol.GetConformers():
+                rdMolTransforms.CanonicalizeConformer(conf, center=center)
+
+        # hydrogens
         mol = Chem.AddHs(mol, addCoords=True)
-        center = rdGeometry.Point3D(0, 0, 0)
-        for conf in mol.GetConformers():
-            rdMolTransforms.CanonicalizeConformer(conf, center=center)
         return mol
