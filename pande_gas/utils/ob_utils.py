@@ -93,8 +93,17 @@ class Ionizer(object):
         reader = serial.MolReader(StringIO(ionized_sdf), mol_format='sdf',
                                   remove_salts=False)  # no changes
         mols = list(reader.get_mols())
-        assert len(mols) == 1
-        ionized_mol, = mols
+
+        # detection of stereochemistry based on 3D coordinates might result
+        # in issues when attempting to recombine ionized conformers, but we
+        # merge them anyway
+        if len(mols) == 1:
+            ionized_mol, = mols
+        else:
+            ionized_mol = mols[0]
+            for other in mols[1:]:
+                for conf in other.GetConformers():
+                    ionized_mol.AddConformer(conf, assignId=True)
         return ionized_mol
 
 

@@ -90,7 +90,12 @@ class ESP(Featurizer):
         mol = self.prepare_molecule(mol)
 
         # the molecule must have at least one conformer
-        assert mol.GetNumConformers()
+        if mol.GetNumConformers() < 1:
+            name = ''
+            if mol.HasProp('_Name'):
+                name = mol.GetProp('_Name')
+            raise AssertionError(
+                "Molecule '{}' has zero conformers.".format(name))
 
         # calculate charges and radii
         antechamber = amber_utils.Antechamber()
@@ -103,7 +108,7 @@ class ESP(Featurizer):
         for conf in mol.GetConformers():
             grid, center = pbsa.get_esp_grid(mol, charges, radii,
                                              conf_id=conf.GetId())
-            assert center == (0, 0, 0)
+            assert center == (0, 0, 0)  # should be centered on the origin
             grids.append(grid)
 
         grids = np.asarray(grids)
