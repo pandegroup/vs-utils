@@ -22,7 +22,7 @@ class TestIonizer(unittest.TestCase):
         mol = Chem.MolFromSmiles(smiles)
 
         # generate conformers
-        engine = conformers.ConformerGenerator(max_conformers=1)
+        engine = conformers.ConformerGenerator(max_conformers=3)
         self.mol = engine.generate_conformers(mol)
 
         # ionize the oxygen manually
@@ -77,7 +77,7 @@ class TestIonizer(unittest.TestCase):
                 self.ionized_mol, isomericSmiles=True)
 
         # compare heavy atom coordinates
-        assert ionized_mol.GetNumConformers() > 0
+        assert ionized_mol.GetNumConformers() > 1  # multiple conformers
         assert (ionized_mol.GetNumConformers() ==
                 self.ionized_mol.GetNumConformers())
         for a, b in zip(ionized_mol.GetConformers(),
@@ -89,6 +89,16 @@ class TestIonizer(unittest.TestCase):
                 b_pos = np.around(b_pos, 4)  # obabel rounds to four digits
                 assert np.array_equal(a_pos, b_pos)
 
+    def test_recombine_conformers(self):
+        """
+        Make sure Ionizer returns as many conformers as we give it.
+
+        This enforces the assumption that a multiconformer molecule remains
+        a multiconformer molecule even after ionization.
+        """
+        ionized_mol = self.ionizer(self.mol)
+        assert ionized_mol.GetNumConformers() == self.mol.GetNumConformers()
+        
 
 class TestMolImage(unittest.TestCase):
     """
