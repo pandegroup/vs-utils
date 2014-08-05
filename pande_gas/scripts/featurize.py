@@ -11,9 +11,8 @@ import argparse
 import cPickle
 import inspect
 import joblib
-import gzip
 
-from rdkit_utils import PicklableMol, serial
+from rdkit_utils import serial
 
 from pande_gas.features import get_featurizers
 from pande_gas.utils.parallel_utils import LocalCluster
