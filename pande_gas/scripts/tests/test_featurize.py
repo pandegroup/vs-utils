@@ -2,7 +2,7 @@
 Test featurize.py.
 """
 import cPickle
-import gzip
+import joblib
 import numpy as np
 from rdkit_utils import conformers, serial
 import shutil
@@ -70,8 +70,7 @@ class TestFeaturize(unittest.TestCase):
              vars(args.featurizer_kwargs))
 
         # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
+        data = joblib.load(output_filename)
         assert data['features'].shape == (2, 2048)
         assert data['y'] == [0, 1]
         assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
@@ -90,8 +89,7 @@ class TestFeaturize(unittest.TestCase):
              vars(args.featurizer_kwargs))
 
         # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
+        data = joblib.load(output_filename)
         assert data['features'].shape == (2, 1, 1275)
         assert data['y'] == [0, 1]
         assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
@@ -110,8 +108,7 @@ class TestFeaturize(unittest.TestCase):
              vars(args.featurizer_kwargs))
 
         # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
+        data = joblib.load(output_filename)
         assert data['features'].shape == (2, 16, 16, 3)
         assert data['y'] == [0, 1]
         assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
@@ -130,8 +127,7 @@ class TestFeaturize(unittest.TestCase):
              vars(args.featurizer_kwargs))
 
         # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
+        data = joblib.load(output_filename)
         assert data['features'].shape == (2, 1, 61, 61, 61)
         assert data['y'] == [0, 1]
         assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])

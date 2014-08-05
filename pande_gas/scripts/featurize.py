@@ -10,9 +10,10 @@ __license__ = "BSD 3-clause"
 import argparse
 import cPickle
 import inspect
+import joblib
 import gzip
 
-from rdkit_utils import serial
+from rdkit_utils import PicklableMol, serial
 
 from pande_gas.features import get_featurizers
 from pande_gas.utils.parallel_utils import LocalCluster
@@ -42,7 +43,10 @@ def parse_args(input_args=None):
                         help='Start a local IPython.parallel cluster with ' +
                              'this many engines.')
     parser.add_argument('output',
-                        help='Output filename (.pkl or .pkl.gz).')
+                        help='Output filename (.joblib).')
+    parser.add_argument('-c', '--compression-level', type=int, default=3,
+                        help='Compression level (0-9) to use with ' +
+                             'joblib.dump.')
 
     # featurizer subcommands
     featurizers = get_featurizers()
@@ -78,7 +82,7 @@ def parse_args(input_args=None):
     args = argparse.Namespace()
     args.featurizer_kwargs = parser.parse_args(input_args)
     for arg in ['input', 'output', 'klass', 'targets', 'parallel',
-                'cluster_id', 'n_engines']:
+                'cluster_id', 'n_engines', 'compression_level']:
         setattr(args, arg, getattr(args.featurizer_kwargs, arg))
         delattr(args.featurizer_kwargs, arg)
     return args
@@ -100,7 +104,7 @@ class HelpFormatter(argparse.RawTextHelpFormatter):
 
 def main(featurizer_class, input_filename, output_filename,
          target_filename=None, featurizer_kwargs=None, parallel=False,
-         client_kwargs=None, view_flags=None):
+         client_kwargs=None, view_flags=None, compression_level=3):
     """
     Featurize molecules in input_filename using the given featurizer.
 
@@ -123,6 +127,8 @@ def main(featurizer_class, input_filename, output_filename,
         Keyword arguments for IPython.parallel Client.
     view_flags : dict, optional
         Flags for IPython.parallel LoadBalancedView.
+    compression_level : int, optional (default 3)
+        Compression level (0-9) to use with joblib.dump.
     """
     mols, names = read_mols_and_names(input_filename)
 
@@ -145,7 +151,7 @@ def main(featurizer_class, input_filename, output_filename,
                     'featurizer_kwargs': featurizer_kwargs}
 
     # write output file
-    write_output_file(data, output_filename)
+    write_output_file(data, output_filename, compression_level)
 
 
 def read_mols_and_names(input_filename):
@@ -165,7 +171,7 @@ def read_mols_and_names(input_filename):
     return mols, names
 
 
-def write_output_file(data, output_filename):
+def write_output_file(data, output_filename, compression_level=3):
     """
     Pickle output data, possibly to a compressed file.
 
@@ -174,14 +180,11 @@ def write_output_file(data, output_filename):
     data : object
         Object to pickle in output file.
     output_filename : str
-        Output filename. Should end with .pkl or .pkl.gz.
+        Output filename. Should end with .joblib.
+    compression_level : int, optional (default 3)
+        Compression level (0-9).
     """
-    if output_filename.endswith('.gz'):
-        f = gzip.open(output_filename, 'wb')
-    else:
-        f = open(output_filename, 'wb')
-    cPickle.dump(data, f, cPickle.HIGHEST_PROTOCOL)
-    f.close()
+    joblib.dump(data, output_filename, compress=compression_level)
 
 if __name__ == '__main__':
     args = parse_args()
@@ -205,4 +208,4 @@ if __name__ == '__main__':
     # run main function
     main(args.klass, args.input, args.output, args.targets,
          vars(args.featurizer_kwargs), args.parallel, client_kwargs,
-         view_flags)
+         view_flags, args.compression_level)
