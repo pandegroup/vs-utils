@@ -3,6 +3,7 @@ Test featurize.py.
 """
 import cPickle
 import gzip
+import joblib
 import numpy as np
 from rdkit_utils import conformers, serial
 import shutil
@@ -72,6 +73,65 @@ class TestFeaturize(unittest.TestCase):
         # check output file
         with gzip.open(output_filename) as f:
             data = cPickle.load(f)
+        assert data['features'].shape == (2, 2048)
+        assert data['y'] == [0, 1]
+        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+
+    def test_pickle(self):
+        """
+        Save features to a pickle.
+        """
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.pkl',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'circular', '--size', '2048']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        with open(output_filename) as f:
+            data = cPickle.load(f)
+        assert data['features'].shape == (2, 2048)
+        assert data['y'] == [0, 1]
+        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+
+    def test_compressed_pickle(self):
+        """
+        Save features to a compressed pickle.
+        """
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'circular', '--size', '2048']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        with gzip.open(output_filename) as f:
+            data = cPickle.load(f)
+        assert data['features'].shape == (2, 2048)
+        assert data['y'] == [0, 1]
+        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+
+    def test_joblib(self):
+        """
+        Save features using joblib.dump.
+        """
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.joblib',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'circular', '--size', '2048']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        data = joblib.load(output_filename)
         assert data['features'].shape == (2, 2048)
         assert data['y'] == [0, 1]
         assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])

@@ -98,7 +98,7 @@ class TestIonizer(unittest.TestCase):
         """
         ionized_mol = self.ionizer(self.mol)
         assert ionized_mol.GetNumConformers() == self.mol.GetNumConformers()
-        
+
 
 class TestMolImage(unittest.TestCase):
     """
