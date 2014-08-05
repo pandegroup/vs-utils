@@ -9,6 +9,7 @@ __license__ = "BSD 3-clause"
 
 import argparse
 import cPickle
+import gzip
 import inspect
 import joblib
 
@@ -42,7 +43,7 @@ def parse_args(input_args=None):
                         help='Start a local IPython.parallel cluster with ' +
                              'this many engines.')
     parser.add_argument('output',
-                        help='Output filename (.joblib).')
+                        help='Output filename (.joblib, .pkl, or .pkl.gz).')
     parser.add_argument('-c', '--compression-level', type=int, default=3,
                         help='Compression level (0-9) to use with ' +
                              'joblib.dump.')
@@ -179,11 +180,20 @@ def write_output_file(data, output_filename, compression_level=3):
     data : object
         Object to pickle in output file.
     output_filename : str
-        Output filename. Should end with .joblib.
+        Output filename. Should end with .joblib, .pkl, or .pkl.gz.
     compression_level : int, optional (default 3)
-        Compression level (0-9).
+        Compression level (0-9) to use with joblib.dump.
     """
-    joblib.dump(data, output_filename, compress=compression_level)
+    if output_filename.endswith('.pkl'):
+        with open(output_filename, 'wb') as f:
+            cPickle.dump(data, f, cPickle.HIGHEST_PROTOCOL)
+    elif output_filename.endswith('.pkl.gz'):
+        with gzip.open(output_filename, 'wb') as f:
+            cPickle.dump(data, f, cPickle.HIGHEST_PROTOCOL)
+    elif output_filename.endswith('.joblib'):
+        joblib.dump(data, output_filename, compress=compression_level)
+    else:
+        raise NotImplementedError('Unrecognized output file extension.')
 
 if __name__ == '__main__':
     args = parse_args()
