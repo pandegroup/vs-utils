@@ -7,13 +7,14 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import numpy as np
+import warnings
 
 from rdkit import Chem
 from rdkit.Chem import rdGeometry, rdMolTransforms
 
 from pande_gas.features import Featurizer
 from pande_gas.utils import amber_utils
-from pande_gas.utils.ob_utils import Ionizer
+from pande_gas.utils.ob_utils import Ionizer, IonizerError
 
 
 class ESP(Featurizer):
@@ -132,7 +133,15 @@ class ESP(Featurizer):
         # ionization
         if self.ionize:
             ionizer = Ionizer(self.pH)
-            mol = ionizer(mol)
+            try:
+                mol = ionizer(mol)
+            except IonizerError:
+                if mol.HasProp('_Name'):
+                    name = mol.GetProp('_Name')
+                else:
+                    name = Chem.MolToSmiles(mol, isomericSmiles=True)
+                warnings.warn("Ionization failed for molecule '{}'.".format(
+                    name))
 
         # orientation
         if self.align:

@@ -99,6 +99,18 @@ class TestIonizer(unittest.TestCase):
         ionized_mol = self.ionizer(self.mol)
         assert ionized_mol.GetNumConformers() == self.mol.GetNumConformers()
 
+    def test_ionizer_error(self):
+        """
+        Catch Ionizer errors.
+        """
+        smiles = 'CC1=C(C(C(=C(O1)N)C#N)C2=CC3=C(C=C2)OCO3)C(=O)OCC=C'
+        mol = Chem.MolFromSmiles(smiles)
+        try:
+            self.ionizer(mol)
+            assert False
+        except ob_utils.IonizerError:
+            pass
+
 
 class TestMolImage(unittest.TestCase):
     """
