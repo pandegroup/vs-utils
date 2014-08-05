@@ -56,6 +56,8 @@ class Ionizer(object):
         """
         Ionize a molecule without preserving conformers.
 
+        Note: this method removes explicit hydrogens from the molecule.
+
         Parameters
         ----------
         mol : RDMol
@@ -68,6 +70,11 @@ class Ionizer(object):
                              stderr=subprocess.PIPE)
         ionized_smiles, _ = p.communicate(smiles)
         ionized_mol = Chem.MolFromSmiles(ionized_smiles)
+
+        # catch ionizer error
+        if ionized_mol is None:
+            raise IonizerError(mol)
+
         return ionized_mol
 
     def _ionize_3d(self, mol):
@@ -93,6 +100,10 @@ class Ionizer(object):
         reader = serial.MolReader(StringIO(ionized_sdf), mol_format='sdf',
                                   remove_salts=False)  # no changes
         mols = list(reader.get_mols())
+
+        # catch ionizer failure
+        if len(mols) == 0:
+            raise IonizerError(mol)
 
         # detection of stereochemistry based on 3D coordinates might result
         # in issues when attempting to recombine ionized conformers, but we
@@ -151,3 +162,9 @@ class MolImage(object):
         png, _ = p.communicate(smiles)
         im = image_utils.load(png)
         return im
+
+
+class IonizerError(Exception):
+    """
+    Generic Ionizer exception.
+    """
