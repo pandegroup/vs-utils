@@ -107,6 +107,10 @@ class Featurizer(object):
             view.set_flags(**view_flags)
             call = view.map(self._featurize, mols, block=False)
             features = call.get()
+
+            # get output from engines
+            call.display_outputs()
+
         else:
             features = [self._featurize(mol) for mol in mols]
 
