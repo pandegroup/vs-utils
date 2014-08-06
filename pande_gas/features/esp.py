@@ -7,6 +7,7 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import numpy as np
+import subprocess
 import warnings
 
 from rdkit import Chem
@@ -54,7 +55,10 @@ class ESP(Featurizer):
         self.nb_cutoff = float(nb_cutoff)
         self.ionic_strength = float(ionic_strength)
         self.ionize = ionize
-        self.pH = pH
+        if ionize:
+            self.ionizer = Ionizer(pH)
+        else:
+            self.ionizer = None
         self.align = align
 
     def _featurize(self, mol):
@@ -66,7 +70,38 @@ class ESP(Featurizer):
         mol : RDMol
             Molecule.
         """
-        return self.calculate_esp(mol)
+        ionize = self.ionize
+        align = self.align
+
+        # catch ioniziation failures (turn off ionization and try again)
+        try:
+            prepared_mol = self.prepare_molecule(mol, ionize, align)
+        except IonizerError:
+            if mol.HasProp('_Name'):
+                name = mol.GetProp('_Name')
+            else:
+                name = Chem.MolToSmiles(mol, isomericSmiles=True)
+            warnings.warn("Ionization failed for molecule '{}'.".format(name))
+            ionize = False
+            prepared_mol = self.prepare_molecule(mol, ionize, align)
+
+        # catch subprocess failures (turn off ionization and try again)
+        try:
+            rval = self.calculate_esp(prepared_mol)
+        except subprocess.CalledProcessError as e:
+            if ionize:
+                if mol.HasProp('_Name'):
+                    name = mol.GetProp('_Name')
+                else:
+                    name = Chem.MolToSmiles(mol, isomericSmiles=True)
+                warnings.warn("Disabling ionization for molecule '{}'.".format(
+                    name))
+                ionize = False
+                prepared_mol = self.prepare_molecule(mol, ionize, align)
+                rval = self.calculate_esp(prepared_mol)
+            else:
+                raise e
+        return rval
 
     def calculate_esp(self, mol):
         """
@@ -88,7 +123,6 @@ class ESP(Featurizer):
         mol : RDMol
             Molecule.
         """
-        mol = self.prepare_molecule(mol)
 
         # the molecule must have at least one conformer
         if mol.GetNumConformers() < 1:
@@ -115,7 +149,7 @@ class ESP(Featurizer):
         grids = np.asarray(grids)
         return grids
 
-    def prepare_molecule(self, mol):
+    def prepare_molecule(self, mol, ionize, align):
         """
         Prepare molecule for electrostatic potential calculation.
 
@@ -128,23 +162,21 @@ class ESP(Featurizer):
         ----------
         mol : RDMol
             Molecule.
+        ionize : bool, optional (default True)
+            Whether to ionize molecules prior to calculation of ESP.
+        align : bool, optional (default False)
+            Whether to canonicalize the orientation of molecules. This requires
+            removal and readdition of hydrogens. This is usually not required
+            when working with conformers retrieved from PubChem.
         """
+        mol = Chem.Mol(mol)  # create a copy
 
         # ionization
-        if self.ionize:
-            ionizer = Ionizer(self.pH)
-            try:
-                mol = ionizer(mol)
-            except IonizerError:
-                if mol.HasProp('_Name'):
-                    name = mol.GetProp('_Name')
-                else:
-                    name = Chem.MolToSmiles(mol, isomericSmiles=True)
-                warnings.warn("Ionization failed for molecule '{}'.".format(
-                    name))
+        if ionize:
+            mol = self.ionizer(mol)
 
         # orientation
-        if self.align:
+        if align:
             mol = Chem.RemoveHs(mol)  # canonicalization fails with hydrogens
             center = rdGeometry.Point3D(0, 0, 0)
             for conf in mol.GetConformers():
