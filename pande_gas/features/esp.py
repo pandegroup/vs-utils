@@ -11,11 +11,10 @@ import subprocess
 import warnings
 
 from rdkit import Chem
-from rdkit.Chem import rdGeometry, rdMolTransforms
 
-from pande_gas.features import Featurizer
-from pande_gas.utils import amber_utils
-from pande_gas.utils.ob_utils import Ionizer, IonizerError
+from . import Featurizer, MolPreparator
+from ..utils import amber_utils
+from ..utils.ob_utils import IonizerError
 
 
 class ESP(Featurizer):
@@ -54,12 +53,7 @@ class ESP(Featurizer):
         self.resolution = float(resolution)
         self.nb_cutoff = float(nb_cutoff)
         self.ionic_strength = float(ionic_strength)
-        self.ionize = ionize
-        if ionize:
-            self.ionizer = Ionizer(pH)
-        else:
-            self.ionizer = None
-        self.align = align
+        self.preparator = MolPreparator(ionize, pH, align, add_hydrogens=True)
 
     def _featurize(self, mol):
         """
@@ -70,34 +64,37 @@ class ESP(Featurizer):
         mol : RDMol
             Molecule.
         """
-        ionize = self.ionize
-        align = self.align
+        preparator = self.preparator
 
         # catch ioniziation failures (turn off ionization and try again)
         try:
-            prepared_mol = self.prepare_molecule(mol, ionize, align)
+            prepared_mol = preparator(mol)
         except IonizerError:
             if mol.HasProp('_Name'):
                 name = mol.GetProp('_Name')
             else:
                 name = Chem.MolToSmiles(mol, isomericSmiles=True)
             warnings.warn("Ionization failed for molecule '{}'.".format(name))
-            ionize = False
-            prepared_mol = self.prepare_molecule(mol, ionize, align)
+            preparator = MolPreparator(
+                align=self.preparator.align,
+                add_hydrogens=self.preparator.add_hydrogens)
+            prepared_mol = preparator(mol)
 
         # catch subprocess failures (turn off ionization and try again)
         try:
             rval = self.calculate_esp(prepared_mol)
         except subprocess.CalledProcessError as e:
-            if ionize:
+            if preparator.ionize:
                 if mol.HasProp('_Name'):
                     name = mol.GetProp('_Name')
                 else:
                     name = Chem.MolToSmiles(mol, isomericSmiles=True)
                 warnings.warn("Disabling ionization for molecule '{}'.".format(
                     name))
-                ionize = False
-                prepared_mol = self.prepare_molecule(mol, ionize, align)
+                preparator = MolPreparator(
+                    align=self.preparator.align,
+                    add_hydrogens=self.preparator.add_hydrogens)
+                prepared_mol = preparator(mol)
                 rval = self.calculate_esp(prepared_mol)
             else:
                 raise e
@@ -148,40 +145,3 @@ class ESP(Featurizer):
 
         grids = np.asarray(grids)
         return grids
-
-    def prepare_molecule(self, mol, ionize, align):
-        """
-        Prepare molecule for electrostatic potential calculation.
-
-        * Ionize molecule (optional).
-        * Add hydrogens (with coordinates), since RDKit readers strip
-            hydrogens by default.
-        * Center and align the molecule.
-
-        Parameters
-        ----------
-        mol : RDMol
-            Molecule.
-        ionize : bool, optional (default True)
-            Whether to ionize molecules prior to calculation of ESP.
-        align : bool, optional (default False)
-            Whether to canonicalize the orientation of molecules. This requires
-            removal and readdition of hydrogens. This is usually not required
-            when working with conformers retrieved from PubChem.
-        """
-        mol = Chem.Mol(mol)  # create a copy
-
-        # ionization
-        if ionize:
-            mol = self.ionizer(mol)
-
-        # orientation
-        if align:
-            mol = Chem.RemoveHs(mol)  # canonicalization fails with hydrogens
-            center = rdGeometry.Point3D(0, 0, 0)
-            for conf in mol.GetConformers():
-                rdMolTransforms.CanonicalizeConformer(conf, center=center)
-
-        # hydrogens
-        mol = Chem.AddHs(mol, addCoords=True)
-        return mol
