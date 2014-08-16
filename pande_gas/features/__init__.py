@@ -9,6 +9,11 @@ __license__ = "BSD 3-clause"
 import numpy as np
 import types
 
+from rdkit import Chem
+from rdkit.Chem import rdGeometry, rdMolTransforms
+
+from ..utils.ob_utils import Ionizer
+
 
 def get_featurizers():
     """Compile a dict mapping strings to featurizer classes."""
@@ -17,6 +22,7 @@ def get_featurizers():
     from .esp import ESP
     from .fingerprints import CircularFingerprint
     from .images import MolImage
+    from .shape_grid import ShapeGrid
 
     featurizers = {}
     for klass in Featurizer.__subclasses__():
@@ -188,3 +194,68 @@ class Featurizer(object):
             x[i, :n_confs] = mol_features
 
         return x
+
+
+class MolPreparator(object):
+    """
+    Molecule preparation prior to featurization.
+
+    Parameters
+    ----------
+    ionize : bool, optional (default False)
+        Whether to ionize molecules.
+    pH : float, optional (default 7.4)
+        Ionization pH.
+    align : bool, optional (default False)
+        Whether to canonicalize the orientation of molecules. This requires
+        removal and readdition of hydrogens. This is usually not required
+        when working with conformers retrieved from PubChem.
+    add_hydrogens : bool, optional (default False)
+        Whether to add hydrogens (with coordinates) to molecules.
+    """
+    def __init__(self, ionize=False, pH=7.4, align=False, add_hydrogens=False):
+        self.ionize = ionize
+        if ionize:
+            self.ionizer = Ionizer(pH)
+        else:
+            self.ionizer = None
+        self.align = align
+        self.add_hydrogens = add_hydrogens
+
+    def __call__(self, mol):
+        """
+        Prepare a molecule for featurization.
+
+        Parameters
+        ----------
+        mol : RDMol
+            Molecule.
+        """
+        return self.prepare(mol)
+
+    def prepare(self, mol):
+        """
+        Prepare a molecule for featurization.
+
+        Parameters
+        ----------
+        mol : RDMol
+            Molecule.
+        """
+        mol = Chem.Mol(mol)  # create a copy
+
+        # ionization
+        if self.ionize:
+            mol = self.ionizer(mol)
+
+        # orientation
+        if self.align:
+            mol = Chem.RemoveHs(mol)  # canonicalization fails with hydrogens
+            center = rdGeometry.Point3D(0, 0, 0)
+            for conf in mol.GetConformers():
+                rdMolTransforms.CanonicalizeConformer(conf, center=center)
+
+        # hydrogens
+        if self.add_hydrogens:
+            mol = Chem.AddHs(mol, addCoords=True)
+        return mol
