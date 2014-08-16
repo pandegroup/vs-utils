@@ -82,12 +82,10 @@ class ShapeGrid(Featurizer):
         grid_mol = GridMol(shape, spacing=self.resolution,
                            probe_radius=self.probe_radius)
         conf = mol.GetConformer(conf_id)
-        count = 0
         for atom in mol.GetAtoms():
             if not self.hydrogens and atom.GetAtomicNum() == 1:
                 continue
             center = list(conf.GetAtomPosition(atom.GetIdx()))
             radius = GridAtom.get_radius_from_atomic_num(atom.GetAtomicNum())
             grid_mol.add_atom(center, radius)
-            count += 1
-        return count
+        return grid_mol
