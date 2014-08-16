@@ -57,13 +57,14 @@ class GridMol(Grid):
         """
         atom = GridAtom(self, center, radius)
         self.atoms.append(atom)
+        return atom
 
     def get_boolean_grid(self):
         """
         Get a boolean grid with set bits corresponding to points inside the
         molecule.
         """
-        grid = np.sum([atom.get_grid_mask() for atom in self.atoms])
+        grid = np.sum([atom.get_grid_mask() for atom in self.atoms], axis=0)
         grid = np.asarray(grid, dtype=bool)
         return grid
 

@@ -29,8 +29,9 @@ class TestGridMol(unittest.TestCase):
         Test GridMol.get_boolean_grid.
         """
         self.mol.add_atom((1, 2, 1), 1.6)
-        self.mol.add_atom((1, 3, 1), 1.6)
+        self.mol.add_atom((1, 1, 1), 1.6)
         grid = self.mol.get_boolean_grid()
+        assert grid.shape == self.mol.shape
         assert np.count_nonzero(grid == 0)
         assert np.count_nonzero(grid == 1)
         assert not np.count_nonzero(grid > 1)
@@ -48,7 +49,7 @@ class TestGridMol(unittest.TestCase):
         assert np.all(distances[~mask] > 0)
 
 
-class TestGridAtom(TestGridMol):
+class TestGridAtom(unittest.TestCase):
     """
     Tests for GridAtom.
     """
@@ -56,7 +57,7 @@ class TestGridAtom(TestGridMol):
         """
         Set up tests.
         """
-        super(TestGridAtom, self).setUp()
+        self.mol = GridMol((11, 11, 11))
         self.atom = GridAtom(self.mol, (1, 2, 1), 1.6)
 
     def test_atom_is_in_grid(self):
