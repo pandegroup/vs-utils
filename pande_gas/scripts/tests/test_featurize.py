@@ -204,7 +204,7 @@ class TestFeaturize(unittest.TestCase):
         # run script
         _, output_filename = tempfile.mkstemp(suffix='.pkl.gz')
         input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'shape', '--size', '20']
+                      output_filename, 'shape', '--size', '40']
         args = parse_args(input_args)
         main(args.klass, args.input, args.output, args.targets,
              vars(args.featurizer_kwargs))
@@ -212,6 +212,6 @@ class TestFeaturize(unittest.TestCase):
         # check output file
         with gzip.open(output_filename) as f:
             data = cPickle.load(f)
-        assert data['features'].shape == (2, 1, 20, 20, 20)
+        assert data['features'].shape == (2, 1, 40, 40, 40)
         assert data['y'] == [0, 1]
         assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
