@@ -66,6 +66,7 @@ class ESP(Featurizer):
         """
 
         # catch ioniziation failures (turn off ionization and try again)
+        ionized = True
         try:
             prepared_mol = self.preparator(mol)
         except IonizerError:
@@ -74,22 +75,21 @@ class ESP(Featurizer):
             else:
                 name = Chem.MolToSmiles(mol, isomericSmiles=True)
             warnings.warn("Ionization failed for molecule '{}'.".format(name))
-            self.preparator.set_ionize(False)
-            prepared_mol = self.preparator(mol)
+            prepared_mol = self.preparator(mol, ionize=False)
+            ionized = False
 
         # catch subprocess failures (turn off ionization and try again)
         try:
             rval = self.calculate_esp(prepared_mol)
         except subprocess.CalledProcessError as e:
-            if self.preparator.ionize:
+            if self.preparator.ionize and ionized:
                 if mol.HasProp('_Name'):
                     name = mol.GetProp('_Name')
                 else:
                     name = Chem.MolToSmiles(mol, isomericSmiles=True)
                 warnings.warn("Disabling ionization for molecule '{}'.".format(
                     name))
-                self.preparator.set_ionize(False)
-                prepared_mol = self.preparator(mol)
+                prepared_mol = self.preparator(mol, ionize=False)
                 rval = self.calculate_esp(prepared_mol)
             else:
                 raise e
