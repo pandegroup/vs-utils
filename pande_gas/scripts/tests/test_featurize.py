@@ -16,6 +16,9 @@ from pande_gas.scripts.featurize import main, parse_args
 
 
 class TestFeaturize(unittest.TestCase):
+    """
+    Test featurize.py.
+    """
     def setUp(self):
         """
         Set up for tests. Writes molecules and targets to files.
