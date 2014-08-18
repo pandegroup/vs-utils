@@ -17,12 +17,13 @@ from ..utils.ob_utils import Ionizer
 
 def get_featurizers():
     """Compile a dict mapping strings to featurizer classes."""
+
+    # import all Featurizer subclasses so __subclasses__ will work
     from .basic import MolecularWeight
     from .coulomb_matrices import CoulombMatrix
     from .esp import ESP
     from .fingerprints import CircularFingerprint
     from .images import MolImage
-    from .shape_grid import ShapeGrid
 
     featurizers = {}
     for klass in Featurizer.__subclasses__():
@@ -215,10 +216,7 @@ class MolPreparator(object):
     """
     def __init__(self, ionize=False, pH=7.4, align=False, add_hydrogens=False):
         self.ionize = ionize
-        if ionize:
-            self.ionizer = Ionizer(pH)
-        else:
-            self.ionizer = None
+        self.ionizer = Ionizer(pH)
         self.align = align
         self.add_hydrogens = add_hydrogens
 
@@ -233,29 +231,92 @@ class MolPreparator(object):
         """
         return self.prepare(mol)
 
-    def prepare(self, mol):
+    def set_ionize(self, ionize):
+        """
+        Set ionization flag.
+
+        Parameters
+        ----------
+        ionize : bool
+            Whether to ionize molecules.
+        """
+        self.ionize = ionize
+
+    def set_pH(self, pH):
+        """
+        Set ionization pH.
+
+        Parameters
+        ----------
+        value : float
+            Ionization pH.
+        """
+        self.ionizer = Ionizer(pH)
+
+    def set_align(self, align):
+        """
+        Set align flag.
+
+        Parameters
+        ----------
+        align : bool
+            Whether to align molecules.
+        """
+        self.align = align
+
+    def set_add_hydrogens(self, add_hydrogens):
+        """
+        Set add_hydrogens flag.
+
+        Parameters
+        ----------
+        add_hydrogens : bool
+            Whether to add hydrogens.
+        """
+        self.add_hydrogens = add_hydrogens
+
+    def prepare(self, mol, ionize=None, align=None, add_hydrogens=None):
         """
         Prepare a molecule for featurization.
+
+        Default values for individual steps can be overriden with keyword
+        arguments. For example, to disable ionization for a specific molecule,
+        include ionize=False.
 
         Parameters
         ----------
         mol : RDMol
             Molecule.
+        ionize : bool, optional (default None)
+            Override for self.ionize.
+        align : bool, optional (default None)
+            Override for self.align.
+        add_hydrogens : bool, optional (default None)
+            Override for self.add_hydrogens.
         """
+        if ionize is None:
+            ionize = self.ionize
+        if align is None:
+            align = self.align
+        if add_hydrogens is None:
+            add_hydrogens = self.add_hydrogens
+
         mol = Chem.Mol(mol)  # create a copy
 
         # ionization
-        if self.ionize:
+        if ionize:
             mol = self.ionizer(mol)
 
         # orientation
-        if self.align:
-            mol = Chem.RemoveHs(mol)  # canonicalization fails with hydrogens
+        if align:
+
+            # canonicalization can fail when hydrogens are present
+            mol = Chem.RemoveHs(mol)
             center = rdGeometry.Point3D(0, 0, 0)
             for conf in mol.GetConformers():
                 rdMolTransforms.CanonicalizeConformer(conf, center=center)
 
         # hydrogens
-        if self.add_hydrogens:
+        if add_hydrogens:
             mol = Chem.AddHs(mol, addCoords=True)
         return mol
