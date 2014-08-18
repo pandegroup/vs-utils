@@ -82,7 +82,7 @@ class ESP(Featurizer):
         try:
             rval = self.calculate_esp(prepared_mol)
         except subprocess.CalledProcessError as e:
-            if self.preparator.ionize and ionized:
+            if ionized:
                 if mol.HasProp('_Name'):
                     name = mol.GetProp('_Name')
                 else:
