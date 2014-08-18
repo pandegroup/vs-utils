@@ -24,6 +24,7 @@ def get_featurizers():
     from .esp import ESP
     from .fingerprints import CircularFingerprint
     from .images import MolImage
+    from .shape_grid import ShapeGrid
 
     featurizers = {}
     for klass in Featurizer.__subclasses__():
