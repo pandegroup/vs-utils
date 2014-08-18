@@ -66,7 +66,7 @@ class ESP(Featurizer):
         """
 
         # catch ioniziation failures (turn off ionization and try again)
-        ionized = True
+        ionized = self.preparator.ionize
         try:
             prepared_mol = self.preparator(mol)
         except IonizerError:
