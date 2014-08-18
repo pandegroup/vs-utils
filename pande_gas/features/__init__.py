@@ -17,12 +17,13 @@ from ..utils.ob_utils import Ionizer
 
 def get_featurizers():
     """Compile a dict mapping strings to featurizer classes."""
+
+    # import all Featurizer subclasses so __subclasses__ will work
     from .basic import MolecularWeight
     from .coulomb_matrices import CoulombMatrix
     from .esp import ESP
     from .fingerprints import CircularFingerprint
     from .images import MolImage
-    from .shape_grid import ShapeGrid
 
     featurizers = {}
     for klass in Featurizer.__subclasses__():
@@ -215,10 +216,7 @@ class MolPreparator(object):
     """
     def __init__(self, ionize=False, pH=7.4, align=False, add_hydrogens=False):
         self.ionize = ionize
-        if ionize:
-            self.ionizer = Ionizer(pH)
-        else:
-            self.ionizer = None
+        self.ionizer = Ionizer(pH)
         self.align = align
         self.add_hydrogens = add_hydrogens
 
@@ -232,6 +230,50 @@ class MolPreparator(object):
             Molecule.
         """
         return self.prepare(mol)
+
+    def set_ionize(self, ionize):
+        """
+        Set ionization flag.
+
+        Parameters
+        ----------
+        ionize : bool
+            Whether to ionize molecules.
+        """
+        self.ionize = ionize
+
+    def set_pH(self, pH):
+        """
+        Set ionization pH.
+
+        Parameters
+        ----------
+        value : float
+            Ionization pH.
+        """
+        self.ionizer = Ionizer(pH)
+
+    def set_align(self, align):
+        """
+        Set align flag.
+
+        Parameters
+        ----------
+        align : bool
+            Whether to align molecules.
+        """
+        self.align = align
+
+    def set_add_hydrogens(self, add_hydrogens):
+        """
+        Set add_hydrogens flag.
+
+        Parameters
+        ----------
+        add_hydrogens : bool
+            Whether to add hydrogens.
+        """
+        self.add_hydrogens = add_hydrogens
 
     def prepare(self, mol):
         """
@@ -250,7 +292,9 @@ class MolPreparator(object):
 
         # orientation
         if self.align:
-            mol = Chem.RemoveHs(mol)  # canonicalization fails with hydrogens
+
+            # canonicalization can fail when hydrogens are present
+            mol = Chem.RemoveHs(mol)
             center = rdGeometry.Point3D(0, 0, 0)
             for conf in mol.GetConformers():
                 rdMolTransforms.CanonicalizeConformer(conf, center=center)
