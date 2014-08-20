@@ -44,10 +44,12 @@ class TestGridMol(unittest.TestCase):
         Test GridMol.get_distance.
         """
         self.mol.add_atom((1, 2, 1), 1.6)
+        self.mol.add_atom((1, 1, 1), 1.6)
         distances = self.mol.get_distance()
 
         # confirm that negative values are inside atoms
-        mask = self.mol.atoms[0].get_grid_mask()
+        # this tests distance correspondence with occupancy
+        mask = self.mol.get_occupancy()
         assert np.all(distances[mask] <= 0)
         assert np.all(distances[~mask] > 0)
 
@@ -55,8 +57,8 @@ class TestGridMol(unittest.TestCase):
         assert np.amax(distances) < max(self.mol.get_real_shape())
 
         # check that negative distances are not too large
-        # since there is only one atom, min should be no larger than the atom
-        # radius plus the probe radius
+        # min should be no larger than the largest atom radius plus the probe
+        # radius (by definition)
         assert np.fabs(np.amin(distances)) <= (
             self.mol.atoms[0].radius + self.mol.probe_radius)
 

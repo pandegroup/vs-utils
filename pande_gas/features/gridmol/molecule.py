@@ -93,6 +93,20 @@ class GridMol(Grid):
         # to the ``accessible'' surface
         distances -= (radii + self.probe_radius)
 
+        # get minimum distance to molecular surface
+        # prefer negative distances to preserve correspondence with occupancy
+        # note that we can't just multiply occupied points by -1, because
+        # distances are calculated relative to atomic surfaces, which may lie
+        # within the molecular surface
+        best_distances = np.zeros(distances.shape[0], dtype=float)
+        for i in xrange(distances.shape[0]):
+            if np.any(distances[i] < 0):
+                best_distances[i] = -1 * np.amin(
+                    np.fabs(distances[i][distances[i] < 0]))
+            else:
+                best_distances[i] = np.amin(distances[i])
+        return best_distances.reshape(self.shape)
+
         # take the minimum absolute distance while preserving sign
         min_abs = np.argmin(np.fabs(distances), axis=1)
         distances = distances[np.arange(distances.shape[0]), min_abs]
