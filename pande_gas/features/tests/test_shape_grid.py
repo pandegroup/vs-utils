@@ -26,18 +26,19 @@ class TestShapeGrid(unittest.TestCase):
         self.max_confs = max([mol.GetNumConformers() for mol in self.mols])
         self.engine = ShapeGrid()
 
-    def test_shape_grid(self):
+    def test_distance(self):
         """
-        Test ShapeGrid.
+        Test ShapeGrid with distances featurization.
         """
+        self.engine = ShapeGrid(featurization='distance')
         features = self.engine(self.mols)
         assert features.shape == (len(self.mols), self.max_confs, 81, 81, 81)
 
-    def test_boolean_grid(self):
+    def test_occupancy(self):
         """
-        Test ShapeGrid with distance_to_surface=False.
+        Test ShapeGrid with occupancy featurization.
         """
-        self.engine = ShapeGrid(distance_to_surface=False)
+        self.engine = ShapeGrid(featurization='occupancy')
         features = self.engine(self.mols)
         assert features.shape == (len(self.mols), self.max_confs, 81, 81, 81)
 

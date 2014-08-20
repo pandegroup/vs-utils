@@ -24,29 +24,46 @@ class TestGridMol(unittest.TestCase):
         self.mol.add_atom((1, 2, 1), 1.6)
         assert len(self.mol.atoms) == 1
 
-    def test_get_boolean_grid(self):
+    def test_get_occupancy(self):
         """
-        Test GridMol.get_boolean_grid.
+        Test GridMol.get_occupancy.
         """
         self.mol.add_atom((1, 2, 1), 1.6)
         self.mol.add_atom((1, 1, 1), 1.6)
-        grid = self.mol.get_boolean_grid()
-        assert grid.shape == self.mol.shape
-        assert np.count_nonzero(grid == 0)
-        assert np.count_nonzero(grid == 1)
-        assert not np.count_nonzero(grid > 1)
+        occupancy = self.mol.get_occupancy()
+        assert occupancy.shape == self.mol.shape
+        assert np.count_nonzero(occupancy == 0)
+        assert np.count_nonzero(occupancy == 1)
+        assert not np.count_nonzero(occupancy > 1)
 
-    def test_get_distance_to_surface(self):
+        # check that most of the grid is empty
+        assert np.count_nonzero(occupancy) < 0.2 * self.mol.size
+
+    def test_get_distance(self):
         """
-        Test GridMol.update_distance_to_surface.
+        Test GridMol.get_distance.
         """
         self.mol.add_atom((1, 2, 1), 1.6)
-        distances = self.mol.get_distance_to_surface()
+        distances = self.mol.get_distance()
 
         # confirm that negative values are inside atoms
         mask = self.mol.atoms[0].get_grid_mask()
         assert np.all(distances[mask] <= 0)
         assert np.all(distances[~mask] > 0)
+
+        # check for sane positive distances
+        assert np.amax(distances) < max(self.mol.get_real_shape())
+
+        # check that negative distances are not too large
+        # since there is only one atom, min should be no larger than the atom
+        # radius plus the probe radius
+        assert np.fabs(np.amin(distances)) <= (
+            self.mol.atoms[0].radius + self.mol.probe_radius)
+
+        # check that most distances are significantly less than max
+        threshold = max(self.mol.get_real_shape()) / 2.
+        assert np.count_nonzero(np.fabs(distances) < threshold) > (
+            0.9 * distances.size)
 
 
 class TestGridAtom(unittest.TestCase):

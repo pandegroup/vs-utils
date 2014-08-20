@@ -30,6 +30,10 @@ class ShapeGrid(Featurizer):
         when working with conformers retrieved from PubChem.
     probe_radius : float, optional (default 1.4)
         Probe radius for determining solvent-accessible surface.
+    featurization : str, optional (default 'distance')
+        Shape featurization to use. Choose from:
+        * 'distance' : distances to molecular surface.
+        * 'occupancy' : boolean grid indicating inside/outside of molecule
     distance_to_surface : bool, optional (default True)
         Whether to calculate the distance from each grid point to the molecular
         surface. If False, a boolean grid is returned with set bits
@@ -39,13 +43,13 @@ class ShapeGrid(Featurizer):
     name = 'shape'
 
     def __init__(self, size=81, resolution=0.5, hydrogens=False, align=False,
-                 probe_radius=1.4, distance_to_surface=True):
+                 probe_radius=1.4, featurization='distance'):
         self.size = size
         self.resolution = resolution
         self.hydrogens = hydrogens
         self.preparator = MolPreparator(align=align, add_hydrogens=hydrogens)
         self.probe_radius = probe_radius
-        self.distance_to_surface = distance_to_surface
+        self.featurization = featurization
 
     def _featurize(self, mol):
         """
@@ -60,10 +64,14 @@ class ShapeGrid(Featurizer):
         features = []
         for conf in mol.GetConformers():
             grid_mol = self.embed_mol_in_grid(mol, conf.GetId())
-            if self.distance_to_surface:
-                this_features = grid_mol.get_distance_to_surface()
+            if self.featurization == 'distance':
+                this_features = grid_mol.get_distance()
+            elif self.featurization == 'occupancy':
+                this_features = grid_mol.get_occupancy()
             else:
-                this_features = grid_mol.get_boolean_grid()
+                raise NotImplementedError(
+                    "Unrecognized featurization '{}'.".format(
+                        self.featurization))
             features.append(this_features)
         return features
 

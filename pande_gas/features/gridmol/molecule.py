@@ -59,7 +59,7 @@ class GridMol(Grid):
         self.atoms.append(atom)
         return atom
 
-    def get_boolean_grid(self):
+    def get_occupancy(self):
         """
         Get a boolean grid with set bits corresponding to points inside the
         molecule.
@@ -68,9 +68,9 @@ class GridMol(Grid):
         grid = np.asarray(grid, dtype=bool)
         return grid
 
-    def get_distance_to_surface(self):
+    def get_distance(self):
         """
-        Get distances to the molecular surface.
+        Get distance to the molecular surface.
 
         The distance to the molecular surface is the difference between the
         distance to the atom center and the radius of the atom (plus the probe
@@ -83,7 +83,14 @@ class GridMol(Grid):
         coords = self.get_all_coords().reshape((self.size, self.ndim))
         centers = np.asarray([atom.center for atom in self.atoms], dtype=float)
         radii = np.asarray([atom.radius for atom in self.atoms], dtype=float)
+
+        # get pairwise distances between all grid points and atomic centers
+        # distances has shape (coords.shape[0], centers.shape[0])
         distances = cdist(coords, centers)
+
+        # correct for atomic radii
+        # the atomic radii have the probe radius added to get the radius
+        # to the ``accessible'' surface
         distances -= (radii + self.probe_radius)
 
         # take the minimum absolute distance while preserving sign
@@ -149,13 +156,12 @@ class GridAtom(object):
         """
         try:
             assert grid.coords_in_grid(center)
+            center = np.asarray(center, dtype=float)
             for i in xrange(grid.ndim):
-                pos_point = np.array(center)
-                pos_point[i] += (radius + probe_radius)
-                neg_point = np.array(center)
-                neg_point[i] -= (radius + probe_radius)
-                assert grid.coords_in_grid(pos_point)
-                assert grid.coords_in_grid(neg_point)
+                delta = np.zeros_like(center)
+                delta[i] = radius + probe_radius
+                assert grid.coords_in_grid(center + delta)
+                assert grid.coords_in_grid(center - delta)
             return True
         except AssertionError:
             return False

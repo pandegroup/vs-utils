@@ -58,6 +58,6 @@ class TestGrid(unittest.TestCase):
         Test an arbitrary spacing.
         """
         self.grid = Grid((11, 11, 11), spacing=0.3)
-        assert np.array_equal(self.grid.get_extent(), [3.3, 3.3, 3.3])
+        assert np.array_equal(self.grid.get_real_shape(), [3.3, 3.3, 3.3])
         grid_point = self.grid.get_grid_point((-1.2, -1.3, -1.4))
         assert np.array_equal(grid_point, [1, 1, 0]), grid_point

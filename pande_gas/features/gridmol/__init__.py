@@ -30,10 +30,10 @@ class Grid(object):
         self.size = self.grid.size
         self.ndim = self.grid.ndim
         if center is None:
-            center = np.zeros_like(self.shape, dtype=float)
-        self.center = np.asarray(center, dtype=float)
+            self.center = np.zeros_like(self.shape, dtype=float)
+        else:
+            self.center = np.asarray(center, dtype=float)
         self.spacing = float(spacing)
-        self.extent = self.get_extent()
 
     def __getitem__(self, item):
         rval = self.grid[item]
@@ -42,12 +42,11 @@ class Grid(object):
     def __setitem__(self, key, value):
         self.grid[key] = value
 
-    def get_extent(self):
+    def get_real_shape(self):
         """
-        Get the real-space extent of the grid in each dimension.
+        Get the shape of the grid in real-space.
         """
-        extent = tuple(np.asarray(self.shape) * self.spacing)
-        return extent
+        return tuple(np.asarray(self.shape) * self.spacing)
 
     def grid_point_in_grid(self, grid_point):
         """
@@ -90,11 +89,11 @@ class Grid(object):
         Procedure
         ---------
         1. Get the real-space coordinates of the grid point relative to the
-            grid origin.
-        2. Get the real-space coordinates of the grid center relative to the
+            grid origin (grid[0, ..., 0]).
+        2. Get the real-space translation of the grid center relative to the
             grid origin.
         3. Subtract (2) from (1) to get the real-space coordinates of the grid
-            point relative to the grid center.
+            point relative to the grid center rather than the grid origin.
         4. Translate the coordinates from (3) so they are relative to the
             real-space grid center.
 
@@ -107,20 +106,29 @@ class Grid(object):
         if not self.grid_point_in_grid(grid_points):
             raise IndexError("Invalid grid point '{}'".format(grid_points))
         coords = np.array(grid_points, dtype=float) * self.spacing
-        center = (np.asarray(self.shape) - 1) / 2. * self.spacing
-        coords -= center
-        coords += self.center
+        grid_center = (np.asarray(self.shape) - 1) / 2. * self.spacing
+        coords -= grid_center  # move from grid_origin to grid_center
+        coords += self.center  # move to real-space center
         return coords
 
     def get_all_coords(self):
         """
         Get real-space coordinates for all grid points.
         """
+
+        # construct an array whose entries correspond to each index of the grid
+        # e.g. grid_points[1, 2, 3] -> [1, 2, 3]
         grid_points = np.zeros((self.grid.shape + (self.grid.ndim,)),
                                dtype=int)
         for i, indices in enumerate(np.indices(grid_points.shape[:-1])):
             grid_points[..., i] = indices
+
+        # reshape so grid_points is 2D and each row is a grid point
         grid_points = grid_points.reshape((self.size, self.ndim))
+
+        # get real-space coordinates for all grid points
+        # reshape to match shape of the grid
+        # e.g. coords[1, 2, 3] -> self.get_coords([1, 2, 3])
         coords = self.get_coords(grid_points).reshape(
             (self.grid.shape + (self.grid.ndim,)))
         return coords
