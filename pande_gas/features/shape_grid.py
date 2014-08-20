@@ -43,7 +43,7 @@ class ShapeGrid(Featurizer):
     name = 'shape'
 
     def __init__(self, size=81, resolution=0.5, hydrogens=False, align=False,
-                 probe_radius=1.4, featurization='distance'):
+                 probe_radius=1.4, featurization='occupancy'):
         self.size = size
         self.resolution = resolution
         self.hydrogens = hydrogens
