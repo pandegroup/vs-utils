@@ -11,6 +11,7 @@ import tempfile
 import unittest
 
 from rdkit import Chem
+from rdkit.Chem import AllChem
 
 from pande_gas.scripts.featurize import main, parse_args
 
@@ -218,3 +219,76 @@ class TestFeaturize(unittest.TestCase):
         assert data['features'].shape == (2, 1, 40, 40, 40)
         assert data['y'] == [0, 1]
         assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+
+    def test_scaffolds(self):
+        """
+        Test scaffold generation.
+        """
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.pkl',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'circular']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        with open(output_filename) as f:
+            data = cPickle.load(f)
+
+        assert Chem.MolFromSmiles(data['scaffolds'][0]).GetNumAtoms() == 6
+        assert Chem.MolFromSmiles(data['scaffolds'][1]).GetNumAtoms() == 6
+
+    def test_chiral_scaffolds(self):
+        """
+        Test chiral scaffold generation.
+        """
+
+        # romosetron
+        mol = Chem.MolFromSmiles(
+            'CN1C=C(C2=CC=CC=C21)C(=O)[C@@H]3CCC4=C(C3)NC=N4')
+        #engine = conformers.ConformerGenerator(max_conformers=1)
+        AllChem.Compute2DCoords(mol)
+        #self.mols = [engine.generate_conformers(mol)]
+        self.mols[1] = mol
+
+        # write mols
+        _, self.input_filename = tempfile.mkstemp(suffix='.sdf',
+                                                  dir=self.temp_dir)
+        writer = serial.MolWriter()
+        writer.open(self.input_filename)
+        writer.write(self.mols)
+        writer.close()
+
+        # run script w/o chiral scaffolds
+        _, output_filename = tempfile.mkstemp(suffix='.pkl',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'circular']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs),
+             chiral_scaffolds=args.chiral_scaffolds)
+
+        # get achiral scaffold
+        with open(output_filename) as f:
+            data = cPickle.load(f)
+
+        achiral_scaffold = data['scaffolds'][1]
+
+        # run script w/ chiral scaffolds
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, '--chiral-scaffolds', 'circular']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs),
+             chiral_scaffolds=args.chiral_scaffolds)
+
+        # get chiral scaffold
+        with open(output_filename) as f:
+            data = cPickle.load(f)
+
+        chiral_scaffold = data['scaffolds'][1]
+
+        assert achiral_scaffold != chiral_scaffold

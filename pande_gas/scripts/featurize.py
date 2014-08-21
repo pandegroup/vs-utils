@@ -13,6 +13,7 @@ import gzip
 import inspect
 import joblib
 
+from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit_utils import serial
 
 from pande_gas.features import get_featurizers
@@ -33,6 +34,8 @@ def parse_args(input_args=None):
     parser = argparse.ArgumentParser(formatter_class=HelpFormatter)
     parser.add_argument('input',
                         help='Input molecules.')
+    parser.add_argument('--chiral-scaffolds', action='store_true',
+                        help='Whether to include chirality in scaffolds.')
     parser.add_argument('-t', '--targets',
                         help='Molecule targets.')
     parser.add_argument('-p', '--parallel', action='store_true',
@@ -82,7 +85,8 @@ def parse_args(input_args=None):
     args = argparse.Namespace()
     args.featurizer_kwargs = parser.parse_args(input_args)
     for arg in ['input', 'output', 'klass', 'targets', 'parallel',
-                'cluster_id', 'n_engines', 'compression_level']:
+                'cluster_id', 'n_engines', 'compression_level',
+                'chiral_scaffolds']:
         setattr(args, arg, getattr(args.featurizer_kwargs, arg))
         delattr(args.featurizer_kwargs, arg)
     return args
@@ -104,7 +108,8 @@ class HelpFormatter(argparse.RawTextHelpFormatter):
 
 def main(featurizer_class, input_filename, output_filename,
          target_filename=None, featurizer_kwargs=None, parallel=False,
-         client_kwargs=None, view_flags=None, compression_level=3):
+         client_kwargs=None, view_flags=None, compression_level=3,
+         chiral_scaffolds=False):
     """
     Featurize molecules in input_filename using the given featurizer.
 
@@ -129,8 +134,10 @@ def main(featurizer_class, input_filename, output_filename,
         Flags for IPython.parallel LoadBalancedView.
     compression_level : int, optional (default 3)
         Compression level (0-9) to use with joblib.dump.
+    chiral_scaffods : bool, optional (default False)
+        Whether to include chirality in scaffolds.
     """
-    mols, names = read_mols_and_names(input_filename)
+    mols, names, scaffolds = read_mols(input_filename, chiral_scaffolds)
 
     # featurize molecules
     if featurizer_kwargs is None:
@@ -139,7 +146,7 @@ def main(featurizer_class, input_filename, output_filename,
     features = featurizer.featurize(mols, parallel, client_kwargs, view_flags)
 
     # build data container
-    data = {'features': features, 'names': names}
+    data = {'features': features, 'names': names, 'scaffolds': scaffolds}
     if target_filename is not None:
         with open(target_filename) as f:
             targets = cPickle.load(f)
@@ -148,27 +155,39 @@ def main(featurizer_class, input_filename, output_filename,
     data['args'] = {'featurizer_class': featurizer_class.__name__,
                     'input_filename': input_filename,
                     'target_filename': target_filename,
-                    'featurizer_kwargs': featurizer_kwargs}
+                    'featurizer_kwargs': featurizer_kwargs,
+                    'chiral_scaffolds': chiral_scaffolds}
 
     # write output file
     write_output_file(data, output_filename, compression_level)
 
 
-def read_mols_and_names(input_filename):
+def read_mols(input_filename, chiral_scaffolds=False):
     """
-    Read molecules and molecule names from an input file.
+    Read molecules from an input file and extract names and scaffolds.
 
     Parameters
     ----------
     input_filename : str
         Filename containing molecules.
+    chiral_scaffods : bool, optional (default False)
+        Whether to include chirality in scaffolds.
     """
     reader = serial.MolReader()
     reader.open(input_filename)
-    mols = list(reader.get_mols())
+    mols = []
+    names = []
+    scaffolds = []
+    for mol in reader.get_mols():
+        mols.append(mol)
+        if mol.HasProp('_Name'):
+            names.append(mol.GetProp('_Name'))
+        else:
+            raise ValueError('Molecule names are required.')
+        scaffolds.append(MurckoScaffold.MurckoScaffoldSmiles(
+            mol=mol, includeChirality=chiral_scaffolds))
     reader.close()
-    names = [mol.GetProp('_Name') for mol in mols]
-    return mols, names
+    return mols, names, scaffolds
 
 
 def write_output_file(data, output_filename, compression_level=3):
@@ -217,4 +236,4 @@ if __name__ == '__main__':
     # run main function
     main(args.klass, args.input, args.output, args.targets,
          vars(args.featurizer_kwargs), args.parallel, client_kwargs,
-         view_flags, args.compression_level)
+         view_flags, args.compression_level, args.chiral_scaffolds)
