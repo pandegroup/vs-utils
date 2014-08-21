@@ -1,4 +1,6 @@
+h5py
+joblib
 numpy>=1.7.0
 PIL
 rdkit
-h5py
+scipy

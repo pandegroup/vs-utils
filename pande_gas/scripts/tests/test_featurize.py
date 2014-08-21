@@ -16,6 +16,9 @@ from pande_gas.scripts.featurize import main, parse_args
 
 
 class TestFeaturize(unittest.TestCase):
+    """
+    Test featurize.py.
+    """
     def setUp(self):
         """
         Set up for tests. Writes molecules and targets to files.
@@ -193,5 +196,25 @@ class TestFeaturize(unittest.TestCase):
         with gzip.open(output_filename) as f:
             data = cPickle.load(f)
         assert data['features'].shape == (2, 1, 61, 61, 61)
+        assert data['y'] == [0, 1]
+        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+
+    def test_shape_grid(self):
+        """
+        Test ShapeGrid.
+        """
+
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz')
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'shape', '--size', '40']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        with gzip.open(output_filename) as f:
+            data = cPickle.load(f)
+        assert data['features'].shape == (2, 1, 40, 40, 40)
         assert data['y'] == [0, 1]
         assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
