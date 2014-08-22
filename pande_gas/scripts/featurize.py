@@ -12,6 +12,7 @@ import cPickle
 import gzip
 import inspect
 import joblib
+import numpy as np
 
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit_utils import serial
@@ -121,8 +122,10 @@ def main(featurizer_class, input_filename, output_filename,
         Filename containing molecules to be featurized.
     output_filename : str
         Output filename. Should end with .pkl or .pkl.gz.
-    targets : array_like, optional
-        Molecule target values.
+    target_filename : str, optional
+        Pickle containing target values. Should either be array_like or a dict
+        containing 'names' and 'y' keys, corresponding to molecule names and
+        target values.
     featurizer_kwargs : dict, optional
         Keyword arguments passed to featurizer.
     parallel : bool, optional
@@ -139,19 +142,31 @@ def main(featurizer_class, input_filename, output_filename,
     """
     mols, names, scaffolds = read_mols(input_filename, chiral_scaffolds)
 
+    # get targets
+    data = {}
+    if target_filename is not None:
+        with open(target_filename) as f:
+            targets = cPickle.load(f)
+        if isinstance(targets, dict):
+            which_mols, targets = prune_mols(mols, names, targets['y'],
+                                             targets['names'])
+            mols = mols[which_mols]
+            names = names[which_mols]
+            scaffolds = scaffolds[which_mols]
+        else:
+            assert len(targets) == len(mols)
+        data['y'] = targets
+
     # featurize molecules
     if featurizer_kwargs is None:
         featurizer_kwargs = {}
     featurizer = featurizer_class(**featurizer_kwargs)
     features = featurizer.featurize(mols, parallel, client_kwargs, view_flags)
 
-    # build data container
-    data = {'features': features, 'names': names, 'scaffolds': scaffolds}
-    if target_filename is not None:
-        with open(target_filename) as f:
-            targets = cPickle.load(f)
-        assert len(targets) == len(mols)
-        data['y'] = targets
+    # fill in data container
+    data['features'] = features
+    data['names'] = names
+    data['scaffolds'] = scaffolds
     data['args'] = {'featurizer_class': featurizer_class.__name__,
                     'input_filename': input_filename,
                     'target_filename': target_filename,
@@ -160,6 +175,44 @@ def main(featurizer_class, input_filename, output_filename,
 
     # write output file
     write_output_file(data, output_filename, compression_level)
+
+
+def prune_mols(mols, mol_names, targets, target_names):
+    """
+    Prune and reorder mols to match targets.
+
+    Parameters
+    ----------
+    mols : array_like
+        Molecules.
+    mol_names : array_like
+        Molecule names.
+    targets : array_like
+        Targets.
+    target_names : array_like
+        Molecule names corresponding to targets.
+
+    Returns
+    -------
+    which_mols : array_like
+        Indices of molecules to keep, ordered to match targets.
+    keep_targets : array_like
+        Targets corresponding to selected molecules. This could differ from
+        the input targets if some of the targets do not have a corresponding
+        molecule (this often happens when a 3D structure cannot be generated
+        for a molecule that has target data).
+    """
+    assert len(mols) == len(mol_names) and len(targets) == len(target_names)
+    which_mols = []
+    keep_targets = []
+    for target, target_name in zip(targets, target_names):
+        where = np.where(mol_names == target_name)[0]
+        if where.size:
+            which_mols.append(where[0])
+            keep_targets.append(target)
+    which_mols = np.asarray(which_mols, dtype=int)
+    keep_targets = np.asarray(keep_targets)
+    return which_mols, keep_targets
 
 
 def read_mols(input_filename, chiral_scaffolds=False):
@@ -191,6 +244,9 @@ def read_mols(input_filename, chiral_scaffolds=False):
         scaffolds.append(MurckoScaffold.MurckoScaffoldSmiles(
             mol=mol, includeChirality=chiral_scaffolds))
     reader.close()
+    mols = np.asarray(mols)
+    names = np.asarray(names)
+    scaffolds = np.asarray(scaffolds)
     return mols, names, scaffolds
 
 

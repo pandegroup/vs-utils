@@ -292,3 +292,28 @@ class TestFeaturize(unittest.TestCase):
         chiral_scaffold = data['scaffolds'][1]
 
         assert achiral_scaffold != chiral_scaffold
+
+    def test_prune_mols(self):
+        """
+        Test prune_mols.
+        """
+        targets = {'names': ['ibuprofen'], 'y': [0]}
+        with open(self.targets_filename, 'wb') as f:
+            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.pkl',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'circular']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        with open(output_filename) as f:
+            data = cPickle.load(f)
+
+        assert np.array_equal(data['names'], targets['names'])
+        assert np.array_equal(data['y'], targets['y'])
+        assert data['features'].shape[0] == 1
