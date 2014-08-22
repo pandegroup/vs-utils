@@ -166,6 +166,10 @@ def read_mols(input_filename, chiral_scaffolds=False):
     """
     Read molecules from an input file and extract names and scaffolds.
 
+    Murcko scaffolds are described in DOI: 10.1021/jm9602928. They are
+    essentially that part of the molecule consisting of rings and the linker
+    atoms between them.
+
     Parameters
     ----------
     input_filename : str
