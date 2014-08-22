@@ -205,9 +205,12 @@ def prune_mols(mols, mol_names, targets, target_names):
     assert len(mols) == len(mol_names) and len(targets) == len(target_names)
     which_mols = []
     keep_targets = []
+    mol_names = mol_names.astype(target_names.dtype)  # make sure dtypes match
     for target, target_name in zip(targets, target_names):
         where = np.where(mol_names == target_name)[0]
         if where.size:
+            if where.size > 1:
+                raise ValueError('Molecule names must be unique.')
             which_mols.append(where[0])
             keep_targets.append(target)
     which_mols = np.asarray(which_mols, dtype=int)
