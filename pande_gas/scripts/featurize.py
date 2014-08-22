@@ -205,7 +205,10 @@ def prune_mols(mols, mol_names, targets, target_names):
     assert len(mols) == len(mol_names) and len(targets) == len(target_names)
     which_mols = []
     keep_targets = []
-    mol_names = mol_names.astype(target_names.dtype)  # make sure dtypes match
+
+    # make sure dtypes match for names so np.where will work properly
+    target_names = np.asarray(target_names)
+    mol_names = np.asarray(mol_names).astype(target_names.dtype)
     for target, target_name in zip(targets, target_names):
         where = np.where(mol_names == target_name)[0]
         if where.size:
