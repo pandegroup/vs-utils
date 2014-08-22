@@ -19,7 +19,7 @@ class CircularFingerprint(Featurizer):
     ----------
     radius : int, optional (default 2)
         Fingerprint radius.
-    size : int, optional (default 1024)
+    size : int, optional (default 2048)
         Length of generated bit vector.
     chiral : bool, optional (default False)
         Whether to consider chirality in fingerprint generation.
@@ -31,7 +31,7 @@ class CircularFingerprint(Featurizer):
     """
     name = 'circular'
 
-    def __init__(self, radius=2, size=1024, chiral=False, bonds=True,
+    def __init__(self, radius=2, size=2048, chiral=False, bonds=True,
                  features=False):
         self.radius = radius
         self.size = size
