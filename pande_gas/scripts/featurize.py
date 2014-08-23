@@ -141,7 +141,7 @@ def main(featurizer_class, input_filename, output_filename,
     chiral_scaffods : bool, optional (default False)
         Whether to include chirality in scaffolds.
     """
-    mols, names, scaffolds = read_mols(input_filename, chiral_scaffolds)
+    mols, names = read_mols(input_filename)
 
     # get targets
     data = {}
@@ -149,14 +149,17 @@ def main(featurizer_class, input_filename, output_filename,
         with open(target_filename) as f:
             targets = cPickle.load(f)
         if isinstance(targets, dict):
-            which_mols, targets = collate_mols(mols, names, targets['y'],
-                                               targets['names'])
-            mols = mols[which_mols]
-            names = names[which_mols]
-            scaffolds = scaffolds[which_mols]
+            mol_indices, target_indices = collate_mols(
+                mols, names, targets['y'], targets['names'])
+            mols = mols[mol_indices]
+            names = names[mol_indices]
+            targets = np.asarray(targets['y'])[target_indices]
         else:
             assert len(targets) == len(mols)
         data['y'] = targets
+
+    # get scaffolds
+    scaffolds = get_scaffolds(mols, chiral_scaffolds)
 
     # featurize molecules
     print "Featurizing molecules..."
@@ -207,27 +210,58 @@ def collate_mols(mols, mol_names, targets, target_names):
     """
     print "Collating molecules and targets..."
     assert len(mols) == len(mol_names) and len(targets) == len(target_names)
-    which_mols = []
-    keep_targets = []
 
-    # make sure dtypes match for names so np.where will work properly
+    # make sure dtypes match for names so comparisons will work properly
     target_names = np.asarray(target_names)
     mol_names = np.asarray(mol_names).astype(target_names.dtype)
-    for target, target_name in zip(targets, target_names):
-        where = np.where(mol_names == target_name)[0]
-        if where.size:
-            if where.size > 1:
-                raise ValueError('Molecule names must be unique.')
-            which_mols.append(where[0])
-            keep_targets.append(target)
-    which_mols = np.asarray(which_mols, dtype=int)
-    keep_targets = np.asarray(keep_targets)
-    return which_mols, keep_targets
+
+    # sanity checks
+    if np.unique(mol_names).size != mol_names.size:
+        raise ValueError('Molecule names must be unique.')
+    if np.unique(target_names).size != target_names.size:
+        raise ValueError('Molecule names (for targets) must be unique.')
+
+    # get intersection of mol_names and target_names
+    shared_names = np.intersect1d(mol_names, target_names)
+
+    # get indices to select those molecules from mols and targets
+    mol_indices = np.zeros_like(shared_names, dtype=int)
+    target_indices = np.zeros_like(shared_names, dtype=int)
+    for i, name in enumerate(shared_names):
+        mol_indices[i] = np.where(mol_names == name)[0][0]
+        target_indices[i] = np.where(target_names == name)[0][0]
+    return mol_indices, target_indices
 
 
-def read_mols(input_filename, chiral_scaffolds=False):
+def read_mols(input_filename):
     """
-    Read molecules from an input file and extract names and scaffolds.
+    Read molecules from an input file and extract names.
+
+    Parameters
+    ----------
+    input_filename : str
+        Filename containing molecules.
+    """
+    print "Reading molecules..."
+    reader = serial.MolReader()
+    reader.open(input_filename)
+    mols = []
+    names = []
+    for mol in reader.get_mols():
+        mols.append(mol)
+        if mol.HasProp('_Name'):
+            names.append(mol.GetProp('_Name'))
+        else:
+            raise ValueError('Molecule names are required.')
+    reader.close()
+    mols = np.asarray(mols)
+    names = np.asarray(names)
+    return mols, names
+
+
+def get_scaffolds(mols, include_chirality=False):
+    """
+    Get Murcko scaffolds for molecules.
 
     Murcko scaffolds are described in DOI: 10.1021/jm9602928. They are
     essentially that part of the molecule consisting of rings and the linker
@@ -235,30 +269,18 @@ def read_mols(input_filename, chiral_scaffolds=False):
 
     Parameters
     ----------
-    input_filename : str
-        Filename containing molecules.
-    chiral_scaffods : bool, optional (default False)
+    mols : array_like
+        Molecules.
+    include_chirality : bool, optional (default False)
         Whether to include chirality in scaffolds.
     """
     print "Generating molecule scaffolds..."
-    reader = serial.MolReader()
-    reader.open(input_filename)
-    mols = []
-    names = []
     scaffolds = []
-    for mol in reader.get_mols():
-        mols.append(mol)
-        if mol.HasProp('_Name'):
-            names.append(mol.GetProp('_Name'))
-        else:
-            raise ValueError('Molecule names are required.')
+    for mol in mols:
         scaffolds.append(MurckoScaffold.MurckoScaffoldSmiles(
-            mol=mol, includeChirality=chiral_scaffolds))
-    reader.close()
-    mols = np.asarray(mols)
-    names = np.asarray(names)
+            mol=mol, includeChirality=include_chirality))
     scaffolds = np.asarray(scaffolds)
-    return mols, names, scaffolds
+    return scaffolds
 
 
 def write_output_file(data, output_filename, compression_level=3):

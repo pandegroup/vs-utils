@@ -376,6 +376,8 @@ class TestFeaturize(unittest.TestCase):
         with open(output_filename) as f:
             data = cPickle.load(f)
 
-        assert np.array_equal(data['names'], targets['names'])
-        assert np.array_equal(data['y'], targets['y'])
+        sort = np.argsort(targets['names'])  # names will be sorted
+        assert np.array_equal(data['names'],
+                              np.asarray(targets['names'])[sort])
+        assert np.array_equal(data['y'], np.asarray(targets['y'])[sort])
         assert data['features'].shape[0] == 2
