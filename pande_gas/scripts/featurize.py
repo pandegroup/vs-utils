@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Featurize molecules and save features to disk. Featurizers are exposed as
 subcommands, with __init__ arguments as subcommand arguments.
@@ -148,8 +149,8 @@ def main(featurizer_class, input_filename, output_filename,
         with open(target_filename) as f:
             targets = cPickle.load(f)
         if isinstance(targets, dict):
-            which_mols, targets = prune_mols(mols, names, targets['y'],
-                                             targets['names'])
+            which_mols, targets = collate_mols(mols, names, targets['y'],
+                                               targets['names'])
             mols = mols[which_mols]
             names = names[which_mols]
             scaffolds = scaffolds[which_mols]
@@ -158,12 +159,14 @@ def main(featurizer_class, input_filename, output_filename,
         data['y'] = targets
 
     # featurize molecules
+    print "Featurizing molecules..."
     if featurizer_kwargs is None:
         featurizer_kwargs = {}
     featurizer = featurizer_class(**featurizer_kwargs)
     features = featurizer.featurize(mols, parallel, client_kwargs, view_flags)
 
     # fill in data container
+    print "Saving results..."
     data['features'] = features
     data['names'] = names
     data['scaffolds'] = scaffolds
@@ -177,7 +180,7 @@ def main(featurizer_class, input_filename, output_filename,
     write_output_file(data, output_filename, compression_level)
 
 
-def prune_mols(mols, mol_names, targets, target_names):
+def collate_mols(mols, mol_names, targets, target_names):
     """
     Prune and reorder mols to match targets.
 
@@ -202,6 +205,7 @@ def prune_mols(mols, mol_names, targets, target_names):
         molecule (this often happens when a 3D structure cannot be generated
         for a molecule that has target data).
     """
+    print "Collating molecules and targets..."
     assert len(mols) == len(mol_names) and len(targets) == len(target_names)
     which_mols = []
     keep_targets = []
@@ -236,6 +240,7 @@ def read_mols(input_filename, chiral_scaffolds=False):
     chiral_scaffods : bool, optional (default False)
         Whether to include chirality in scaffolds.
     """
+    print "Generating molecule scaffolds..."
     reader = serial.MolReader()
     reader.open(input_filename)
     mols = []

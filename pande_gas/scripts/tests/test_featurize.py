@@ -293,9 +293,9 @@ class TestFeaturize(unittest.TestCase):
 
         assert achiral_scaffold != chiral_scaffold
 
-    def test_prune_mols1(self):
+    def test_collate_mols1(self):
         """
-        Test prune_mols where molecules are pruned.
+        Test collate_mols where molecules are pruned.
         """
 
         # write targets
@@ -320,9 +320,9 @@ class TestFeaturize(unittest.TestCase):
         assert np.array_equal(data['y'], targets['y'])
         assert data['features'].shape[0] == 1
 
-    def test_prune_mols2(self):
+    def test_collate_mols2(self):
         """
-        Test prune_mols where targets are pruned.
+        Test collate_mols where targets are pruned.
         """
 
         # write targets
@@ -353,9 +353,9 @@ class TestFeaturize(unittest.TestCase):
         assert np.array_equal(data['y'], [0])
         assert data['features'].shape[0] == 1
 
-    def test_prune_mols3(self):
+    def test_collate_mols3(self):
         """
-        Test prune_mols where targets are in a different order than molecules.
+        Test collate_mols where targets are in a different order than molecules.
         """
 
         # write targets
