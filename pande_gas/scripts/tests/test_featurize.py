@@ -292,3 +292,92 @@ class TestFeaturize(unittest.TestCase):
         chiral_scaffold = data['scaffolds'][1]
 
         assert achiral_scaffold != chiral_scaffold
+
+    def test_collate_mols1(self):
+        """
+        Test collate_mols where molecules are pruned.
+        """
+
+        # write targets
+        targets = {'names': ['ibuprofen'], 'y': [0]}
+        with open(self.targets_filename, 'wb') as f:
+            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.pkl',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'circular']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        with open(output_filename) as f:
+            data = cPickle.load(f)
+
+        assert np.array_equal(data['names'], targets['names'])
+        assert np.array_equal(data['y'], targets['y'])
+        assert data['features'].shape[0] == 1
+
+    def test_collate_mols2(self):
+        """
+        Test collate_mols where targets are pruned.
+        """
+
+        # write targets
+        targets = {'names': ['aspirin', 'ibuprofen'], 'y': [0, 1]}
+        with open(self.targets_filename, 'wb') as f:
+            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+
+        # write mols
+        writer = serial.MolWriter()
+        writer.open(self.input_filename)
+        writer.write([self.mols[0]])
+        writer.close()
+
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.pkl',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'circular']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        with open(output_filename) as f:
+            data = cPickle.load(f)
+
+        assert np.array_equal(data['names'], ['aspirin'])
+        assert np.array_equal(data['y'], [0])
+        assert data['features'].shape[0] == 1
+
+    def test_collate_mols3(self):
+        """
+        Test collate_mols where targets are in a different order than molecules.
+        """
+
+        # write targets
+        targets = {'names': ['ibuprofen', 'aspirin'], 'y': [1, 0]}
+        with open(self.targets_filename, 'wb') as f:
+            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.pkl',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'circular']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        with open(output_filename) as f:
+            data = cPickle.load(f)
+
+        sort = np.argsort(targets['names'])  # names will be sorted
+        assert np.array_equal(data['names'],
+                              np.asarray(targets['names'])[sort])
+        assert np.array_equal(data['y'], np.asarray(targets['y'])[sort])
+        assert data['features'].shape[0] == 2
