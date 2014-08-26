@@ -8,9 +8,8 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import argparse
-import os
 
-from rdkit_utils import PicklableMol, serial
+from pande_gas.utils import DatasetSharder
 
 
 def parse_args(input_args=None):
@@ -30,95 +29,30 @@ def parse_args(input_args=None):
     parser.add_argument('-p', '--prefix',
                         help='Prefix for output files. Defaults to prefix ' +
                              'of input filename.')
-    parser.add_argument('-f', '--format', default='pkl.gz',
-                        help='Output format.')
+    parser.add_argument('-f', '--flavor', default='pkl.gz',
+                        help='Output flavor.')
     return parser.parse_args(input_args)
 
 
-def main(input_filename, chunk_size=1000, output_prefix=None,
-         output_format='pkl.gz'):
+def main(filename, shard_size, prefix, flavor):
     """
     Split a dataset into chunks.
 
     Parameters
     ----------
-    input_filename : str
+    filename : str
         Input filename.
-    chunk_size : int, optional (default 1000)
-        Number of molecules per chunk.
-    output_prefix : str, optional
-        Prefix for output files. Defaults to the prefix of input_filename.
-    output_format : str, optional (default 'pkl.gz')
-        Extension for output files.
-    """
-    if output_prefix is None:
-        output_prefix = guess_prefix(input_filename)
-    reader = serial.MolReader()
-    reader.open(input_filename)
-    filename_generator = get_filenames(output_prefix, output_format)
-    mols = []
-    for mol in reader.get_mols():
-        mols.append(mol)
-        if len(mols) >= chunk_size:
-            write(mols, filename_generator.next())
-            mols = []
-    if len(mols):
-        write(mols, filename_generator.next())
-
-
-def guess_prefix(filename):
-    """
-    Guess the prefix for a filename.
-
-    Takes everything in the basename before the first period. For example, the
-    prefix for '../foo.bar.gz' is 'foo'.
-
-    Parameters
-    ----------
-    filename : str
-        Filename.
-    """
-    return os.path.basename(filename).split('.')[0]
-
-
-def get_filenames(prefix, extension, index=0):
-    """
-    Generate shard filenames.
-
-    Parameters
-    ----------
+    shard_size : int
+        Number of molecules per shard.
     prefix : str
-        Prefix for filenames.
-    extension : str
-        Extension for filenames.
-    index : int, optional (default 0)
-        Initial shard index.
+        Prefix for output files. Defaults to the prefix of the input filename,
+        as extracted by guess_prefix.
+    flavor : str
+        Output molecule format used as the extension for shard filenames.
     """
-    while True:
-        filename = '{}-{}.{}'.format(prefix, index, extension)
-        yield filename
-        index += 1
-
-
-def write(mols, filename):
-    """
-    Write molecules to file.
-
-    Molecules are converted to PicklableMol to preserve properties, such as
-    molecule names.
-
-    Parameters
-    ----------
-    mols : array_like
-        Molecules.
-    filename : str
-        Output filename.
-    """
-    mols = [PicklableMol(mol) for mol in mols]  # preserve properties
-    writer = serial.MolWriter()
-    print '{}: {}'.format(filename, len(mols))
-    with writer.open(filename) as f:
-        f.write(mols)
+    sharder = DatasetSharder(filename=filename, shard_size=shard_size,
+                             prefix=prefix, flavor=flavor)
+    sharder.shard()
 
 
 if __name__ == '__main__':

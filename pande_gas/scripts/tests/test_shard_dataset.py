@@ -10,8 +10,7 @@ from rdkit.Chem import AllChem
 
 from rdkit_utils import serial
 
-from pande_gas.scripts.shard_dataset import (get_filenames, guess_prefix, main,
-                                             write)
+from pande_gas.scripts.shard_dataset import main
 
 
 class TestShardDataset(unittest.TestCase):
@@ -69,47 +68,9 @@ class TestShardDataset(unittest.TestCase):
             assert Chem.MolToSmiles(a) == Chem.MolToSmiles(b)
             assert a.GetProp('_Name') == b.GetProp('_Name')
 
-    def test_write(self):
-        """
-        Test write.
-        """
-        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.sdf.gz')
-        write(self.mols, filename)
-        self.compare_mols(filename)
-
-    def test_preserve_properties(self):
-        """
-        Test preservation of molecule properties when pickling.
-        """
-        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl.gz')
-        write(self.mols, filename)
-        self.compare_mols(filename)
-
-    def test_get_filenames(self):
-        """
-        Test get_filenames.
-        """
-        filenames = get_filenames('foo', 'bar', index=5)
-        for i in xrange(10):
-            assert filenames.next() == 'foo-{}.bar'.format(i + 5)
-
     def test_main(self):
         """
         Test main.
         """
-        main(self.filename, output_prefix='foo')
+        main(self.filename, 1000, 'foo', 'pkl.gz')
         self.compare_mols('foo-0.pkl.gz')
-
-    def test_leftover(self):
-        """
-        Test total % chunk_size != 0.
-        """
-        main(self.filename, chunk_size=2, output_prefix='foo')
-        self.compare_mols('foo-0.pkl.gz', slice(2))
-        self.compare_mols('foo-1.pkl.gz', slice(2, 3))
-
-    def test_guess_prefix(self):
-        """
-        Test guess_prefix.
-        """
-        assert guess_prefix('../foo.bar.gz') == 'foo'
