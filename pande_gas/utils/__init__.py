@@ -104,7 +104,7 @@ class DatasetSharder(object):
         for mol in self.mols:
             shard.append(mol)
             if len(shard) >= self.shard_size:
-                yield np.asarray(shard)
+                yield np.asarray(shard)  # ndarray with dtype=object
                 shard = []
         if len(shard):
             yield np.asarray(shard)
