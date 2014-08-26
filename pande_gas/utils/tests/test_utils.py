@@ -100,7 +100,7 @@ class TestDatasetSharder(unittest.TestCase):
         self.sharder.flavor = 'bar'
         self.sharder.index = 5
         for i in xrange(10):
-            assert self.sharder.next_filename() == 'foo-{}.bar'.format(i + 5)
+            assert self.sharder._next_filename() == 'foo-{}.bar'.format(i + 5)
 
     def test_write_shards(self):
         """

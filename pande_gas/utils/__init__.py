@@ -43,7 +43,7 @@ class DatasetSharder(object):
         self.shard_size = shard_size
         self.write_shards = write_shards
         if self.filename is not None and prefix is None:
-            prefix = self.guess_prefix()
+            prefix = self._guess_prefix()
         if write_shards and prefix is None:
             raise ValueError('One of filename or prefix must be provided ' +
                              'when writing shards.')
@@ -52,7 +52,7 @@ class DatasetSharder(object):
         self.index = start_index
         self.writer = serial.MolWriter()
 
-    def guess_prefix(self):
+    def _guess_prefix(self):
         """
         Get the prefix from a filename.
 
@@ -61,7 +61,7 @@ class DatasetSharder(object):
         """
         return os.path.basename(self.filename).split('.')[0]
 
-    def next_filename(self):
+    def _next_filename(self):
         """
         Generate the next shard filename.
         """
@@ -83,7 +83,10 @@ class DatasetSharder(object):
         """
         Split a dataset into chunks.
 
-        If self.write_shards is False, a shard generator is returned.
+        If self.write_shards is False, a shard generator is returned. Each
+        shard is an ndarray with dtype=object, which gives convenient access
+        to ndarray operations (like fancy indexing) for downstream
+        applications.
         """
         if self.write_shards:
             for shard in self._shard():
@@ -125,7 +128,7 @@ class DatasetSharder(object):
             Molecules.
         """
         mols = [PicklableMol(mol) for mol in mols]  # preserve properties
-        filename = self.next_filename()
+        filename = self._next_filename()
         with self.writer.open(filename) as f:
             f.write(mols)
 
