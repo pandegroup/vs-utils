@@ -10,7 +10,8 @@ from rdkit.Chem import AllChem
 
 from rdkit_utils import serial
 
-from pande_gas.scripts.shard_dataset import get_filenames, main, write
+from pande_gas.scripts.shard_dataset import (get_filenames, guess_prefix, main,
+                                             write)
 
 
 class TestShardDataset(unittest.TestCase):
@@ -106,3 +107,9 @@ class TestShardDataset(unittest.TestCase):
         main(self.filename, chunk_size=2, output_prefix='foo')
         self.compare_mols('foo-0.pkl.gz', slice(2))
         self.compare_mols('foo-1.pkl.gz', slice(2, 3))
+
+    def test_guess_prefix(self):
+        """
+        Test guess_prefix.
+        """
+        assert guess_prefix('../foo.bar.gz') == 'foo'

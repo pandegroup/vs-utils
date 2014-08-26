@@ -52,7 +52,7 @@ def main(input_filename, chunk_size=1000, output_prefix=None,
         Extension for output files.
     """
     if output_prefix is None:
-        output_prefix = os.path.basename(input_filename).split('.')[0]
+        output_prefix = guess_prefix(input_filename)
     reader = serial.MolReader()
     reader.open(input_filename)
     filename_generator = get_filenames(output_prefix, output_format)
@@ -64,6 +64,21 @@ def main(input_filename, chunk_size=1000, output_prefix=None,
             mols = []
     if len(mols):
         write(mols, filename_generator.next())
+
+
+def guess_prefix(filename):
+    """
+    Guess the prefix for a filename.
+
+    Takes everything in the basename before the first period. For example, the
+    prefix for '../foo.bar.gz' is 'foo'.
+
+    Parameters
+    ----------
+    filename : str
+        Filename.
+    """
+    return os.path.basename(filename).split('.')[0]
 
 
 def get_filenames(prefix, extension, index=0):
