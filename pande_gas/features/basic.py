@@ -56,7 +56,7 @@ class SimpleDescriptors(Featurizer):
         mol : RDKit Mol
             Molecule.
         """
-        descriptors = []
+        rval = []
         for function in self.functions:
-            descriptors.append(function(mol))
-        return descriptors
+            rval.append(function(mol))
+        return rval
