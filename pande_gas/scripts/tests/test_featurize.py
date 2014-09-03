@@ -380,3 +380,45 @@ class TestFeaturize(unittest.TestCase):
                               np.asarray(targets['names'])[sort])
         assert np.array_equal(data['y'], np.asarray(targets['y'])[sort])
         assert data['features'].shape[0] == 2
+
+    def test_mw(self):
+        """
+        Test calculation of molecular weight.
+        """
+
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'mw']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        with gzip.open(output_filename) as f:
+            data = cPickle.load(f)
+        assert data['features'].shape == (2, 1)
+        assert data['y'] == [0, 1]
+        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+
+    def test_descriptors(self):
+        """
+        Test calculation of RDKit descriptors.
+        """
+
+        # run script
+        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz',
+                                              dir=self.temp_dir)
+        input_args = [self.input_filename, '-t', self.targets_filename,
+                      output_filename, 'descriptors']
+        args = parse_args(input_args)
+        main(args.klass, args.input, args.output, args.targets,
+             vars(args.featurizer_kwargs))
+
+        # check output file
+        with gzip.open(output_filename) as f:
+            data = cPickle.load(f)
+        assert data['features'].shape == (2, 196)
+        assert data['y'] == [0, 1]
+        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
