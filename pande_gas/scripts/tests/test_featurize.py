@@ -248,9 +248,7 @@ class TestFeaturize(unittest.TestCase):
         # romosetron
         mol = Chem.MolFromSmiles(
             'CN1C=C(C2=CC=CC=C21)C(=O)[C@@H]3CCC4=C(C3)NC=N4')
-        #engine = conformers.ConformerGenerator(max_conformers=1)
         AllChem.Compute2DCoords(mol)
-        #self.mols = [engine.generate_conformers(mol)]
         self.mols[1] = mol
 
         # write mols
@@ -355,7 +353,8 @@ class TestFeaturize(unittest.TestCase):
 
     def test_collate_mols3(self):
         """
-        Test collate_mols where targets are in a different order than molecules.
+        Test collate_mols where targets are in a different order than
+        molecules.
         """
 
         # write targets
