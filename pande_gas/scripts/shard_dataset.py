@@ -57,4 +57,4 @@ def main(filename, shard_size, prefix, flavor):
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.input, args.n, args.prefix, args.format)
+    main(args.input, args.n, args.prefix, args.flavor)

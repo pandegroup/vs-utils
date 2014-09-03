@@ -221,16 +221,8 @@ class MolPreparator(object):
         self.align = align
         self.add_hydrogens = add_hydrogens
 
-    def __call__(self, mol):
-        """
-        Prepare a molecule for featurization.
-
-        Parameters
-        ----------
-        mol : RDMol
-            Molecule.
-        """
-        return self.prepare(mol)
+    def __call__(self, *args, **kwargs):
+        return self.prepare(*args, **kwargs)
 
     def set_ionize(self, ionize):
         """
