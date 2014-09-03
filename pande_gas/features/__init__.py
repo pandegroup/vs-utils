@@ -19,7 +19,7 @@ def get_featurizers():
     """Compile a dict mapping strings to featurizer classes."""
 
     # import all Featurizer subclasses so __subclasses__ will work
-    from .basic import MolecularWeight
+    from .basic import MolecularWeight, SimpleDescriptors
     from .coulomb_matrices import CoulombMatrix
     from .esp import ESP
     from .fingerprints import CircularFingerprint
