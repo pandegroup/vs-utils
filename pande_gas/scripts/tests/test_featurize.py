@@ -26,12 +26,12 @@ class TestFeaturize(unittest.TestCase):
         """
         self.temp_dir = tempfile.mkdtemp()
         smiles = ['CC(=O)OC1=CC=CC=C1C(=O)O', 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O']
-        names = ['aspirin', 'ibuprofen']
+        self.names = ['aspirin', 'ibuprofen']
         engine = conformers.ConformerGenerator(max_conformers=1)
         self.mols = []
         for i in xrange(len(smiles)):
             mol = Chem.MolFromSmiles(smiles[i])
-            mol.SetProp('_Name', names[i])
+            mol.SetProp('_Name', self.names[i])
             self.mols.append(engine.generate_conformers(mol))
 
         # write mols
@@ -43,11 +43,11 @@ class TestFeaturize(unittest.TestCase):
         writer.close()
 
         # write targets
-        targets = [0, 1]
+        self.targets = [0, 1]
         _, self.targets_filename = tempfile.mkstemp(suffix='.pkl',
                                                     dir=self.temp_dir)
         with open(self.targets_filename, 'wb') as f:
-            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+            cPickle.dump(self.targets, f, cPickle.HIGHEST_PROTOCOL)
 
     def tearDown(self):
         """
@@ -60,183 +60,127 @@ class TestFeaturize(unittest.TestCase):
         """
         shutil.rmtree(self.temp_dir)
 
-    def test_circular(self):
+    def check_output(self, featurize_args, shape, targets=None, names=None,
+                     output_suffix='.pkl'):
         """
-        Test circular fingerprints.
+        Check features shape, targets, and names.
+
+        Parameters
+        ----------
+        featurize_args : list
+            Featurizer-specific arguments for script.
+        filename : str
+            Output filename.
+        shape : tuple
+            Expected shape of features.
+        targets : list, optional
+            Expected targets. Defaults to self.targets.
+        names : list, optional
+            Expected names. Defaults to self.names.
+        output_suffix : str, optional (default '.pkl')
+            Suffix for output files.
         """
 
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz',
+        # generate command-line arguments
+        _, output_filename = tempfile.mkstemp(suffix=output_suffix,
                                               dir=self.temp_dir)
         input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'circular', '--size', '2048']
+                      output_filename] + featurize_args
+
+        # run script
         args = parse_args(input_args)
         main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
+             vars(args.featurizer_kwargs),
+             chiral_scaffolds=args.chiral_scaffolds)
 
-        # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
-        assert data['features'].shape == (2, 2048)
-        assert data['y'] == [0, 1]
-        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+        # read output file
+        if output_filename.endswith('.joblib'):
+            data = joblib.load(output_filename)
+        elif output_filename.endswith('.gz'):
+            with gzip.open(output_filename) as f:
+                data = cPickle.load(f)
+        else:
+            with open(output_filename) as f:
+                data = cPickle.load(f)
+
+        # check values
+        if targets is None:
+            targets = self.targets
+        if names is None:
+            names = self.names
+        assert data['features'].shape == shape, data['features'].shape
+        assert np.array_equal(data['y'], targets), data['y']
+        assert np.array_equal(data['names'], names), data['names']
+
+        # return output in case anything else needs to be checked
+        return data
 
     def test_pickle(self):
         """
         Save features to a pickle.
         """
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl',
-                                              dir=self.temp_dir)
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'circular', '--size', '2048']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with open(output_filename) as f:
-            data = cPickle.load(f)
-        assert data['features'].shape == (2, 2048)
-        assert data['y'] == [0, 1]
-        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+        self.check_output(['circular'], (2, 2048))
 
     def test_compressed_pickle(self):
         """
         Save features to a compressed pickle.
         """
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz',
-                                              dir=self.temp_dir)
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'circular', '--size', '2048']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
-        assert data['features'].shape == (2, 2048)
-        assert data['y'] == [0, 1]
-        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+        self.check_output(['circular'], (2, 2048), output_suffix='.pkl.gz')
 
     def test_joblib(self):
         """
         Save features using joblib.dump.
         """
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.joblib',
-                                              dir=self.temp_dir)
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'circular', '--size', '2048']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
+        self.check_output(['circular'], (2, 2048), output_suffix='.joblib')
 
-        # check output file
-        data = joblib.load(output_filename)
-        assert data['features'].shape == (2, 2048)
-        assert data['y'] == [0, 1]
-        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+    def test_circular(self):
+        """
+        Test circular fingerprints.
+        """
+        self.check_output(['circular', '--size', '512'], (2, 512))
 
     def test_coulomb_matrix(self):
         """
         Test Coulomb matrices.
         """
-
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz')
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'coulomb_matrix', '--max_atoms', '50']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
-        assert data['features'].shape == (2, 1, 1275)
-        assert data['y'] == [0, 1]
-        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+        self.check_output(['coulomb_matrix', '--max_atoms', '50'],
+                          (2, 1, 1275))
 
     def test_image_features(self):
         """
         Test image features.
         """
-
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz')
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'image', '--size', '16']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
-        assert data['features'].shape == (2, 16, 16, 3)
-        assert data['y'] == [0, 1]
-        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+        self.check_output(['image', '--size', '16'], (2, 16, 16, 3))
 
     def test_esp(self):
         """
         Test ESP.
         """
-
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz')
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'esp', '--size', '20']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
-        assert data['features'].shape == (2, 1, 61, 61, 61)
-        assert data['y'] == [0, 1]
-        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+        self.check_output(['esp', '--size', '20'], (2, 1, 61, 61, 61))
 
     def test_shape_grid(self):
         """
         Test ShapeGrid.
         """
+        self.check_output(['shape', '--size', '40'], (2, 1, 40, 40, 40))
 
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz')
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'shape', '--size', '40']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
+    def test_mw(self):
+        """
+        Test calculation of molecular weight.
+        """
+        self.check_output(['mw'], (2, 1))
 
-        # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
-        assert data['features'].shape == (2, 1, 40, 40, 40)
-        assert data['y'] == [0, 1]
-        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+    def test_descriptors(self):
+        """
+        Test calculation of RDKit descriptors.
+        """
+        self.check_output(['descriptors'], (2, 196))
 
     def test_scaffolds(self):
         """
         Test scaffold generation.
         """
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl',
-                                              dir=self.temp_dir)
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'circular']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with open(output_filename) as f:
-            data = cPickle.load(f)
-
+        data = self.check_output(['circular'], (2, 2048))
         assert Chem.MolFromSmiles(data['scaffolds'][0]).GetNumAtoms() == 6
         assert Chem.MolFromSmiles(data['scaffolds'][1]).GetNumAtoms() == 6
 
@@ -260,33 +204,11 @@ class TestFeaturize(unittest.TestCase):
         writer.close()
 
         # run script w/o chiral scaffolds
-        _, output_filename = tempfile.mkstemp(suffix='.pkl',
-                                              dir=self.temp_dir)
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'circular']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs),
-             chiral_scaffolds=args.chiral_scaffolds)
-
-        # get achiral scaffold
-        with open(output_filename) as f:
-            data = cPickle.load(f)
-
+        data = self.check_output(['circular'], (2, 2048))
         achiral_scaffold = data['scaffolds'][1]
 
         # run script w/ chiral scaffolds
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, '--chiral-scaffolds', 'circular']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs),
-             chiral_scaffolds=args.chiral_scaffolds)
-
-        # get chiral scaffold
-        with open(output_filename) as f:
-            data = cPickle.load(f)
-
+        data = self.check_output(['--chiral-scaffolds', 'circular'], (2, 2048))
         chiral_scaffold = data['scaffolds'][1]
 
         assert achiral_scaffold != chiral_scaffold
@@ -302,21 +224,8 @@ class TestFeaturize(unittest.TestCase):
             cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
 
         # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl',
-                                              dir=self.temp_dir)
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'circular']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with open(output_filename) as f:
-            data = cPickle.load(f)
-
-        assert np.array_equal(data['names'], targets['names'])
-        assert np.array_equal(data['y'], targets['y'])
-        assert data['features'].shape[0] == 1
+        self.check_output(['circular'], (1, 2048), targets=targets['y'],
+                          names=targets['names'])
 
     def test_collate_mols2(self):
         """
@@ -335,21 +244,8 @@ class TestFeaturize(unittest.TestCase):
         writer.close()
 
         # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl',
-                                              dir=self.temp_dir)
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'circular']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with open(output_filename) as f:
-            data = cPickle.load(f)
-
-        assert np.array_equal(data['names'], ['aspirin'])
-        assert np.array_equal(data['y'], [0])
-        assert data['features'].shape[0] == 1
+        self.check_output(['circular'], (1, 2048), targets=[0],
+                          names=['aspirin'])
 
     def test_collate_mols3(self):
         """
@@ -363,62 +259,5 @@ class TestFeaturize(unittest.TestCase):
             cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
 
         # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl',
-                                              dir=self.temp_dir)
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'circular']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with open(output_filename) as f:
-            data = cPickle.load(f)
-
-        sort = np.argsort(targets['names'])  # names will be sorted
-        assert np.array_equal(data['names'],
-                              np.asarray(targets['names'])[sort])
-        assert np.array_equal(data['y'], np.asarray(targets['y'])[sort])
-        assert data['features'].shape[0] == 2
-
-    def test_mw(self):
-        """
-        Test calculation of molecular weight.
-        """
-
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz',
-                                              dir=self.temp_dir)
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'mw']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
-        assert data['features'].shape == (2, 1)
-        assert data['y'] == [0, 1]
-        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
-
-    def test_descriptors(self):
-        """
-        Test calculation of RDKit descriptors.
-        """
-
-        # run script
-        _, output_filename = tempfile.mkstemp(suffix='.pkl.gz',
-                                              dir=self.temp_dir)
-        input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, 'descriptors']
-        args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs))
-
-        # check output file
-        with gzip.open(output_filename) as f:
-            data = cPickle.load(f)
-        assert data['features'].shape == (2, 196)
-        assert data['y'] == [0, 1]
-        assert np.array_equal(data['names'], ['aspirin', 'ibuprofen'])
+        self.check_output(['circular'], (2, 2048), targets=[0, 1],
+                          names=['aspirin', 'ibuprofen'])
