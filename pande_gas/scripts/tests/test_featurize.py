@@ -192,8 +192,10 @@ class TestFeaturize(unittest.TestCase):
         # romosetron
         mol = Chem.MolFromSmiles(
             'CN1C=C(C2=CC=CC=C21)C(=O)[C@@H]3CCC4=C(C3)NC=N4')
+        mol.SetProp('_Name', 'romosetron')
         AllChem.Compute2DCoords(mol)
         self.mols[1] = mol
+        self.names[1] = 'romosetron'
 
         # write mols
         _, self.input_filename = tempfile.mkstemp(suffix='.sdf',
@@ -259,5 +261,4 @@ class TestFeaturize(unittest.TestCase):
             cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
 
         # run script
-        self.check_output(['circular'], (2, 2048), targets=[0, 1],
-                          names=['aspirin', 'ibuprofen'])
+        self.check_output(['circular'], (2, 2048))
