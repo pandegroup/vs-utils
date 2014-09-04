@@ -28,16 +28,20 @@ class CircularFingerprint(Featurizer):
     features : bool, optional (default False)
         Whether to use feature information instead of atom information; see
         RDKit docs for more info.
+    sparser : bool, optional (default False)
+        Whether to return a dict for each molecule containing the sparse
+        fingerprint.
     """
     name = 'circular'
 
     def __init__(self, radius=2, size=2048, chiral=False, bonds=True,
-                 features=False):
+                 features=False, sparse=False):
         self.radius = radius
         self.size = size
         self.chiral = chiral
         self.bonds = bonds
         self.features = features
+        self.sparse = sparse
 
     def _featurize(self, mol):
         """
@@ -48,7 +52,13 @@ class CircularFingerprint(Featurizer):
         mol : RDKit Mol
             Molecule.
         """
-        fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(
-            mol, self.radius, nBits=self.size, useChirality=self.chiral,
-            useBondTypes=self.bonds, useFeatures=self.features)
+        if self.sparse:
+            fp = rdMolDescriptors.GetMorganFingerprint(
+                mol, self.radius, useChirality=self.chiral,
+                useBondTypes=self.bonds, useFeatures=self.features)
+            fp = fp.GetNonzeroElements()  # convert to a dict
+        else:
+            fp = rdMolDescriptors.GetMorganFingerprintAsBitVect(
+                mol, self.radius, nBits=self.size, useChirality=self.chiral,
+                useBondTypes=self.bonds, useFeatures=self.features)
         return fp

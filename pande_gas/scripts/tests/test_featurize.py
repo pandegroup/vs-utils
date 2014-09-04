@@ -139,6 +139,15 @@ class TestFeaturize(unittest.TestCase):
         """
         self.check_output(['circular', '--size', '512'], (2, 512))
 
+    def test_sparse_circular(self):
+        """
+        Test sparse circular fingerprints.
+        """
+        data = self.check_output(['circular', '--sparse'], (2,))
+        for value in data['features']:
+            assert isinstance(value, dict)
+            assert len(value)
+
     def test_coulomb_matrix(self):
         """
         Test Coulomb matrices.
