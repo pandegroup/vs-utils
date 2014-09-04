@@ -28,7 +28,7 @@ class CircularFingerprint(Featurizer):
     features : bool, optional (default False)
         Whether to use feature information instead of atom information; see
         RDKit docs for more info.
-    sparser : bool, optional (default False)
+    sparse : bool, optional (default False)
         Whether to return a dict for each molecule containing the sparse
         fingerprint.
     """
