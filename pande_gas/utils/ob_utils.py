@@ -99,7 +99,10 @@ class Ionizer(object):
         ionized_sdf, _ = p.communicate(sdf)
         reader = serial.MolReader(StringIO(ionized_sdf), mol_format='sdf',
                                   remove_salts=False)  # no changes
-        mols = list(reader.get_mols())
+        try:
+            mols = list(reader.get_mols())
+        except RuntimeError as e:  # catch pre-condition violations
+            raise IonizerError(e.message)
 
         # catch ionizer failure
         if len(mols) == 0:

@@ -65,7 +65,7 @@ class ESP(Featurizer):
             Molecule.
         """
 
-        # catch ioniziation failures (turn off ionization and try again)
+        # catch ioniziation failures (disable ionization)
         ionized = self.preparator.ionize
         try:
             prepared_mol = self.preparator(mol)
@@ -78,21 +78,28 @@ class ESP(Featurizer):
             prepared_mol = self.preparator(mol, ionize=False)
             ionized = False
 
-        # catch subprocess failures (turn off ionization and try again)
+        # catch subprocess failures (disable ionization and retry)
         try:
             rval = self.calculate_esp(prepared_mol)
         except subprocess.CalledProcessError as e:
+            print e
+            if mol.HasProp('_Name'):
+                name = mol.GetProp('_Name')
+            else:
+                name = Chem.MolToSmiles(mol, isomericSmiles=True)
             if ionized:
-                if mol.HasProp('_Name'):
-                    name = mol.GetProp('_Name')
-                else:
-                    name = Chem.MolToSmiles(mol, isomericSmiles=True)
                 warnings.warn("Disabling ionization for molecule '{}'.".format(
                     name))
                 prepared_mol = self.preparator(mol, ionize=False)
-                rval = self.calculate_esp(prepared_mol)
+                try:
+                    rval = self.calculate_esp(prepared_mol)
+                except subprocess.CalledProcessError as e:
+                    print e
+                    warnings.warn("Molecule '{}' failed charge ".format(name) +
+                                  "calculation.")
+                    rval = [None]  # list b/c conformers
             else:
-                raise e
+                rval = [None]  # list b/c conformers
         return rval
 
     def calculate_esp(self, mol):
@@ -132,11 +139,22 @@ class ESP(Featurizer):
         grids = []
         pbsa = amber_utils.PBSA(self.size, self.resolution, self.nb_cutoff,
                                 self.ionic_strength)
-        for conf in mol.GetConformers():
-            grid, center = pbsa.get_esp_grid(mol, charges, radii,
-                                             conf_id=conf.GetId())
-            assert center == (0, 0, 0)  # should be centered on the origin
-            grids.append(grid)
+        for i, conf in enumerate(mol.GetConformers()):
+            try:
+                grid, center = pbsa.get_esp_grid(mol, charges, radii,
+                                                 conf_id=conf.GetId())
+                assert center == (0, 0, 0)  # should be centered on the origin
+                grids.append(grid)
+            except subprocess.CalledProcessError as e:
+                print e
+                if mol.HasProp('_Name'):
+                    name = mol.GetProp('_Name')
+                else:
+                    name = Chem.MolToSmiles(mol, isomericSmiles=True)
+                warnings.warn(
+                    "Conformer {} of molecule '{}' failed ".format(i, name) +
+                    "ESP calculation.".format(name))
+                grids.append(None)
 
         grids = np.asarray(grids)
         return grids

@@ -187,14 +187,27 @@ class Featurizer(object):
         # - first axis = # mols
         # - second axis = max # conformers
         # - remaining axes = determined by feature shape
-        shape = (len(mols), max_confs) + features[0][0].shape
+        features_shape = None
+        for i in xrange(len(features)):
+            for j in xrange(len(features[i])):
+                if features[i][j] is not None:
+                    features_shape = features[i][0].shape
+                    break
+            if features_shape is not None:
+                break
+        if features_shape is None:
+            raise ValueError('Cannot find any features.')
+        shape = (len(mols), max_confs) + features_shape
         x = np.ma.masked_all(shape)
 
         # fill in the container
         for i, (mol, mol_features) in enumerate(zip(mols, features)):
             n_confs = max(mol.GetNumConformers(), 1)
-            x[i, :n_confs] = mol_features
-
+            try:
+                x[i, :n_confs] = mol_features
+            except ValueError:  # handle None conformer values
+                for j in xrange(n_confs):
+                    x[i, j] = mol_features[j]
         return x
 
 

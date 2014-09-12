@@ -68,15 +68,14 @@ class Antechamber(object):
         writer.close()
 
         # calculate charges and radii with Antechamber
-        _, output_filename = tempfile.mkstemp(suffix='.mpdb',
-                                              dir=self.temp_dir)
+        output_fd, output_filename = tempfile.mkstemp(suffix='.mpdb',
+                                                      dir=self.temp_dir)
+        os.close(output_fd)  # close temp file
         args = ['antechamber', '-i', input_filename, '-fi', 'sdf', '-o',
                 output_filename, '-fo', 'mpdb', '-c', self.charge_type, '-nc',
                 str(net_charge)]  # all arguments must be strings
         try:
-            subprocess.check_call(args, cwd=self.temp_dir,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+            subprocess.check_output(args, cwd=self.temp_dir)
         except subprocess.CalledProcessError as e:
             name = ''
             if mol.HasProp('_Name'):
@@ -206,24 +205,28 @@ class PBSA(object):
             Input PQR file.
         """
         # write PQR to disk
-        _, pqr_filename = tempfile.mkstemp(suffix='.pqr', dir=self.temp_dir)
+        pqr_fd, pqr_filename = tempfile.mkstemp(suffix='.pqr',
+                                                dir=self.temp_dir)
+        os.close(pqr_fd)  # close temp file
         with open(pqr_filename, 'wb') as f:
             f.write(pqr)
 
         # write PBSA parameter file
-        _, param_filename = tempfile.mkstemp(suffix='.in', dir=self.temp_dir)
+        param_fd, param_filename = tempfile.mkstemp(suffix='.in',
+                                                    dir=self.temp_dir)
+        os.close(param_fd)  # close temp file
         with open(param_filename, 'wb') as f:
             f.write(self.get_pbsa_parameter_file())
 
         # run PBSA
-        _, output_filename = tempfile.mkstemp(suffix='.out', dir=self.temp_dir)
-        os.remove(output_filename)  # PBSA won't overwrite output filename
+        output_fd, output_filename = tempfile.mkstemp(suffix='.out',
+                                                      dir=self.temp_dir)
+        os.close(output_fd)  # close temp file
+        os.remove(output_filename)  # PBSA won't overwrite existing file
         args = ['pbsa', '-i', param_filename, '-o', output_filename, '-pqr',
                 pqr_filename]
         try:
-            subprocess.check_call(args, cwd=self.temp_dir,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+            subprocess.check_output(args, cwd=self.temp_dir)
         except subprocess.CalledProcessError as e:
             with open(output_filename) as f:
                 print f.read()
