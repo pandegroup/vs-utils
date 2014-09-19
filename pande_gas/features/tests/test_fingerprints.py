@@ -36,3 +36,19 @@ class TestCircularFingerprint(unittest.TestCase):
         assert rval.shape == (1,)
         assert isinstance(rval[0], dict)
         assert len(rval[0])
+
+    def test_sparse_circular_fingerprints_with_smiles(self):
+        """
+        Test CircularFingerprint with sparse encoding and SMILES for each
+        fragment.
+        """
+        self.engine = fp.CircularFingerprint(sparse=True, smiles=True)
+        rval = self.engine([self.mol])
+        assert rval.shape == (1,)
+        assert isinstance(rval[0], dict)
+        assert len(rval[0])
+
+        # check for separate count and SMILES entries for each fragment
+        for fragment_id, value in rval[0].items():
+            assert 'count' in value
+            assert 'smiles' in value
