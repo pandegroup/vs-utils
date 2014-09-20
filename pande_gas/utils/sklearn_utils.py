@@ -18,7 +18,8 @@ from sklearn.svm import LinearSVC, SVC, SVR
 class RandomLeavePLabelOut(object):
     """
     Randomly choose a subset of possible LeavePLabelOut experiments (without
-    replacement).
+    replacement). It takes too long to enumerate all possible experiments and
+    select from that list, so we instead choose up to n_iter experiments.
 
     Parameters
     ----------
@@ -28,21 +29,64 @@ class RandomLeavePLabelOut(object):
         Number of labels to leave out of training data in each split.
     n_iter : int, optional (default 10)
         Number of experiments to perform.
+    max_attempts : int, optional (default 100)
+        Maximum number of attempts to sample a new experiment.
     random_state : int, optional
         Random state.
     """
-    def __init__(self, labels, p, n_iter=10, random_state=None):
-        self.cv = LeavePLabelOut(labels, int(p))
+    def __init__(self, labels, p, n_iter=10, max_attempts=100,
+                 random_state=None):
+        self.labels = labels
+        self.unique_labels, self.unique_inverse = np.unique(
+            labels, return_inverse=True)
+        assert p > 0 and p == int(p), 'p must be a positive integer.'
+        self.p = p
         self.rng = np.random.RandomState(random_state)
-        self.splits = self.rng.shuffle(list(self.cv))
+        self.max_attempts = max_attempts
         self.n_iter = n_iter
-        self.random_state = random_state
 
     def __iter__(self):
-        for i, (train, test) in enumerate(self.splits):
-            if i >= self.n_iter:
-                break
+        """
+        Choose up to self.n_iter experiments, failing if a new experiment
+        cannot be generated after self.max_attempts attempts.
+        """
+        states = []
+        n_attempts = 0
+        while len(states) < self.n_iter and n_attempts < self.max_attempts:
+            state = self.rng.get_state()[1][0]
+            if state in states:
+                n_attempts += 1
+                continue
+            else:
+                n_attempts = 0
+                states.append(state)
+            labels = self.unique_labels.copy()
+            self.rng.shuffle(labels)
+            train_labels = labels[:-self.p]
+            test_labels = labels[-self.p:]
+            assert not np.intersect1d(train_labels, test_labels).size
+            train = self._get_indices(train_labels)
+            test = self._get_indices(test_labels)
+            assert train.size + test.size == self.labels.size
+            assert not np.intersect1d(train, test).size
             yield train, test
+
+    def __len__(self):
+        return self.n_iter
+
+    def _get_indices(self, which_labels):
+        """
+        Get the indices of self.labels that match labels in which_labels.
+
+        Parameters
+        ----------
+        which_labels : array_like
+            Labels to select.
+        """
+        indices = np.zeros_like(self.labels, dtype=bool)
+        for label in which_labels:
+            indices[self.labels == label] = True
+        return np.where(indices)[0]  # convert mask to indices
 
 
 class DefaultGridSearch(object):

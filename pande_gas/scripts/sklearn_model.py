@@ -119,9 +119,7 @@ def guess_threshold(estimator, X, y):
     """
     Choose classification threshold that gives best AUC.
     """
-    x0 = [np.mean(estimator.predict(X))]
-    rval = optimize.minimize(_guess_threshold, x0, (estimator, X, y),
-                             options={'disp': True})
+    rval = optimize.minimize_scalar(_guess_threshold, args=(estimator, X, y))
     return rval.x
 
 
@@ -163,12 +161,22 @@ def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
     X_test, names_test = read_test_data(test_filename)
     params = sklearn_utils.DefaultGridSearch(estimator).get_params()
     p = np.ceil(np.unique(labels).size * test_size)
-    cv = sklearn_utils.RandomLeavePLabelOut(labels, p, n_iter, random_state)
-    engine = GridSearchCV(estimator, params, cv=cv, scoring='roc-auc',
-                          n_jobs=n_jobs)
+    cv = sklearn_utils.RandomLeavePLabelOut(labels, p, n_iter=n_iter,
+                                            random_state=random_state)
+    engine = GridSearchCV(estimator, params, cv=cv, scoring='roc_auc',
+                          n_jobs=n_jobs, verbose=5)
     engine.fit(X_train, y_train)
+    print 'Training performance:'
+    for score in engine.grid_scores_:
+        print score
     threshold = guess_threshold(engine, X_train, y_train)
-    y_pred = engine.predict(X_test)
+    print 'Threshold: {}'.format(threshold)
+    print 'Threshold AUC: {}'.format(
+        -_guess_threshold(threshold, engine, X_train, y_train))
+    try:
+        y_pred = engine.predict_proba(X_test)[:, 1]  # positive class
+    except AttributeError:
+        y_pred = engine.decision_function(X_test)
     save_predictions(y_pred, names_test, threshold,
                      '{}-pred.txt'.format(output_prefix))
     save_model(engine.best_estimator_, '{}-model.pkl.gz'.format(output_prefix))
