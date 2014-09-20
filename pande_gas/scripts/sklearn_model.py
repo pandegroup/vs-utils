@@ -163,12 +163,26 @@ def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
     p = np.ceil(np.unique(labels).size * test_size)
     cv = sklearn_utils.RandomLeavePLabelOut(labels, p, n_iter=n_iter,
                                             random_state=random_state)
-    engine = GridSearchCV(estimator, params, cv=cv, scoring='roc_auc',
-                          n_jobs=n_jobs, verbose=5)
-    engine.fit(X_train, y_train)
-    print 'Training performance:'
-    for score in engine.grid_scores_:
-        print score
+    if params is not None:
+        engine = GridSearchCV(estimator, params, cv=cv, scoring='roc_auc',
+                              n_jobs=n_jobs, verbose=5)
+        engine.fit(X_train, y_train)
+        print 'Training performance:'
+        for score in engine.grid_scores_:
+            print score
+    else:
+        engine = estimator
+        auc = []
+        for train, test in cv:
+            engine.fit(X_train[train], y_train[train])
+            try:
+                y_pred = engine.predict_proba(X_train[test])[:, 1]
+            except AttributeError:
+                y_pred = engine.decision_function(X_train[test])
+            auc.append(roc_auc_score(y_train[test], y_pred))
+        print 'Training performance:'
+        print 'mean: {}, std: {}'.format(np.mean(auc), np.std(auc))
+        engine.fit(X_train, y_train)  # refit
     threshold = guess_threshold(engine, X_train, y_train)
     print 'Threshold: {}'.format(threshold)
     print 'Threshold AUC: {}'.format(
