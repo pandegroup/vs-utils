@@ -193,7 +193,11 @@ def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
         y_pred = engine.decision_function(X_test)
     save_predictions(y_pred, names_test, threshold,
                      '{}-pred.txt'.format(output_prefix))
-    save_model(engine.best_estimator_, '{}-model.pkl.gz'.format(output_prefix))
+    try:
+        best_estimator = engine.best_estimator_
+    except AttributeError:
+        best_estimator = engine
+    save_model(best_estimator, '{}-model.pkl.gz'.format(output_prefix))
 
 if __name__ == '__main__':
     args = get_args()
