@@ -119,17 +119,40 @@ def guess_threshold(estimator, X, y):
     """
     Choose classification threshold that gives best AUC.
     """
-    rval = optimize.minimize_scalar(_guess_threshold, args=(estimator, X, y))
-    return rval.x
+    rval = optimize.fmin(_guess_threshold, x0=[0], args=(estimator, X, y))
+    return rval[0]
 
 
 def _guess_threshold(threshold, estimator, X, y):
     """
-    Calculate negative ROC-AUC using this classification threshold.
+    Calculate balanced accuracy using this classification threshold.
     """
-    rval = roc_auc_score(
-        y, np.asarray(estimator.predict(X) > threshold, dtype=int))
-    return -rval
+    try:
+        y_pred = estimator.predict_proba(X)[:, 1]
+    except AttributeError:
+        y_pred = estimator.decision_function(X)
+    return -balanced_accuracy(y, y_pred > threshold)
+
+
+def balanced_accuracy(y_true, y_pred):
+    """
+    Calculate the balanced accuracy, or the average class accuracy.
+
+    Parameters
+    ----------
+    y_true : array_like
+        True class labels.
+    y_pred : array_like
+        Predicted class labels.
+    """
+    assert np.all(np.in1d(np.unique(y_pred), np.unique(y_true)))
+    accuracy = []
+    for label in np.unique(y_true):
+        this = y_true == label
+        correct = np.count_nonzero(y_pred[this] == label)
+        accuracy.append(np.true_divide(correct, this.size))
+    print accuracy
+    return np.mean(accuracy)
 
 
 def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
@@ -185,7 +208,7 @@ def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
         engine.fit(X_train, y_train)  # refit
     threshold = guess_threshold(engine, X_train, y_train)
     print 'Threshold: {}'.format(threshold)
-    print 'Threshold AUC: {}'.format(
+    print 'Threshold Balanced Accuracy: {}'.format(
         -_guess_threshold(threshold, engine, X_train, y_train))
     try:
         y_pred = engine.predict_proba(X_test)[:, 1]  # positive class
