@@ -151,7 +151,6 @@ def balanced_accuracy(y_true, y_pred):
         this = y_true == label
         correct = np.count_nonzero(y_pred[this] == label)
         accuracy.append(np.true_divide(correct, this.size))
-    print accuracy
     return np.mean(accuracy)
 
 
