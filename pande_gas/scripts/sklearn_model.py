@@ -127,6 +127,7 @@ def _guess_threshold(threshold, estimator, X, y):
     """
     Calculate balanced accuracy using this classification threshold.
     """
+    # TODO: learn within folds?
     try:
         y_pred = estimator.predict_proba(X)[:, 1]
     except AttributeError:
@@ -179,12 +180,12 @@ def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
         Number of jobs to use for GridSearchCV.
     """
     estimator = sklearn_utils.resolve_estimator(estimator)
-    X_train, y_train, labels = read_training_data(train_filename)
+    X_train, y_train, clusters = read_training_data(train_filename)
     X_test, names_test = read_test_data(test_filename)
     params = sklearn_utils.DefaultGridSearch(estimator).get_params()
-    p = np.ceil(np.unique(labels).size * test_size)
-    cv = sklearn_utils.RandomLeavePLabelOut(labels, p, n_iter=n_iter,
-                                            random_state=random_state)
+    cv = sklearn_utils.StratifiedClusterKFold(
+        y_train, clusters, n_folds=n_iter, shuffle=True,
+        random_state=random_state)
     if params is not None:
         engine = GridSearchCV(estimator, params, cv=cv, scoring='roc_auc',
                               n_jobs=n_jobs, verbose=5)
