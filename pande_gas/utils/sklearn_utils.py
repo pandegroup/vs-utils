@@ -81,6 +81,9 @@ class StratifiedClusterKFold(object):
                 cluster_labels[cluster] = 0
         return cluster_labels
 
+    def __len__(self):
+        return len(self.cv)
+
 
 class RandomLeavePLabelOut(object):
     """
