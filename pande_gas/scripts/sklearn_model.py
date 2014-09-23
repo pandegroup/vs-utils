@@ -179,7 +179,7 @@ def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
     n_jobs : int, optional (default 1)
         Number of jobs to use for GridSearchCV.
     """
-    estimator = sklearn_utils.resolve_estimator(estimator)
+    estimator = sklearn_utils.resolve_estimator(estimator, random_state)
     X_train, y_train, clusters = read_training_data(train_filename)
     X_test, names_test = read_test_data(test_filename)
     params = sklearn_utils.DefaultGridSearch(estimator).get_params()

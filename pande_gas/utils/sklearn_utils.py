@@ -10,7 +10,8 @@ from collections import OrderedDict
 import numpy as np
 
 from sklearn.cross_validation import StratifiedKFold
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import (AdaBoostClassifier, GradientBoostingClassifier,
+                              RandomForestClassifier)
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import LinearSVC, SVC, SVR
@@ -182,8 +183,13 @@ class DefaultGridSearch(object):
         Get default grid search parameters.
         """
         params = False
-        if isinstance(self.estimator, GaussianNB):
+        if isinstance(self.estimator, AdaBoostClassifier):
+            params = {'learning_rate': np.logspace(-2, 0, 3)}
+        elif isinstance(self.estimator, GaussianNB):
             params = None
+        elif isinstance(self.estimator, GradientBoostingClassifier):
+            params = {'learning_rate': np.logspace(-2, 0, 3),
+                      'max_depth': np.arange(3, 6)}
         elif isinstance(self.estimator, LinearSVC):
             params = {'C': self.get_default_C_params()}
         elif isinstance(self.estimator, LogisticRegression):
@@ -229,7 +235,7 @@ class DefaultGridSearch(object):
         return np.logspace(-9, 0, 10, base=2.0)
 
 
-def resolve_estimator(name):
+def resolve_estimator(name, random_state=None):
     """
     Resolve the estimator type from a string.
 
@@ -237,9 +243,17 @@ def resolve_estimator(name):
     ----------
     name : str
         Estimator name.
+    random_state : int or RandomState, optional
+        Random state.
     """
-    if name == 'lr':
+    if name == 'ada':
+        estimator = AdaBoostClassifier(n_estimators=1000,
+                                       random_state=random_state)
+    elif name == 'lr':
         estimator = LogisticRegression()
+    elif name == 'gbt':
+        estimator = GradientBoostingClassifier(n_estimators=1000,
+                                               random_state=random_state)
     elif name == 'svm':
         estimator = SVC()
     elif name == 'lsvm':
@@ -247,7 +261,8 @@ def resolve_estimator(name):
     elif name == 'nb':
         estimator = GaussianNB()
     elif name == 'rf':
-        estimator = RandomForestClassifier(1000)
+        estimator = RandomForestClassifier(n_estimators=1000,
+                                           random_state=random_state)
     else:
         raise NotImplementedError(name)
     return estimator
