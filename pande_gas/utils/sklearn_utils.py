@@ -8,7 +8,6 @@ __license__ = "BSD 3-clause"
 
 import numpy as np
 
-from sklearn.cross_validation import LeavePLabelOut
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
