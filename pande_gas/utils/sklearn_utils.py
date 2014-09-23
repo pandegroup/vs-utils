@@ -191,9 +191,11 @@ class DefaultGridSearch(object):
             params = {'learning_rate': np.logspace(-2, 0, 3),
                       'max_depth': np.arange(3, 6)}
         elif isinstance(self.estimator, LinearSVC):
-            params = {'C': self.get_default_C_params()}
+            params = {'C': self.get_default_C_params(),
+                      'loss': ['l1', 'l2']}
         elif isinstance(self.estimator, LogisticRegression):
-            params = {'C': self.get_default_C_params()}
+            params = {'C': self.get_default_C_params(),
+                      'penalty': ['l1', 'l2']}
         elif isinstance(self.estimator, RandomForestClassifier):
             params = {'criterion': ['gini', 'entropy'],
                       'max_features': ['sqrt', 'log2']}
@@ -218,7 +220,7 @@ class DefaultGridSearch(object):
         """
         Get default parameters for C.
         """
-        return np.logspace(-5, 15, 11, base=2.0)
+        return np.logspace(-9, 15, 13, base=2.0)
 
     @staticmethod
     def get_default_gamma_params():
@@ -250,14 +252,14 @@ def resolve_estimator(name, random_state=None):
         estimator = AdaBoostClassifier(n_estimators=1000,
                                        random_state=random_state)
     elif name == 'lr':
-        estimator = LogisticRegression()
+        estimator = LogisticRegression(class_weight='auto')
     elif name == 'gbt':
         estimator = GradientBoostingClassifier(n_estimators=1000,
                                                random_state=random_state)
     elif name == 'svm':
-        estimator = SVC()
+        estimator = SVC(class_weight='auto')
     elif name == 'lsvm':
-        estimator = LinearSVC()
+        estimator = LinearSVC(class_weight='auto')
     elif name == 'nb':
         estimator = GaussianNB()
     elif name == 'rf':

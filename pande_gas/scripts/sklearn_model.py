@@ -206,6 +206,8 @@ def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
         print 'Training performance:'
         print 'mean: {}, std: {}'.format(np.mean(auc), np.std(auc))
         engine.fit(X_train, y_train)  # refit
+    print 'Best performance:', engine.best_score_
+    print 'Best params:', engine.best_params_
     threshold = guess_threshold(engine, X_train, y_train)
     print 'Threshold: {}'.format(threshold)
     print 'Threshold Balanced Accuracy: {}'.format(
