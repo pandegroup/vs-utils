@@ -6,12 +6,79 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
+from collections import OrderedDict
 import numpy as np
 
+from sklearn.cross_validation import StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import LinearSVC, SVC, SVR
+
+
+class StratifiedClusterKFold(object):
+    """
+    Cluster-based partitioning with stratification according to cluster labels.
+
+    Parameters
+    ----------
+    y : array_like
+        Class labels for compounds.
+    clusters : array_like
+        Clusters for compounds.
+    n_folds : int, optional (default 3)
+        Number of folds.
+    shuffle : bool, optional (default False)
+        Whether to shuffle before stratification.
+    random_state : int or RandomState, optional
+        Random state used for shuffling.
+    """
+    def __init__(self, y, clusters, n_folds=3, shuffle=False,
+                 random_state=None):
+        self.y = y
+        self.clusters = clusters
+        self.cluster_labels = self.get_cluster_labels()
+        self.cv = StratifiedKFold(self.cluster_labels, n_folds=n_folds,
+                                  shuffle=shuffle, random_state=random_state)
+
+    def __iter__(self):
+        """
+        Yield compounds in clusters that are separated with StratifiedKFold.
+        """
+        for cluster_train, cluster_test in self.cv:
+            train = self.get_compound_indices(cluster_train)
+            test = self.get_compound_indices(cluster_test)
+            yield train, test
+
+    def get_compound_indices(self, cluster_indices):
+        """
+        Get compound indices matching cluster indices.
+
+        Parameters
+        ----------
+        cluster_indices : array_like
+            Indices of selected clusters.
+        """
+        this_clusters = np.asarray(self.cluster_labels.keys())[cluster_indices]
+        mask = np.zeros_like(self.y, dtype=bool)
+        for cluster in this_clusters:
+            mask[self.clusters == cluster] = True
+        return np.where(mask)[0]
+
+    def get_cluster_labels(self):
+        """
+        Assign labels to clusters based on compound labels.
+
+        Clusters are marked as either 'active' or 'inactive' depending on
+        whether they contain _any_ active compounds.
+        """
+        cluster_labels = OrderedDict()
+        for cluster in np.unique(self.clusters):
+            if np.any(self.y[self.clusters == cluster]):
+                cluster_labels[cluster] = 1
+            else:
+                cluster_labels[cluster] = 0
+        return cluster_labels
 
 
 class RandomLeavePLabelOut(object):
