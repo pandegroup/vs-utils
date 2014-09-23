@@ -38,8 +38,9 @@ class StratifiedClusterKFold(object):
         self.y = y
         self.clusters = clusters
         self.cluster_labels = self.get_cluster_labels()
-        self.cv = StratifiedKFold(self.cluster_labels, n_folds=n_folds,
-                                  shuffle=shuffle, random_state=random_state)
+        self.cv = StratifiedKFold(self.cluster_labels.values(),
+                                  n_folds=n_folds, shuffle=shuffle,
+                                  random_state=random_state)
 
     def __iter__(self):
         """
@@ -61,7 +62,7 @@ class StratifiedClusterKFold(object):
         """
         this_clusters = np.asarray(self.cluster_labels.keys())[cluster_indices]
         mask = np.zeros_like(self.y, dtype=bool)
-        for cluster in this_clusters:
+        for cluster in np.atleast_1d(this_clusters):
             mask[self.clusters == cluster] = True
         return np.where(mask)[0]
 
