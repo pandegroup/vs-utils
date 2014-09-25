@@ -30,9 +30,9 @@ def get_args():
     parser.add_argument('--test', required=1,
                         help='Filename containing test set features.')
     parser.add_argument('-e', '--estimator', required=1)
-    parser.add_argument('-k', '--n_folds', type=int,
+    parser.add_argument('-k', '--n-folds', type=int,
                         help='Number of folds for K-fold CV.')
-    parser.add_argument('-n', '--n_iter', type=int)
+    parser.add_argument('-n', '--n-iter', type=int)
     parser.add_argument('--test-size', type=float,
                         help='Test set size for ShuffleSplit CV.')
     parser.add_argument('--seed', type=int)
