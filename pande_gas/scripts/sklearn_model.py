@@ -30,8 +30,11 @@ def get_args():
     parser.add_argument('--test', required=1,
                         help='Filename containing test set features.')
     parser.add_argument('-e', '--estimator', required=1)
-    parser.add_argument('-n', '--n_iter', type=int, default=10)
-    parser.add_argument('--test-size', type=float, default=0.1)
+    parser.add_argument('-k', '--n_folds', type=int,
+                        help='Number of folds for K-fold CV.')
+    parser.add_argument('-n', '--n_iter', type=int)
+    parser.add_argument('--test-size', type=float,
+                        help='Test set size for ShuffleSplit CV.')
     parser.add_argument('--seed', type=int)
     parser.add_argument('-p', '--prefix', required=1)
     parser.add_argument('-np', '--n-jobs', type=int, default=1)
@@ -155,8 +158,8 @@ def balanced_accuracy(y_true, y_pred):
     return np.mean(accuracy)
 
 
-def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
-         test_size=0.1, random_state=None, n_jobs=1):
+def main(train_filename, test_filename, estimator, output_prefix, n_folds,
+         n_iter, test_size, random_state=None, n_jobs=1):
     """
     Fit an sklearn model and predict test set labels.
 
@@ -170,9 +173,11 @@ def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
         Estimator name.
     output_prefix : str
         Prefix for output files.
-    n_iter : int, optional (default 10)
-        Number of cross-validation experiments.
-    test_size : float, optional (default 0.1)
+    n_folds : int, optional
+        Number of folds for K-fold cross-validation.
+    n_iter : int, optional
+        Number of iterations for ShuffleSplit cross validation.
+    test_size : float, optional
         Fraction of scaffolds in cross-validation test sets.
     random_state : int or RandomState, optional
         Random state.
@@ -183,9 +188,16 @@ def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
     X_train, y_train, clusters = read_training_data(train_filename)
     X_test, names_test = read_test_data(test_filename)
     params = sklearn_utils.DefaultGridSearch(estimator).get_params()
-    cv = sklearn_utils.StratifiedClusterKFold(
-        y_train, clusters, n_folds=n_iter, shuffle=True,
-        random_state=random_state)
+
+    assert n_folds or n_iter
+    if n_folds:
+        cv = sklearn_utils.StratifiedClusterKFold(
+            y_train, clusters, n_folds=n_folds, shuffle=True,
+            random_state=random_state)
+    else:
+        cv = sklearn_utils.StratifiedClusterShuffleSplit(
+            y_train, clusters, n_iter=n_iter, test_size=test_size,
+            random_state=random_state)
     if params is not None:
         engine = GridSearchCV(estimator, params, cv=cv, scoring='roc_auc',
                               n_jobs=n_jobs, verbose=5)
@@ -226,5 +238,5 @@ def main(train_filename, test_filename, estimator, output_prefix, n_iter=10,
 
 if __name__ == '__main__':
     args = get_args()
-    main(args.train, args.test, args.estimator, args.prefix, args.n_iter,
-         args.test_size, args.seed, args.n_jobs)
+    main(args.train, args.test, args.estimator, args.prefix, args.n_folds,
+         args.n_iter, args.test_size, args.seed, args.n_jobs)
