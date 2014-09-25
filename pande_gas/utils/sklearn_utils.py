@@ -9,7 +9,7 @@ __license__ = "BSD 3-clause"
 from collections import OrderedDict
 import numpy as np
 
-from sklearn.cross_validation import StratifiedKFold
+from sklearn.cross_validation import StratifiedKFold, StratifiedShuffleSplit
 from sklearn.ensemble import (AdaBoostClassifier, GradientBoostingClassifier,
                               RandomForestClassifier)
 from sklearn.linear_model import LogisticRegression
@@ -17,9 +17,9 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import LinearSVC, SVC, SVR
 
 
-class StratifiedClusterKFold(object):
+class ClusterCV(object):
     """
-    Cluster-based partitioning with stratification according to cluster labels.
+    Base class for cluster-based partitioning.
 
     Parameters
     ----------
@@ -27,25 +27,16 @@ class StratifiedClusterKFold(object):
         Class labels for compounds.
     clusters : array_like
         Clusters for compounds.
-    n_folds : int, optional (default 3)
-        Number of folds.
-    shuffle : bool, optional (default False)
-        Whether to shuffle before stratification.
-    random_state : int or RandomState, optional
-        Random state used for shuffling.
     """
-    def __init__(self, y, clusters, n_folds=3, shuffle=False,
-                 random_state=None):
+    def __init__(self, y, clusters):
         self.y = y
         self.clusters = clusters
         self.cluster_labels = self.get_cluster_labels()
-        self.cv = StratifiedKFold(self.cluster_labels.values(),
-                                  n_folds=n_folds, shuffle=shuffle,
-                                  random_state=random_state)
+        self.cv = None  # set by subclasses
 
     def __iter__(self):
         """
-        Yield compounds in clusters that are separated with StratifiedKFold.
+        Yield compounds by cluster.
         """
         for cluster_train, cluster_test in self.cv:
             train = self.get_compound_indices(cluster_train)
@@ -84,6 +75,59 @@ class StratifiedClusterKFold(object):
 
     def __len__(self):
         return len(self.cv)
+
+
+class StratifiedClusterKFold(ClusterCV):
+    """
+    Cluster-based partitioning with stratification according to cluster labels.
+
+    Parameters
+    ----------
+    y : array_like
+        Class labels for compounds.
+    clusters : array_like
+        Clusters for compounds.
+    n_folds : int, optional (default 3)
+        Number of folds.
+    shuffle : bool, optional (default False)
+        Whether to shuffle before stratification.
+    random_state : int or RandomState, optional
+        Random state used for shuffling.
+    """
+    def __init__(self, y, clusters, n_folds=3, shuffle=False,
+                 random_state=None):
+        super(StratifiedClusterKFold, self).__init__(y, clusters)
+        self.cv = StratifiedKFold(self.cluster_labels.values(),
+                                  n_folds=n_folds, shuffle=shuffle,
+                                  random_state=random_state)
+
+
+class StratifiedClusterShuffleSplit(ClusterCV):
+    """
+    Cluster-based partitioning with stratification according to cluster labels.
+
+    Parameters
+    ----------
+    y : array_like
+        Class labels for compounds.
+    clusters : array_like
+        Clusters for compounds.
+    n_iter : int, optional (default 10)
+        Number of iterations.
+    test_size : float, int, or None, optional (default 0.1)
+        Test set size.
+    train_size : float, int, or None, optional
+        Training set size.
+    random_state : int or RandomState, optional
+        Random state used for shuffling.
+    """
+    def __init__(self, y, clusters, n_iter=10, test_size=0.1, train_size=None,
+                 random_state=None):
+        super(StratifiedClusterShuffleSplit, self).__init__(y, clusters)
+        self.cv = StratifiedShuffleSplit(self.cluster_labels.values(),
+                                         n_iter=n_iter, test_size=test_size,
+                                         train_size=train_size,
+                                         random_state=random_state)
 
 
 class RandomLeavePLabelOut(object):
