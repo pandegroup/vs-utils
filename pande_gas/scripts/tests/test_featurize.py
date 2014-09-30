@@ -61,7 +61,7 @@ class TestFeaturize(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def check_output(self, featurize_args, shape, targets=None, names=None,
-                     output_suffix='.pkl'):
+                     smiles=None, output_suffix='.pkl'):
         """
         Check features shape, targets, and names.
 
@@ -77,6 +77,8 @@ class TestFeaturize(unittest.TestCase):
             Expected targets. Defaults to self.targets.
         names : list, optional
             Expected names. Defaults to self.names.
+        smiles : list, optional
+            Expected SMILES. Defaults to self.smiles.
         output_suffix : str, optional (default '.pkl')
             Suffix for output files.
         """
@@ -85,13 +87,13 @@ class TestFeaturize(unittest.TestCase):
         _, output_filename = tempfile.mkstemp(suffix=output_suffix,
                                               dir=self.temp_dir)
         input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename] + featurize_args
+                      output_filename, '--names'] + featurize_args
 
         # run script
         args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs),
-             chiral_scaffolds=args.chiral_scaffolds)
+        main(args.klass, args.input, args.output, target_filename=args.targets,
+             featurizer_kwargs=vars(args.featurizer_kwargs), names=args.names,
+             scaffolds=args.scaffolds, chiral_scaffolds=args.chiral_scaffolds)
 
         # read output file
         if output_filename.endswith('.joblib'):
@@ -108,9 +110,12 @@ class TestFeaturize(unittest.TestCase):
             targets = self.targets
         if names is None:
             names = self.names
+        if smiles is None:
+            smiles = self.smiles
         assert data['features'].shape == shape, data['features'].shape
         assert np.array_equal(data['y'], targets), data['y']
         assert np.array_equal(data['names'], names), data['names']
+        assert np.array_equal(data['smiles'], smiles), data['smiles']
 
         # return output in case anything else needs to be checked
         return data
@@ -189,7 +194,7 @@ class TestFeaturize(unittest.TestCase):
         """
         Test scaffold generation.
         """
-        data = self.check_output(['circular'], (2, 2048))
+        data = self.check_output(['--scaffolds', 'circular'], (2, 2048))
         assert Chem.MolFromSmiles(data['scaffolds'][0]).GetNumAtoms() == 6
         assert Chem.MolFromSmiles(data['scaffolds'][1]).GetNumAtoms() == 6
 
@@ -215,11 +220,12 @@ class TestFeaturize(unittest.TestCase):
         writer.close()
 
         # run script w/o chiral scaffolds
-        data = self.check_output(['circular'], (2, 2048))
+        data = self.check_output(['--scaffolds', 'circular'], (2, 2048))
         achiral_scaffold = data['scaffolds'][1]
 
         # run script w/ chiral scaffolds
-        data = self.check_output(['--chiral-scaffolds', 'circular'], (2, 2048))
+        data = self.check_output(['--scaffolds', '--chiral-scaffolds',
+                                  'circular'], (2, 2048))
         chiral_scaffold = data['scaffolds'][1]
 
         assert achiral_scaffold != chiral_scaffold
