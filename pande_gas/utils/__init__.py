@@ -9,6 +9,7 @@ __license__ = "BSD 3-clause"
 import numpy as np
 import os
 
+from rdkit import Chem
 from rdkit_utils import PicklableMol, serial
 
 
@@ -165,3 +166,47 @@ def pad_array(x, shape, fill=0, both=False):
     pad = tuple(pad)
     x = np.pad(x, pad, mode='constant', constant_values=fill)
     return x
+
+
+class SmilesMap(object):
+    """
+    Map compound names to SMILES.
+
+    Parameters
+    ----------
+    prefix : str, optional
+        Prefix to prepend to IDs.
+    """
+    def __init__(self, prefix=None):
+        self.prefix = prefix
+        self.map = {}
+
+    def add_mol(self, mol):
+        """
+        Map a molecule name to its corresponding SMILES string.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        name = mol.GetProp('_Name')
+        try:
+            int(name)  # check if this is a bare ID
+            if self.prefix is None:
+                raise TypeError('Bare IDs are not allowed.')
+        except ValueError:
+            pass
+        if self.prefix is not None:
+            name = '{}{}'.format(self.prefix, name)
+        smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+        if name in self.map and self.map[name] != smiles:
+            raise ValueError('ID collision for "{}".'.format(name))
+        else:
+            self.map[name] = smiles
+
+    def get_map(self):
+        """
+        Get the map.
+        """
+        return self.map

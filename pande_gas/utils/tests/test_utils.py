@@ -11,7 +11,7 @@ from rdkit.Chem import AllChem
 
 from rdkit_utils import serial
 
-from .. import DatasetSharder, pad_array
+from .. import DatasetSharder, pad_array, SmilesMap
 
 
 class TestDatasetSharder(unittest.TestCase):
@@ -142,3 +142,75 @@ class TestMiscUtils(unittest.TestCase):
         x = np.random.random((5, 6))
         assert pad_array(x, (10, 12)).shape == (10, 12)
         assert pad_array(x, 10).shape == (10, 10)
+
+
+class TestSmilesMap(unittest.TestCase):
+    """
+    Test SmilesMap.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        smiles = ['CC(=O)OC1=CC=CC=C1C(=O)O', 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O',
+                  'CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F']
+        names = ['aspirin', 'ibuprofen', 'celecoxib']
+        self.cids = [2244, 3672, 2662]
+        self.mols = []
+        for s, n in zip(smiles, names):
+            mol = Chem.MolFromSmiles(s)
+            mol.SetProp('_Name', n)
+            self.mols.append(mol)
+        self.map = SmilesMap()
+
+    def test_add_mol(self):
+        """
+        Test SmilesMap.add_mol.
+        """
+        for mol in self.mols:
+            self.map.add_mol(mol)
+        smiles_map = self.map.get_map()
+        for mol in self.mols:
+            assert smiles_map[mol.GetProp('_Name')] == Chem.MolToSmiles(
+                mol, isomericSmiles=True)
+
+    def test_add_bare_id(self):
+        """
+        Test failure when adding bare IDs.
+        """
+        for mol, cid in zip(self.mols, self.cids):
+            mol.SetProp('_Name', str(cid))
+        try:
+            for mol in self.mols:
+                self.map.add_mol(mol)
+                raise AssertionError
+        except TypeError:
+            pass
+
+    def test_add_bare_id_with_prefix(self):
+        """
+        Test success when adding bare IDs with a prefix set.
+        """
+        self.map = SmilesMap('CID')
+        for mol, cid in zip(self.mols, self.cids):
+            mol.SetProp('_Name', str(cid))
+        for mol in self.mols:
+            self.map.add_mol(mol)
+        smiles_map = self.map.get_map()
+        for mol in self.mols:
+            assert (smiles_map['CID{}'.format(mol.GetProp('_Name'))] ==
+                    Chem.MolToSmiles(mol, isomericSmiles=True))
+
+    def test_add_different_duplicate(self):
+        """
+        Test failure when adding a duplicate ID with a different SMILES string.
+        """
+        new = Chem.Mol(self.mols[0])
+        new.SetProp('_Name', 'celecoxib')
+        self.mols.append(new)
+        try:
+            for mol in self.mols:
+                self.map.add_mol(mol)
+            raise AssertionError
+        except ValueError:
+            pass
