@@ -3,6 +3,7 @@ Tests for parse_pcba_targets.py.
 """
 import cPickle
 import numpy as np
+import os
 import shutil
 import tempfile
 import unittest
@@ -31,7 +32,10 @@ class TestParsePcbaTargets(unittest.TestCase):
                                                 suffix='.pkl')
         with open(self.map_filename, 'wb') as f:
             cPickle.dump(self.map, f, cPickle.HIGHEST_PROTOCOL)
-        self.data_filename = 'data/test_assay_data.csv'  # modified AID588342
+
+        # use a subset of AID588342
+        this_dir = os.path.split(os.path.realpath(__file__))[0]
+        self.data_filename = os.path.join(this_dir, 'data/test_assay_data.csv')
         _, self.output_filename = tempfile.mkstemp(dir=self.temp_dir,
                                                    suffix='.pkl')
 
