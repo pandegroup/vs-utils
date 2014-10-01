@@ -25,14 +25,18 @@ class TestFeaturize(unittest.TestCase):
         Set up for tests. Writes molecules and targets to files.
         """
         self.temp_dir = tempfile.mkdtemp()
-        smiles = ['CC(=O)OC1=CC=CC=C1C(=O)O', 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O']
+        smiles = ['CC(=O)OC1=CC=CC=C1C(=O)O',
+                  'C[C@@H](C1=CC=C(C=C1)CC(C)C)C(=O)O']
         self.names = ['aspirin', 'ibuprofen']
         engine = conformers.ConformerGenerator(max_conformers=1)
         self.mols = []
+        self.smiles = []  # use RDKit-generated SMILES
         for i in xrange(len(smiles)):
             mol = Chem.MolFromSmiles(smiles[i])
             mol.SetProp('_Name', self.names[i])
             self.mols.append(engine.generate_conformers(mol))
+            self.smiles.append(Chem.MolToSmiles(mol, isomericSmiles=True,
+                                                canonical=True))
 
         # write mols
         _, self.input_filename = tempfile.mkstemp(suffix='.sdf',
@@ -210,6 +214,7 @@ class TestFeaturize(unittest.TestCase):
         AllChem.Compute2DCoords(mol)
         self.mols[1] = mol
         self.names[1] = 'romosetron'
+        self.smiles[1] = Chem.MolToSmiles(mol, isomericSmiles=True)
 
         # write mols
         _, self.input_filename = tempfile.mkstemp(suffix='.sdf',
@@ -242,7 +247,7 @@ class TestFeaturize(unittest.TestCase):
 
         # run script
         self.check_output(['circular'], (1, 2048), targets=targets['y'],
-                          names=targets['names'])
+                          names=targets['names'], smiles=[self.smiles[1]])
 
     def test_collate_mols2(self):
         """
@@ -262,7 +267,7 @@ class TestFeaturize(unittest.TestCase):
 
         # run script
         self.check_output(['circular'], (1, 2048), targets=[0],
-                          names=['aspirin'])
+                          names=['aspirin'], smiles=[self.smiles[0]])
 
     def test_collate_mols3(self):
         """

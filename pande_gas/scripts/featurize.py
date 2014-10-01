@@ -178,8 +178,8 @@ def main(featurizer_class, input_filename, output_filename,
     print "Saving results..."
     data['features'] = features
     data['smiles'] = np.asarray(
-        [Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
-         for mol in mols])
+        [Chem.MolToSmiles(Chem.RemoveHs(mol), isomericSmiles=True,
+                          canonical=True) for mol in mols])
     if names:
         data['names'] = mol_names
     if scaffolds:
