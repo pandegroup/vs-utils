@@ -176,9 +176,12 @@ class SmilesMap(object):
     ----------
     prefix : str, optional
         Prefix to prepend to IDs.
+    remove_hydrogens : bool, optional (default True)
+        Whether to remove hydrogens prior to generating SMILES.
     """
-    def __init__(self, prefix=None):
+    def __init__(self, prefix=None, remove_hydrogens=True):
         self.prefix = prefix
+        self.remove_hydrogens = remove_hydrogens
         self.map = {}
 
     def add_mol(self, mol):
@@ -199,11 +202,14 @@ class SmilesMap(object):
             pass
         if self.prefix is not None:
             name = '{}{}'.format(self.prefix, name)
+        if self.remove_hydrogens:
+            mol = Chem.RemoveHs(mol)
         smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
         if name in self.map and self.map[name] != smiles:
             raise ValueError('ID collision for "{}".'.format(name))
         else:
             self.map[name] = smiles
+        return smiles
 
     def get_map(self):
         """

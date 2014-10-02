@@ -20,6 +20,7 @@ from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit_utils import serial
 
 from pande_gas.features import get_featurizers
+from pande_gas.utils import SmilesMap
 from pande_gas.utils.parallel_utils import LocalCluster
 
 
@@ -41,6 +42,7 @@ def parse_args(input_args=None):
                         help='Whether to include chirality in scaffolds.')
     parser.add_argument('-t', '--targets',
                         help='Molecule targets.')
+    parser.add_argument('--smiles-hydrogens', action='store_true')
     parser.add_argument('--scaffolds', action='store_true',
                         help='Whether to calculate molecule scaffolds.')
     parser.add_argument('--names', action='store_true',
@@ -93,7 +95,7 @@ def parse_args(input_args=None):
     args.featurizer_kwargs = parser.parse_args(input_args)
     for arg in ['input', 'output', 'klass', 'targets', 'parallel',
                 'cluster_id', 'n_engines', 'compression_level',
-                'names', 'scaffolds', 'chiral_scaffolds']:
+                'smiles_hydrogens', 'names', 'scaffolds', 'chiral_scaffolds']:
         setattr(args, arg, getattr(args.featurizer_kwargs, arg))
         delattr(args.featurizer_kwargs, arg)
     return args
@@ -115,8 +117,9 @@ class HelpFormatter(argparse.RawTextHelpFormatter):
 
 def main(featurizer_class, input_filename, output_filename,
          target_filename=None, featurizer_kwargs=None, parallel=False,
-         client_kwargs=None, view_flags=None, compression_level=3, names=False,
-         scaffolds=False, chiral_scaffolds=False):
+         client_kwargs=None, view_flags=None, compression_level=3,
+         smiles_hydrogens=False, names=False, scaffolds=False,
+         chiral_scaffolds=False):
     """
     Featurize molecules in input_filename using the given featurizer.
 
@@ -143,6 +146,8 @@ def main(featurizer_class, input_filename, output_filename,
         Flags for IPython.parallel LoadBalancedView.
     compression_level : int, optional (default 3)
         Compression level (0-9) to use with joblib.dump.
+    smiles_hydrogens : bool, optional (default False)
+        Whether to keep hydrogens when generating SMILES.
     names : bool, optional (default False)
         Whether to include molecule names in output.
     scaffolds : bool, optional (default False)
@@ -177,9 +182,12 @@ def main(featurizer_class, input_filename, output_filename,
     # fill in data container
     print "Saving results..."
     data['features'] = features
-    data['smiles'] = np.asarray(
-        [Chem.MolToSmiles(Chem.RemoveHs(mol), isomericSmiles=True,
-                          canonical=True) for mol in mols])
+
+    # calculate SMILES
+    smiles = SmilesMap(prefix='', remove_hydrogens=(not smiles_hydrogens))
+    data['smiles'] = np.asarray([smiles.add_mol(mol) for mol in mols])
+
+    # names, scaffolds, args
     if names:
         data['names'] = mol_names
     if scaffolds:
@@ -340,5 +348,5 @@ if __name__ == '__main__':
     # run main function
     main(args.klass, args.input, args.output, args.targets,
          vars(args.featurizer_kwargs), args.parallel, client_kwargs,
-         view_flags, args.compression_level, args.names, args.scaffolds,
-         args.chiral_scaffolds)
+         view_flags, args.compression_level, args.smiles_hydrogens, args.names,
+         args.scaffolds, args.chiral_scaffolds)

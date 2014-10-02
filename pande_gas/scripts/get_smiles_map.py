@@ -13,7 +13,7 @@ import gzip
 
 from rdkit_utils import serial
 
-from ..utils import SmilesMap
+from pande_gas.utils import SmilesMap
 
 
 def parse_args(input_args=None):
