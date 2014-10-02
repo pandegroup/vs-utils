@@ -32,10 +32,12 @@ def parse_args(input_args=None):
                         help='Output filename.')
     parser.add_argument('-p', '--prefix',
                         help='Prefix to prepend to molecule IDs.')
+    parser.add_argument('-u', '--update', action='store_true',
+                        help='Update existing map with same output filename.')
     return parser.parse_args(input_args)
 
 
-def main(input_filenames, output_filename, id_prefix=None):
+def main(input_filenames, output_filename, id_prefix=None, update=False):
     """
     Get SMILES for compounds and map to compound names.
 
@@ -47,8 +49,22 @@ def main(input_filenames, output_filename, id_prefix=None):
         Output filename.
     id_prefix : str, optional
         Prefix to prepend to IDs.
+    update : bool, optional (default False)
+        Whether to update an existing map with the same output filename. If
+        False, a new map will be generated using only the input file(s).
     """
     smiles = SmilesMap(id_prefix)
+
+    # update existing map
+    if update:
+        if output_filename.endswith('.gz'):
+            f = gzip.open(output_filename)
+        else:
+            f = open(output_filename)
+        current_map = cPickle.load(f)
+        f.close()
+        smiles.map = current_map
+
     for input_filename in input_filenames:
         print input_filename
         with serial.MolReader().open(input_filename) as reader:
@@ -63,4 +79,4 @@ def main(input_filenames, output_filename, id_prefix=None):
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.input, args.output, args.prefix)
+    main(args.input, args.output, args.prefix, args.update)

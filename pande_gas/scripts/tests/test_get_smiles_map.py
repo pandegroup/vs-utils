@@ -47,6 +47,7 @@ class TestGetSmilesMap(unittest.TestCase):
         main(args.input, args.output, args.prefix)
         with open(self.output_filename) as f:
             data = cPickle.load(f)
+        assert len(data) == len(self.smiles)
         for smile, cid in zip(self.smiles, self.cids):
             assert data['CID{}'.format(cid)] == Chem.MolToSmiles(
                 Chem.MolFromSmiles(smile), isomericSmiles=True)
@@ -62,3 +63,27 @@ class TestGetSmilesMap(unittest.TestCase):
             raise AssertionError
         except TypeError:
             pass
+
+    def test_update(self):
+        """
+        Test update existing map.
+        """
+        args = parse_args(['-i', self.input_filename, '-o',
+                           self.output_filename, '-p', 'CID'])
+        main(args.input, args.output, args.prefix, args.update)
+
+        # add another molecule
+        self.smiles.append('CC(=O)NC1=CC=C(C=C1)O')
+        self.cids.append(1983)
+        with open(self.input_filename, 'wb') as f:
+            for smile, cid in zip(self.smiles, self.cids):
+                f.write('{}\t{}\n'.format(smile, cid))
+
+        # update existing map
+        main(args.input, args.output, args.prefix, True)
+        with open(self.output_filename) as f:
+            data = cPickle.load(f)
+        assert len(data) == len(self.smiles)
+        for smile, cid in zip(self.smiles, self.cids):
+            assert data['CID{}'.format(cid)] == Chem.MolToSmiles(
+                Chem.MolFromSmiles(smile), isomericSmiles=True)
