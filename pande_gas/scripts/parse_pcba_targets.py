@@ -91,12 +91,13 @@ def map_smiles(df, id_map):
     smiles = []
     indices = []
     for i, cid in enumerate(df.PUBCHEM_CID):
+        if np.isnan(cid):
+            continue
+        cid = int(cid)  # CIDs are often read as floats
         name = 'CID{}'.format(cid)  # no bare IDs in map
-        try:
+        if name in id_map:
             smiles.append(id_map[name])
             indices.append(i)
-        except KeyError:
-            pass
     return np.asarray(smiles), np.asarray(indices)
 
 
