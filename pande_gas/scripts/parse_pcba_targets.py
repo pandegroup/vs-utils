@@ -30,11 +30,8 @@ def parse_args(input_args=None):
                         help='Molecule ID to SMILES map.')
     parser.add_argument('-o', '--output', required=1,
                         help='Output filename.')
-    subparsers = parser.add_subparsers(dest='subcommand')
-    subparsers.add_parser('classification')
-    regression = subparsers.add_parser('regression')
-    regression.add_argument('columns', nargs='+',
-                            help='Column indices to include.')
+    parser.add_argument('-c', '--cols', nargs='+',
+                        help='Column indices to include.')
     return parser.parse_args(input_args)
 
 
@@ -93,7 +90,7 @@ def map_smiles(df, id_map):
     for i, cid in enumerate(df.PUBCHEM_CID):
         if np.isnan(cid):
             continue
-        cid = int(cid)  # CIDs are often read as floats
+        cid = int(cid)  # CIDs are often read in as floats
         name = 'CID{}'.format(cid)  # no bare IDs in map
         if name in id_map:
             smiles.append(id_map[name])
@@ -123,28 +120,7 @@ def save(smiles, targets, filename):
     f.close()
 
 
-def classification_main(input_filename, map_filename, output_filename):
-    """
-    Get classification targets.
-
-    Parameters
-    ----------
-    input_filename : str
-        PCBA data filename.
-    map_filename : str
-        ID->SMILES map filename.
-    output_filename : str
-        Output filename.
-    """
-    df = read_pcba_data(input_filename)
-    id_map = read_map(map_filename)
-    smiles, indices = map_smiles(df, id_map)
-    print indices.size
-    targets = np.asarray(df.PUBCHEM_ACTIVITY_OUTCOME == 'Active')[indices]
-    save(smiles, targets, output_filename)
-
-
-def regression_main(input_filename, map_filename, output_filename, cols):
+def main(input_filename, map_filename, output_filename, cols=None):
     """
     Get regression targets.
 
@@ -156,26 +132,28 @@ def regression_main(input_filename, map_filename, output_filename, cols):
         ID->SMILES map filename.
     output_filename : str
         Output filename.
-    cols : list
-        Column indices to include.
+    cols : list, optional
+        Column indices to include. If None, compounds are classified by
+        activity.
     """
-    cols = np.asarray(cols, dtype=int)
     df = read_pcba_data(input_filename)
-    print "Extracting data from the following columns:"
-    for i in cols:
-        print '\t', df.columns[i]
     id_map = read_map(map_filename)
     smiles, indices = map_smiles(df, id_map)
-    print indices.size
-    targets = np.zeros((df.shape[0], len(cols)), dtype=float)
-    for i, idx in enumerate(cols):
-        targets[:, i] = df[df.columns[idx]]
-    targets = targets[indices]
+    if cols is not None:
+        cols = np.asarray(cols, dtype=int)
+        print "Extracting data from the following columns:"
+        for i in cols:
+            print '\t', df.columns[i]
+        targets = np.zeros((df.shape[0], len(cols)), dtype=float)
+        for i, idx in enumerate(cols):
+            targets[:, i] = df[df.columns[idx]]
+    else:
+        targets = np.asarray(df.PUBCHEM_ACTIVITY_OUTCOME == 'Active')
+    print '{}/{}'.format(indices.size,
+                         np.count_nonzero(~np.isnan(df.PUBCHEM_CID)))
+    targets = targets[indices]  # reduce to matched structures
     save(smiles, targets, output_filename)
 
 if __name__ == '__main__':
     args = parse_args()
-    if args.subcommand == 'classification':
-        classification_main(args.input, args.map, args.output)
-    elif args.subcommand == 'regression':
-        regression_main(args.input, args.map, args.output, args.columns)
+    main(args.input, args.map, args.output, args.cols)

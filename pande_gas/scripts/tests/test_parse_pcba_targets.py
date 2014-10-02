@@ -8,8 +8,7 @@ import shutil
 import tempfile
 import unittest
 
-from pande_gas.scripts.parse_pcba_targets import (
-    classification_main, parse_args, regression_main)
+from pande_gas.scripts.parse_pcba_targets import main, parse_args
 
 
 class TestParsePcbaTargets(unittest.TestCase):
@@ -55,10 +54,7 @@ class TestParsePcbaTargets(unittest.TestCase):
             Arguments.
         """
         args = parse_args(input_args)
-        if args.subcommand == 'classification':
-            classification_main(args.input, args.map, args.output)
-        elif args.subcommand == 'regression':
-            regression_main(args.input, args.map, args.output, args.columns)
+        main(args.input, args.map, args.output, args.cols)
         with open(self.output_filename) as f:
             data = cPickle.load(f)
         assert len(data['smiles']) == len(data['targets']) == 2
@@ -69,7 +65,7 @@ class TestParsePcbaTargets(unittest.TestCase):
         Test classification.
         """
         args = ['-i', self.data_filename, '-m', self.map_filename, '-o',
-                self.output_filename, 'classification']
+                self.output_filename]
         data = self.run_script(args)
         idx = np.where(data['smiles'] == self.map['CID2997889'])[0][0]
         assert data['targets'][idx]  # marked Active
@@ -83,7 +79,7 @@ class TestParsePcbaTargets(unittest.TestCase):
         columns = ['7', '8', '12', '14', '15', '20', '22', '23', '24', '25',
                    '26']
         args = ['-i', self.data_filename, '-m', self.map_filename, '-o',
-                self.output_filename, 'regression'] + columns
+                self.output_filename, '-c'] + columns
         data = self.run_script(args)
         idx = np.where(data['smiles'] == self.map['CID2997889'])[0][0]
         assert not np.any(np.isnan(data['targets'][idx]))
