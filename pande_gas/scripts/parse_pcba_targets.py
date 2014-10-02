@@ -139,6 +139,7 @@ def classification_main(input_filename, map_filename, output_filename):
     df = read_pcba_data(input_filename)
     id_map = read_map(map_filename)
     smiles, indices = map_smiles(df, id_map)
+    print indices.size
     targets = np.asarray(df.PUBCHEM_ACTIVITY_OUTCOME == 'Active')[indices]
     save(smiles, targets, output_filename)
 
@@ -165,6 +166,7 @@ def regression_main(input_filename, map_filename, output_filename, cols):
         print '\t', df.columns[i]
     id_map = read_map(map_filename)
     smiles, indices = map_smiles(df, id_map)
+    print indices.size
     targets = np.zeros((df.shape[0], len(cols)), dtype=float)
     for i, idx in enumerate(cols):
         targets[:, i] = df[df.columns[idx]]
