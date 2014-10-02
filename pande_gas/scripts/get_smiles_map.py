@@ -26,8 +26,8 @@ def parse_args(input_args=None):
         Input arguments. If not provided, defaults to sys.argv[1:].
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', required=1,
-                        help='Input molecule filename.')
+    parser.add_argument('-i', '--input', required=1, nargs='+',
+                        help='Input molecule filename(s).')
     parser.add_argument('-o', '--output', required=1,
                         help='Output filename.')
     parser.add_argument('-p', '--prefix',
@@ -35,23 +35,25 @@ def parse_args(input_args=None):
     return parser.parse_args(input_args)
 
 
-def main(input_filename, output_filename, id_prefix=None):
+def main(input_filenames, output_filename, id_prefix=None):
     """
     Get SMILES for compounds and map to compound names.
 
     Parameters
     ----------
-    input_filename : str
-        Input molecule filename.
+    input_filenames : list
+        Input molecule filenames.
     output_filename : str
         Output filename.
     id_prefix : str, optional
         Prefix to prepend to IDs.
     """
     smiles = SmilesMap(id_prefix)
-    with serial.MolReader().open(input_filename) as reader:
-        for mol in reader:
-            smiles.add_mol(mol)
+    for input_filename in input_filenames:
+        print input_filename
+        with serial.MolReader().open(input_filename) as reader:
+            for mol in reader:
+                smiles.add_mol(mol)
     if output_filename.endswith('.gz'):
         f = gzip.open(output_filename, 'wb')
     else:
