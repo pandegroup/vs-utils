@@ -15,7 +15,6 @@ import inspect
 import joblib
 import numpy as np
 
-from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit_utils import serial
 
@@ -160,8 +159,12 @@ def main(featurizer_class, input_filename, output_filename,
     # get targets
     data = {}
     if target_filename is not None:
-        with open(target_filename) as f:
-            targets = cPickle.load(f)
+        if target_filename.endswith('.gz'):
+            f = gzip.open(target_filename)
+        else:
+            f = open(target_filename)
+        targets = cPickle.load(f)
+        f.close()
         if isinstance(targets, dict):
             mol_indices, target_indices = collate_mols(
                 mols, mol_names, targets['y'], targets['names'])
