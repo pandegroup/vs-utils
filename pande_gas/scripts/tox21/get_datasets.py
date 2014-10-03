@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 """
 Get Tox21 challenge datasets.
+
+Notes:
+* Some SMILES strings are represented by multiple compounds, with some overlap
+of assays. These compounds need to be condensed and their assay outcomes need
+to be reconciled.
 """
 
 __author__ = "Steven Kearnes"
@@ -10,7 +15,10 @@ __license__ = "3-clause BSD"
 import argparse
 import cPickle
 import numpy as np
+
 from rdkit_utils import serial
+
+from pande_gas.utils import SmilesMap
 
 
 def get_args():
@@ -37,10 +45,11 @@ def main(input_filename):
     dataset_names = ['NR-AR', 'NR-AhR', 'NR-AR-LBD', 'NR-ER', 'NR-ER-LBD',
                      'NR-Aromatase', 'NR-PPAR-gamma', 'SR-ARE', 'SR-ATAD5',
                      'SR-HSE', 'SR-MMP', 'SR-p53']
-    mols = {dataset: [] for dataset in dataset_names}
-    targets = {dataset: [] for dataset in dataset_names}
+    engine = SmilesMap()
+    data = {dataset: {} for dataset in dataset_names}
     skipped = []
     for mol in reader.get_mols():
+        smiles = engine.add_mol(mol)
         for prop in list(mol.GetPropNames()):
             if prop in dataset_names:
                 mols[prop].append(mol)
