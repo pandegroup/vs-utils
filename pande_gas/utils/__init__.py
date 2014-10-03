@@ -213,7 +213,14 @@ class SmilesMap(object):
             if self.map[name] != smiles:
                 raise ValueError('ID collision for "{}".'.format(name))
         elif smiles in self.map.values():  # only if name is not already used
-            raise ValueError('SMILES collision: {}'.format(smiles))
+            other = None
+            for key, val in self.map.items():
+                if val == smiles:
+                    other = key
+                    break
+            raise ValueError(
+                'SMILES collision between "{}" and "{}":\n\t{}'.format(
+                    name, other, smiles))
         else:
             self.map[name] = smiles
         return smiles
