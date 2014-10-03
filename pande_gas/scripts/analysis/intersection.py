@@ -76,8 +76,8 @@ def main(input_filenames, output_prefix, n_jobs=1):
                       'total': total}, f, cPickle.HIGHEST_PROTOCOL)
 
     # mask self-intersections
-    #inter.mask = np.zeros_like(inter)
-    #inter.mask[np.diag_indices_from(inter)] = True
+    # inter.mask = np.zeros_like(inter)
+    # inter.mask[np.diag_indices_from(inter)] = True
 
     # calculate fractional intersections (breaks symmetry)
     inter = np.true_divide(inter, total)
