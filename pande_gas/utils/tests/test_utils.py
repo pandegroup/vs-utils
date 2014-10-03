@@ -201,12 +201,26 @@ class TestSmilesMap(unittest.TestCase):
             assert (smiles_map['CID{}'.format(mol.GetProp('_Name'))] ==
                     Chem.MolToSmiles(mol, isomericSmiles=True))
 
-    def test_add_different_duplicate(self):
+    def test_fail_on_duplicate_id(self):
         """
         Test failure when adding a duplicate ID with a different SMILES string.
         """
         new = Chem.Mol(self.mols[0])
         new.SetProp('_Name', 'celecoxib')
+        self.mols.append(new)
+        try:
+            for mol in self.mols:
+                self.map.add_mol(mol)
+            raise AssertionError
+        except ValueError:
+            pass
+
+    def test_fail_on_duplicate_smiles(self):
+        """
+        Test failure when adding a duplicate SMILES with a different ID.
+        """
+        new = Chem.Mol(self.mols[0])
+        new.SetProp('_Name', 'fakedrug')
         self.mols.append(new)
         try:
             for mol in self.mols:

@@ -207,6 +207,8 @@ class SmilesMap(object):
         smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
         if name in self.map and self.map[name] != smiles:
             raise ValueError('ID collision for "{}".'.format(name))
+        elif smiles in self.map.values():
+            raise ValueError('SMILES collision: {}'.format(smiles))
         else:
             self.map[name] = smiles
         return smiles
