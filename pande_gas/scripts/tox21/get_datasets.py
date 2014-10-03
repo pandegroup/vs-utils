@@ -6,6 +6,8 @@ Notes:
 * Some SMILES strings are represented by multiple compounds, with some overlap
 of assays. These compounds need to be condensed and their assay outcomes need
 to be reconciled.
+* For compounds with activities that do not agree...look at the assays if
+possible.
 """
 
 __author__ = "Steven Kearnes"
@@ -14,11 +16,12 @@ __license__ = "3-clause BSD"
 
 import argparse
 import cPickle
+import gzip
 import numpy as np
 
-from rdkit_utils import serial
+from rdkit import Chem
 
-from pande_gas.utils import SmilesMap
+from rdkit_utils import serial
 
 
 def get_args():
@@ -45,37 +48,57 @@ def main(input_filename):
     dataset_names = ['NR-AR', 'NR-AhR', 'NR-AR-LBD', 'NR-ER', 'NR-ER-LBD',
                      'NR-Aromatase', 'NR-PPAR-gamma', 'SR-ARE', 'SR-ATAD5',
                      'SR-HSE', 'SR-MMP', 'SR-p53']
-    engine = SmilesMap()
     data = {dataset: {} for dataset in dataset_names}
     skipped = []
     for mol in reader.get_mols():
-        smiles = engine.add_mol(mol)
+        smiles = Chem.MolToSmiles(Chem.RemoveHs(mol), isomericSmiles=True,
+                                  canonical=True)
         for prop in list(mol.GetPropNames()):
             if prop in dataset_names:
-                mols[prop].append(mol)
-                targets[prop].append(int(mol.GetProp(prop)))
+                score = int(mol.GetProp(prop))
+                if smiles not in data[prop]:
+                    data[prop][smiles] = []
+                data[prop][smiles].append(score)
             else:  # make sure we don't miss anything important
                 if prop not in skipped:
                     skipped.append(prop)
                     print "Skipping property '{}'".format(prop)
                 continue
 
-    # check that each dataset has at least one molecule
+    # reconcile activity differences
     for dataset in dataset_names:
-        assert len(mols[dataset])
-        assert len(mols[dataset]) == len(targets[dataset])
-        targets[dataset] = np.asarray(targets[dataset], dtype=int)
-        print '{}\t{}\t{}'.format(dataset,
-                                  np.count_nonzero(targets[dataset] == 1),
-                                  np.count_nonzero(targets[dataset] == 0))
+        for smiles, targets in data[dataset].items():
+            targets = np.asarray(targets, dtype=int)
+            if len(targets) == 1:
+                data[dataset][smiles] = targets[0]
+            elif np.all(targets == 0):
+                data[dataset][smiles] = 0
+            elif np.all(targets == 1):
+                data[dataset][smiles] = 1
+            else:
+                # take the max: active if active in at least one assay
+                data[dataset][smiles] = max(targets)
 
     # save individual datasets
     for dataset in dataset_names:
-        writer = serial.MolWriter()
-        writer.open('{}.sdf.gz'.format(dataset))
-        writer.write(mols[dataset])
+        assert len(data[dataset])  # check for at least one molecule
+
+        # build mol and target arrays
+        mols = []
+        targets = []
+        for mol, target in data[dataset].items():
+            mols.append(mol)
+            targets.append(target)
+        targets = np.asarray(targets, dtype=int)
+        pos = np.count_nonzero(targets == 1)
+        neg = np.count_nonzero(targets == 0)
+        assert pos + neg == targets.size
+        print '{}\t{}\t{}'.format(dataset, pos, neg)
+        with gzip.open('{}.ism.gz'.format(dataset), 'wb') as f:
+            for i, mol in enumerate(mols):
+                f.write('{}\t{}\n'.format(mol, '{}-{}'.format(dataset, i)))
         with open('{}-targets.pkl'.format(dataset), 'wb') as f:
-            cPickle.dump(targets[dataset], f, cPickle.HIGHEST_PROTOCOL)
+            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
 
 if __name__ == '__main__':
     args = get_args()
