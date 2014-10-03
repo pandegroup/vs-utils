@@ -9,6 +9,7 @@ __license__ = "BSD 3-clause"
 import numpy as np
 import os
 
+from rdkit import Chem
 from rdkit_utils import PicklableMol, serial
 
 
@@ -165,3 +166,67 @@ def pad_array(x, shape, fill=0, both=False):
     pad = tuple(pad)
     x = np.pad(x, pad, mode='constant', constant_values=fill)
     return x
+
+
+class SmilesMap(object):
+    """
+    Map compound names to SMILES.
+
+    Parameters
+    ----------
+    prefix : str, optional
+        Prefix to prepend to IDs.
+    remove_hydrogens : bool, optional (default True)
+        Whether to remove hydrogens prior to generating SMILES.
+    """
+    def __init__(self, prefix=None, remove_hydrogens=True):
+        self.prefix = prefix
+        self.remove_hydrogens = remove_hydrogens
+        self.map = {}
+
+    def add_mol(self, mol):
+        """
+        Map a molecule name to its corresponding SMILES string.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        name = mol.GetProp('_Name')
+        try:
+            int(name)  # check if this is a bare ID
+            if self.prefix is None:
+                raise TypeError('Bare IDs are not allowed.')
+        except ValueError:
+            pass
+        if self.prefix is not None:
+            name = '{}{}'.format(self.prefix, name)
+        if self.remove_hydrogens:
+            mol = Chem.RemoveHs(mol)
+        smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+
+        # Failures:
+        # * Name is already mapped to a different SMILES
+        # * SMILES is already used for a different name
+        if name in self.map:  # catch all cases where name is already used
+            if self.map[name] != smiles:
+                raise ValueError('ID collision for "{}".'.format(name))
+        elif smiles in self.map.values():  # only if name is not already used
+            other = None
+            for key, val in self.map.items():
+                if val == smiles:
+                    other = key
+                    break
+            raise ValueError(
+                'SMILES collision between "{}" and "{}":\n\t{}'.format(
+                    name, other, smiles))
+        else:
+            self.map[name] = smiles
+        return smiles
+
+    def get_map(self):
+        """
+        Get the map.
+        """
+        return self.map
