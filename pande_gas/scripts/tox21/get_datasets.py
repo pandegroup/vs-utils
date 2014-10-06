@@ -31,10 +31,13 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('input',
                         help='Input filename.')
+    parser.add_argument('--merge', choices=['max', 'min', 'majority-',
+                                            'majority+'],
+                        help='Target merge strategy.')
     return parser.parse_args()
 
 
-def main(input_filename):
+def main(input_filename, merge):
     """
     Get Tox21 chellenge datasets.
 
@@ -42,6 +45,8 @@ def main(input_filename):
     ----------
     input_filename : str
         Input filename.
+    merge : str
+        Target merge strategy.
     """
     reader = serial.MolReader()
     reader.open(input_filename)
@@ -76,8 +81,15 @@ def main(input_filename):
             elif np.all(targets == 1):
                 data[dataset][smiles] = 1
             else:
-                # take the max: active if active in at least one assay
-                data[dataset][smiles] = max(targets)
+                if merge == 'max':
+                    data[dataset][smiles] = max(targets)
+                elif merge == 'min':
+                    data[dataset][smiles] = min(targets)
+                elif merge == 'majority-':  # 0.5 rounds down
+                    data[dataset][smiles] = int(np.round(np.mean(targets)))
+                elif merge == 'majority+':  # 0.5 rounds up
+                    data[dataset][smiles] = (int(np.round(
+                        np.mean(targets) + 1)) - 1)
 
     # save individual datasets
     for dataset in dataset_names:
@@ -102,4 +114,4 @@ def main(input_filename):
 
 if __name__ == '__main__':
     args = get_args()
-    main(args.input)
+    main(args.input, args.merge)
