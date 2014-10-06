@@ -32,7 +32,7 @@ def get_args():
     parser.add_argument('input',
                         help='Input filename.')
     parser.add_argument('--merge', choices=['max', 'min', 'majority-',
-                                            'majority+'],
+                                            'majority+'], required=1,
                         help='Target merge strategy.')
     return parser.parse_args()
 
