@@ -178,10 +178,14 @@ class SmilesMap(object):
         Prefix to prepend to IDs.
     remove_hydrogens : bool, optional (default True)
         Whether to remove hydrogens prior to generating SMILES.
+    allow_duplicates : bool, optional (default True)
+        Whether to allow duplicate SMILES.
     """
-    def __init__(self, prefix=None, remove_hydrogens=True):
+    def __init__(self, prefix=None, remove_hydrogens=True,
+                 allow_duplicates=True):
         self.prefix = prefix
         self.remove_hydrogens = remove_hydrogens
+        self.allow_duplicates = allow_duplicates
         self.map = {}
 
     def add_mol(self, mol):
@@ -212,7 +216,7 @@ class SmilesMap(object):
         if name in self.map:  # catch all cases where name is already used
             if self.map[name] != smiles:
                 raise ValueError('ID collision for "{}".'.format(name))
-        elif smiles in self.map.values():  # only if name is not already used
+        elif not self.allow_duplicates and smiles in self.map.values():
             other = None
             for key, val in self.map.items():
                 if val == smiles:

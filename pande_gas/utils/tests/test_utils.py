@@ -219,6 +219,7 @@ class TestSmilesMap(unittest.TestCase):
         """
         Test failure when adding a duplicate SMILES with a different ID.
         """
+        self.map = SmilesMap(allow_duplicates=False)
         new = Chem.Mol(self.mols[0])
         new.SetProp('_Name', 'fakedrug')
         self.mols.append(new)
