@@ -6,11 +6,52 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
+import cPickle
+import gzip
 import numpy as np
 import os
 
 from rdkit import Chem
 from rdkit_utils import PicklableMol, serial
+
+
+def read_pickle(filename):
+    """
+    Read pickled data from (possibly gzipped) files.
+
+    Parameters
+    ----------
+    filename : str
+        Filename.
+    """
+    if filename.endswith('.gz'):
+        f = gzip.open(filename)
+    else:
+        f = open(filename)
+    data = cPickle.load(f)
+    f.close()
+    return data
+
+
+def write_pickle(data, filename, protocol=cPickle.HIGHEST_PROTOCOL):
+    """
+    Write data to a (possibly gzipped) pickle.
+
+    Parameters
+    ----------
+    data : object
+        Object to pickle.
+    filename : str
+        Filename.
+    protocol : int, optional (default cPickle.HIGHEST_PROTOCOL)
+        Pickle protocol.
+    """
+    if filename.endswith('.gz'):
+        f = gzip.open(filename, 'wb')
+    else:
+        f = open(filename, 'wb')
+    cPickle.dump(data, f, protocol)
+    f.close()
 
 
 class DatasetSharder(object):
@@ -188,9 +229,23 @@ class SmilesMap(object):
         self.allow_duplicates = allow_duplicates
         self.map = {}
 
-    def add_mol(self, mol):
+    def get_smiles(self, mol):
         """
         Map a molecule name to its corresponding SMILES string.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        if self.remove_hydrogens:
+            mol = Chem.RemoveHs(mol)
+        return Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+
+    def add_mol(self, mol):
+        """
+        Map a molecule name to its corresponding SMILES string and store in the
+        SMILES map.
 
         Parameters
         ----------
@@ -206,9 +261,7 @@ class SmilesMap(object):
             pass
         if self.prefix is not None:
             name = '{}{}'.format(self.prefix, name)
-        if self.remove_hydrogens:
-            mol = Chem.RemoveHs(mol)
-        smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+        smiles = self.get_smiles(mol)
 
         # Failures:
         # * Name is already mapped to a different SMILES
@@ -227,7 +280,6 @@ class SmilesMap(object):
                     name, other, smiles))
         else:
             self.map[name] = smiles
-        return smiles
 
     def get_map(self):
         """

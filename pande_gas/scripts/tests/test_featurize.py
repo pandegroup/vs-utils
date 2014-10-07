@@ -1,8 +1,6 @@
 """
 Test featurize.py.
 """
-import cPickle
-import gzip
 import joblib
 import numpy as np
 from rdkit_utils import conformers, serial
@@ -14,6 +12,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from pande_gas.scripts.featurize import main, parse_args
+from pande_gas.utils import read_pickle, write_pickle
 
 
 class TestFeaturize(unittest.TestCase):
@@ -50,8 +49,7 @@ class TestFeaturize(unittest.TestCase):
         self.targets = [0, 1]
         _, self.targets_filename = tempfile.mkstemp(suffix='.pkl',
                                                     dir=self.temp_dir)
-        with open(self.targets_filename, 'wb') as f:
-            cPickle.dump(self.targets, f, cPickle.HIGHEST_PROTOCOL)
+        write_pickle(self.targets, self.targets_filename)
 
     def tearDown(self):
         """
@@ -102,12 +100,8 @@ class TestFeaturize(unittest.TestCase):
         # read output file
         if output_filename.endswith('.joblib'):
             data = joblib.load(output_filename)
-        elif output_filename.endswith('.gz'):
-            with gzip.open(output_filename) as f:
-                data = cPickle.load(f)
         else:
-            with open(output_filename) as f:
-                data = cPickle.load(f)
+            data = read_pickle(output_filename)
 
         # check values
         if targets is None:
@@ -242,8 +236,7 @@ class TestFeaturize(unittest.TestCase):
 
         # write targets
         targets = {'names': ['ibuprofen'], 'y': [0]}
-        with open(self.targets_filename, 'wb') as f:
-            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+        write_pickle(targets, self.targets_filename)
 
         # run script
         self.check_output(['circular'], (1, 2048), targets=targets['y'],
@@ -256,8 +249,7 @@ class TestFeaturize(unittest.TestCase):
 
         # write targets
         targets = {'names': ['aspirin', 'ibuprofen'], 'y': [0, 1]}
-        with open(self.targets_filename, 'wb') as f:
-            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+        write_pickle(targets, self.targets_filename)
 
         # write mols
         writer = serial.MolWriter()
@@ -277,8 +269,7 @@ class TestFeaturize(unittest.TestCase):
 
         # write targets
         targets = {'names': ['ibuprofen', 'aspirin'], 'y': [1, 0]}
-        with open(self.targets_filename, 'wb') as f:
-            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+        write_pickle(targets, self.targets_filename)
 
         # run script
         self.check_output(['circular'], (2, 2048))

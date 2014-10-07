@@ -1,7 +1,6 @@
 """
 Tests for get_smiles_map.py.
 """
-import cPickle
 import shutil
 import tempfile
 import unittest
@@ -9,6 +8,7 @@ import unittest
 from rdkit import Chem
 
 from pande_gas.scripts.get_smiles_map import main, parse_args
+from pande_gas.utils import read_pickle
 
 
 class TestGetSmilesMap(unittest.TestCase):
@@ -28,6 +28,8 @@ class TestGetSmilesMap(unittest.TestCase):
                                                   suffix='.smi')
         _, self.output_filename = tempfile.mkstemp(dir=self.temp_dir,
                                                    suffix='.pkl')
+
+        # write SMILES to file
         with open(self.input_filename, 'wb') as f:
             for smile, cid in zip(self.smiles, self.cids):
                 f.write('{}\t{}\n'.format(smile, cid))
@@ -45,8 +47,7 @@ class TestGetSmilesMap(unittest.TestCase):
         args = parse_args(['-i', self.input_filename, '-o',
                            self.output_filename, '-p', 'CID'])
         main(args.input, args.output, args.prefix)
-        with open(self.output_filename) as f:
-            data = cPickle.load(f)
+        data = read_pickle(self.output_filename)
         assert len(data) == len(self.smiles)
         for smile, cid in zip(self.smiles, self.cids):
             assert data['CID{}'.format(cid)] == Chem.MolToSmiles(
@@ -81,8 +82,7 @@ class TestGetSmilesMap(unittest.TestCase):
 
         # update existing map
         main(args.input, args.output, args.prefix, True)
-        with open(self.output_filename) as f:
-            data = cPickle.load(f)
+        data = read_pickle(self.output_filename)
         assert len(data) == len(self.smiles)
         for smile, cid in zip(self.smiles, self.cids):
             assert data['CID{}'.format(cid)] == Chem.MolToSmiles(

@@ -8,12 +8,10 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import argparse
-import cPickle
-import gzip
 
 from rdkit_utils import serial
 
-from pande_gas.utils import SmilesMap
+from pande_gas.utils import read_pickle, SmilesMap, write_pickle
 
 
 def parse_args(input_args=None):
@@ -63,25 +61,14 @@ def main(input_filenames, output_filename, id_prefix=None,
 
     # update existing map
     if update:
-        if output_filename.endswith('.gz'):
-            f = gzip.open(output_filename)
-        else:
-            f = open(output_filename)
-        current_map = cPickle.load(f)
-        f.close()
-        smiles.map = current_map
+        smiles.map = read_pickle(output_filename)
 
     for input_filename in input_filenames:
         print input_filename
         with serial.MolReader().open(input_filename) as reader:
             for mol in reader:
                 smiles.add_mol(mol)
-    if output_filename.endswith('.gz'):
-        f = gzip.open(output_filename, 'wb')
-    else:
-        f = open(output_filename, 'wb')
-    cPickle.dump(smiles.get_map(), f, cPickle.HIGHEST_PROTOCOL)
-    f.close()
+    write_pickle(smiles.get_map(), output_filename)
 
 if __name__ == '__main__':
     args = parse_args()

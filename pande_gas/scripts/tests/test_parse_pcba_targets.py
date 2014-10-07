@@ -34,7 +34,8 @@ class TestParsePcbaTargets(unittest.TestCase):
 
         # use a subset of AID588342
         this_dir = os.path.split(os.path.realpath(__file__))[0]
-        self.data_filename = os.path.join(this_dir, 'data/test_assay_data.csv')
+        self.data_filename = os.path.join(
+            this_dir, '../../utils/tests/data/test_assay_data.csv')
         _, self.output_filename = tempfile.mkstemp(dir=self.temp_dir,
                                                    suffix='.pkl')
 
@@ -58,21 +59,21 @@ class TestParsePcbaTargets(unittest.TestCase):
         with open(self.output_filename) as f:
             data = cPickle.load(f)
         assert len(data['smiles']) == len(data['targets']) == 2
-        return data
+        return data['smiles'], data['targets']
 
-    def test_classification_main(self):
+    def test_classification(self):
         """
         Test classification.
         """
         args = ['-i', self.data_filename, '-m', self.map_filename, '-o',
                 self.output_filename]
-        data = self.run_script(args)
-        idx = np.where(data['smiles'] == self.map['CID2997889'])[0][0]
-        assert data['targets'][idx]  # marked Active
-        idx = np.where(data['smiles'] == self.map['CID645443'])[0][0]
-        assert not data['targets'][idx]  # marked Inactive
+        smiles, targets = self.run_script(args)
+        idx = np.where(smiles == self.map['CID2997889'])[0][0]
+        assert targets[idx]  # marked Active
+        idx = np.where(smiles == self.map['CID645443'])[0][0]
+        assert not targets[idx]  # marked Inactive
 
-    def test_regression_main(self):
+    def test_regression(self):
         """
         Test regression.
         """
@@ -80,8 +81,8 @@ class TestParsePcbaTargets(unittest.TestCase):
                    '26']
         args = ['-i', self.data_filename, '-m', self.map_filename, '-o',
                 self.output_filename, '-c'] + columns
-        data = self.run_script(args)
-        idx = np.where(data['smiles'] == self.map['CID2997889'])[0][0]
-        assert not np.any(np.isnan(data['targets'][idx]))
-        idx = np.where(data['smiles'] == self.map['CID645443'])[0][0]
-        assert np.any(np.isnan(data['targets'][idx]))  # will have NaNs
+        smiles, targets = self.run_script(args)
+        idx = np.where(smiles == self.map['CID2997889'])[0][0]
+        assert not np.any(np.isnan(targets[idx]))
+        idx = np.where(smiles == self.map['CID645443'])[0][0]
+        assert np.any(np.isnan(targets[idx]))  # will have NaNs

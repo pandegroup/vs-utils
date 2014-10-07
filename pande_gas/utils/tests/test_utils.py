@@ -1,6 +1,8 @@
 """
 Tests for miscellaneous utilities.
 """
+import cPickle
+import gzip
 import numpy as np
 import shutil
 import tempfile
@@ -11,7 +13,7 @@ from rdkit.Chem import AllChem
 
 from rdkit_utils import serial
 
-from .. import DatasetSharder, pad_array, SmilesMap
+from .. import DatasetSharder, pad_array, read_pickle, SmilesMap, write_pickle
 
 
 class TestDatasetSharder(unittest.TestCase):
@@ -137,11 +139,61 @@ class TestMiscUtils(unittest.TestCase):
     """
     Tests for miscellaneous utilities.
     """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """
+        Clean up tests.
+        """
+        shutil.rmtree(self.temp_dir)
+
     def test_pad_matrix(self):
-        """Pad matrix."""
+        """
+        Test pad_matrix.
+        """
         x = np.random.random((5, 6))
         assert pad_array(x, (10, 12)).shape == (10, 12)
         assert pad_array(x, 10).shape == (10, 10)
+
+    def test_read_pickle(self):
+        """
+        Test read_pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl')
+        with open(filename, 'wb') as f:
+            cPickle.dump({'foo': 'bar'}, f, cPickle.HIGHEST_PROTOCOL)
+        assert read_pickle(filename)['foo'] == 'bar'
+
+    def test_read_pickle_gz(self):
+        """
+        Test read_pickle with gzipped pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl.gz')
+        with gzip.open(filename, 'wb') as f:
+            cPickle.dump({'foo': 'bar'}, f, cPickle.HIGHEST_PROTOCOL)
+        assert read_pickle(filename)['foo'] == 'bar'
+
+    def test_write_pickle(self):
+        """
+        Test write_pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl')
+        write_pickle({'foo': 'bar'}, filename)
+        with open(filename) as f:
+            assert cPickle.load(f)['foo'] == 'bar'
+
+    def test_write_pickle_gz(self):
+        """
+        Test write_pickle with gzipped pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl.gz')
+        write_pickle({'foo': 'bar'}, filename)
+        with gzip.open(filename) as f:
+            assert cPickle.load(f)['foo'] == 'bar'
 
 
 class TestSmilesMap(unittest.TestCase):
