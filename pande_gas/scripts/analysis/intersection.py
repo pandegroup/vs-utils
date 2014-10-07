@@ -54,10 +54,14 @@ def main(input_filenames, output_prefix, n_jobs=1):
     total = np.zeros(n, dtype=int)
     for i, filename in enumerate(input_filenames):
         print filename
-        with gzip.open(filename) as f:
-            data = cPickle.load(f)
-            smiles.append(data['smiles'])
-            total[i] = len(data['smiles'])
+        if filename.endswith('.gz'):
+            f = gzip.open(filename)
+        else:
+            f = open(filename)
+        data = cPickle.load(f)
+        f.close()
+        smiles.append(data['smiles'])
+        total[i] = len(data['smiles'])
 
     print 'Calculating {} intersections'.format(comb(n, 2, exact=True))
 
