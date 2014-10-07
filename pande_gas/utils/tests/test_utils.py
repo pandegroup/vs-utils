@@ -1,6 +1,8 @@
 """
 Tests for miscellaneous utilities.
 """
+import cPickle
+import gzip
 import numpy as np
 import shutil
 import tempfile
@@ -11,7 +13,7 @@ from rdkit.Chem import AllChem
 
 from rdkit_utils import serial
 
-from .. import DatasetSharder, pad_array
+from .. import DatasetSharder, pad_array, read_pickle, SmilesMap, write_pickle
 
 
 class TestDatasetSharder(unittest.TestCase):
@@ -137,8 +139,145 @@ class TestMiscUtils(unittest.TestCase):
     """
     Tests for miscellaneous utilities.
     """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """
+        Clean up tests.
+        """
+        shutil.rmtree(self.temp_dir)
+
     def test_pad_matrix(self):
-        """Pad matrix."""
+        """
+        Test pad_matrix.
+        """
         x = np.random.random((5, 6))
         assert pad_array(x, (10, 12)).shape == (10, 12)
         assert pad_array(x, 10).shape == (10, 10)
+
+    def test_read_pickle(self):
+        """
+        Test read_pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl')
+        with open(filename, 'wb') as f:
+            cPickle.dump({'foo': 'bar'}, f, cPickle.HIGHEST_PROTOCOL)
+        assert read_pickle(filename)['foo'] == 'bar'
+
+    def test_read_pickle_gz(self):
+        """
+        Test read_pickle with gzipped pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl.gz')
+        with gzip.open(filename, 'wb') as f:
+            cPickle.dump({'foo': 'bar'}, f, cPickle.HIGHEST_PROTOCOL)
+        assert read_pickle(filename)['foo'] == 'bar'
+
+    def test_write_pickle(self):
+        """
+        Test write_pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl')
+        write_pickle({'foo': 'bar'}, filename)
+        with open(filename) as f:
+            assert cPickle.load(f)['foo'] == 'bar'
+
+    def test_write_pickle_gz(self):
+        """
+        Test write_pickle with gzipped pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl.gz')
+        write_pickle({'foo': 'bar'}, filename)
+        with gzip.open(filename) as f:
+            assert cPickle.load(f)['foo'] == 'bar'
+
+
+class TestSmilesMap(unittest.TestCase):
+    """
+    Test SmilesMap.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        smiles = ['CC(=O)OC1=CC=CC=C1C(=O)O', 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O',
+                  'CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F']
+        names = ['aspirin', 'ibuprofen', 'celecoxib']
+        self.cids = [2244, 3672, 2662]
+        self.mols = []
+        for s, n in zip(smiles, names):
+            mol = Chem.MolFromSmiles(s)
+            mol.SetProp('_Name', n)
+            self.mols.append(mol)
+        self.map = SmilesMap()
+
+    def test_add_mol(self):
+        """
+        Test SmilesMap.add_mol.
+        """
+        for mol in self.mols:
+            self.map.add_mol(mol)
+        smiles_map = self.map.get_map()
+        for mol in self.mols:
+            assert smiles_map[mol.GetProp('_Name')] == Chem.MolToSmiles(
+                mol, isomericSmiles=True)
+
+    def test_add_bare_id(self):
+        """
+        Test failure when adding bare IDs.
+        """
+        for mol, cid in zip(self.mols, self.cids):
+            mol.SetProp('_Name', str(cid))
+        try:
+            for mol in self.mols:
+                self.map.add_mol(mol)
+                raise AssertionError
+        except TypeError:
+            pass
+
+    def test_add_bare_id_with_prefix(self):
+        """
+        Test success when adding bare IDs with a prefix set.
+        """
+        self.map = SmilesMap('CID')
+        for mol, cid in zip(self.mols, self.cids):
+            mol.SetProp('_Name', str(cid))
+        for mol in self.mols:
+            self.map.add_mol(mol)
+        smiles_map = self.map.get_map()
+        for mol in self.mols:
+            assert (smiles_map['CID{}'.format(mol.GetProp('_Name'))] ==
+                    Chem.MolToSmiles(mol, isomericSmiles=True))
+
+    def test_fail_on_duplicate_id(self):
+        """
+        Test failure when adding a duplicate ID with a different SMILES string.
+        """
+        new = Chem.Mol(self.mols[0])
+        new.SetProp('_Name', 'celecoxib')
+        self.mols.append(new)
+        try:
+            for mol in self.mols:
+                self.map.add_mol(mol)
+            raise AssertionError
+        except ValueError:
+            pass
+
+    def test_fail_on_duplicate_smiles(self):
+        """
+        Test failure when adding a duplicate SMILES with a different ID.
+        """
+        self.map = SmilesMap(allow_duplicates=False)
+        new = Chem.Mol(self.mols[0])
+        new.SetProp('_Name', 'fakedrug')
+        self.mols.append(new)
+        try:
+            for mol in self.mols:
+                self.map.add_mol(mol)
+            raise AssertionError
+        except ValueError:
+            pass

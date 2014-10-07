@@ -9,8 +9,6 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import argparse
-import cPickle
-import gzip
 import inspect
 import joblib
 import numpy as np
@@ -19,6 +17,7 @@ from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit_utils import serial
 
 from pande_gas.features import get_featurizers
+from pande_gas.utils import read_pickle, SmilesMap, write_pickle
 from pande_gas.utils.parallel_utils import LocalCluster
 
 
@@ -40,6 +39,11 @@ def parse_args(input_args=None):
                         help='Whether to include chirality in scaffolds.')
     parser.add_argument('-t', '--targets',
                         help='Molecule targets.')
+    parser.add_argument('--smiles-hydrogens', action='store_true')
+    parser.add_argument('--scaffolds', action='store_true',
+                        help='Calculate molecule scaffolds.')
+    parser.add_argument('--names', action='store_true',
+                        help='Include molecule names.')
     parser.add_argument('-p', '--parallel', action='store_true',
                         help='Whether to use IPython.parallel.')
     parser.add_argument('-id', '--cluster-id',
@@ -88,7 +92,7 @@ def parse_args(input_args=None):
     args.featurizer_kwargs = parser.parse_args(input_args)
     for arg in ['input', 'output', 'klass', 'targets', 'parallel',
                 'cluster_id', 'n_engines', 'compression_level',
-                'chiral_scaffolds']:
+                'smiles_hydrogens', 'names', 'scaffolds', 'chiral_scaffolds']:
         setattr(args, arg, getattr(args.featurizer_kwargs, arg))
         delattr(args.featurizer_kwargs, arg)
     return args
@@ -111,6 +115,7 @@ class HelpFormatter(argparse.RawTextHelpFormatter):
 def main(featurizer_class, input_filename, output_filename,
          target_filename=None, featurizer_kwargs=None, parallel=False,
          client_kwargs=None, view_flags=None, compression_level=3,
+         smiles_hydrogens=False, names=False, scaffolds=False,
          chiral_scaffolds=False):
     """
     Featurize molecules in input_filename using the given featurizer.
@@ -138,28 +143,30 @@ def main(featurizer_class, input_filename, output_filename,
         Flags for IPython.parallel LoadBalancedView.
     compression_level : int, optional (default 3)
         Compression level (0-9) to use with joblib.dump.
+    smiles_hydrogens : bool, optional (default False)
+        Whether to keep hydrogens when generating SMILES.
+    names : bool, optional (default False)
+        Whether to include molecule names in output.
+    scaffolds : bool, optional (default False)
+        Whether to include scaffolds in output.
     chiral_scaffods : bool, optional (default False)
         Whether to include chirality in scaffolds.
     """
-    mols, names = read_mols(input_filename)
+    mols, mol_names = read_mols(input_filename)
 
     # get targets
     data = {}
     if target_filename is not None:
-        with open(target_filename) as f:
-            targets = cPickle.load(f)
+        targets = read_pickle(target_filename)
         if isinstance(targets, dict):
             mol_indices, target_indices = collate_mols(
-                mols, names, targets['y'], targets['names'])
+                mols, mol_names, targets['y'], targets['names'])
             mols = mols[mol_indices]
-            names = names[mol_indices]
+            mol_names = mol_names[mol_indices]
             targets = np.asarray(targets['y'])[target_indices]
         else:
             assert len(targets) == len(mols)
         data['y'] = targets
-
-    # get scaffolds
-    scaffolds = get_scaffolds(mols, chiral_scaffolds)
 
     # featurize molecules
     print "Featurizing molecules..."
@@ -171,8 +178,16 @@ def main(featurizer_class, input_filename, output_filename,
     # fill in data container
     print "Saving results..."
     data['features'] = features
-    data['names'] = names
-    data['scaffolds'] = scaffolds
+
+    # calculate SMILES
+    smiles = SmilesMap(prefix='', remove_hydrogens=(not smiles_hydrogens))
+    data['smiles'] = np.asarray([smiles.get_smiles(mol) for mol in mols])
+
+    # names, scaffolds, args
+    if names:
+        data['names'] = mol_names
+    if scaffolds:
+        data['scaffolds'] = get_scaffolds(mols, chiral_scaffolds)
     data['args'] = {'featurizer_class': featurizer_class.__name__,
                     'input_filename': input_filename,
                     'target_filename': target_filename,
@@ -296,12 +311,8 @@ def write_output_file(data, output_filename, compression_level=3):
     compression_level : int, optional (default 3)
         Compression level (0-9) to use with joblib.dump.
     """
-    if output_filename.endswith('.pkl'):
-        with open(output_filename, 'wb') as f:
-            cPickle.dump(data, f, cPickle.HIGHEST_PROTOCOL)
-    elif output_filename.endswith('.pkl.gz'):
-        with gzip.open(output_filename, 'wb') as f:
-            cPickle.dump(data, f, cPickle.HIGHEST_PROTOCOL)
+    if output_filename.endswith('.pkl') or output_filename.endswith('.pkl.gz'):
+        write_pickle(data, output_filename)
     elif output_filename.endswith('.joblib'):
         joblib.dump(data, output_filename, compress=compression_level)
     else:
@@ -329,4 +340,5 @@ if __name__ == '__main__':
     # run main function
     main(args.klass, args.input, args.output, args.targets,
          vars(args.featurizer_kwargs), args.parallel, client_kwargs,
-         view_flags, args.compression_level, args.chiral_scaffolds)
+         view_flags, args.compression_level, args.smiles_hydrogens, args.names,
+         args.scaffolds, args.chiral_scaffolds)
