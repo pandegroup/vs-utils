@@ -11,9 +11,10 @@ import unittest
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from rdkit_utils import serial
+from rdkit_utils import conformers, serial
 
-from .. import DatasetSharder, pad_array, read_pickle, SmilesMap, write_pickle
+from .. import (DatasetSharder, pad_array, read_pickle, SmilesGenerator,
+                SmilesMap, write_pickle)
 
 
 class TestDatasetSharder(unittest.TestCase):
@@ -196,10 +197,7 @@ class TestMiscUtils(unittest.TestCase):
             assert cPickle.load(f)['foo'] == 'bar'
 
 
-class TestSmilesMap(unittest.TestCase):
-    """
-    Test SmilesMap.
-    """
+class SmilesTests(unittest.TestCase):
     def setUp(self):
         """
         Set up tests.
@@ -213,6 +211,73 @@ class TestSmilesMap(unittest.TestCase):
             mol = Chem.MolFromSmiles(s)
             mol.SetProp('_Name', n)
             self.mols.append(mol)
+
+
+class TestSmilesGenerator(SmilesTests):
+    """
+    Test SmilesGenerator.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        super(TestSmilesGenerator, self).setUp()
+        self.engine = SmilesGenerator()
+
+    def test_get_smiles(self):
+        """
+        Test SmilesGenerator.get_smiles.
+        """
+        for mol in self.mols:
+            smiles = self.engine.get_smiles(mol)
+            new = Chem.MolFromSmiles(smiles)
+            assert new.GetNumAtoms() == mol.GetNumAtoms()
+
+    def test_get_smiles_3d(self):
+        """
+        Test SmilesGenerator.get_smiles with stereochemistry assigned from 3D
+        coordinates.
+        """
+        # generate conformers for ibuprofen
+        engine = conformers.ConformerGenerator()
+        mol = engine.generate_conformers(self.mols[1])
+        assert mol.GetNumConformers() > 0
+
+        # check that chirality has not yet been assigned
+        smiles = self.engine.get_smiles(mol)
+        assert '@' not in smiles  # check for absence of chirality marker
+        chiral_types = [Chem.ChiralType.CHI_TETRAHEDRAL_CW,
+                        Chem.ChiralType.CHI_TETRAHEDRAL_CCW]
+        chiral = False
+        for atom in mol.GetAtoms():
+            if atom.GetChiralTag() in chiral_types:
+                chiral = True
+        assert not chiral
+
+        # generate SMILES
+        self.engine = SmilesGenerator(assign_stereo_from_3d=True)
+        smiles = self.engine.get_smiles(mol)
+        assert '@' in smiles  # check for chirality marker
+        new = Chem.MolFromSmiles(smiles)
+        assert new.GetNumAtoms() == self.mols[1].GetNumAtoms()
+
+        # check that chirality was assigned to ibuprofen
+        chiral = False
+        for atom in mol.GetAtoms():
+            if atom.GetChiralTag() in chiral_types:
+                chiral = True
+        assert chiral
+
+
+class TestSmilesMap(SmilesTests):
+    """
+    Test SmilesMap.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        super(TestSmilesMap, self).setUp()
         self.map = SmilesMap()
 
     def test_add_mol(self):
