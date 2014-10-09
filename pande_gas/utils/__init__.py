@@ -67,7 +67,7 @@ class DatasetSharder(object):
     shard_size : int, optional (default 1000)
         Number of molecules per shard.
     write_shards : bool, optional (default True)
-        Whether to automatically write shards to disk.
+        Write shards to disk.
     prefix : str, optional
         Prefix for output files.
     flavor : str, optional (default 'pkl.gz')
@@ -188,7 +188,7 @@ def pad_array(x, shape, fill=0, both=False):
     fill : object, optional (default 0)
         Fill value.
     both : bool, optional (default False)
-        Whether to split the padding on both sides of each axis. If False,
+        If True, split the padding on both sides of each axis. If False,
         padding is applied to the end of each axis.
     """
     x = np.asarray(x)
@@ -209,25 +209,21 @@ def pad_array(x, shape, fill=0, both=False):
     return x
 
 
-class SmilesMap(object):
+class SmilesGenerator(object):
     """
-    Map compound names to SMILES.
+    Generate SMILES strings for molecules.
 
     Parameters
     ----------
-    prefix : str, optional
-        Prefix to prepend to IDs.
     remove_hydrogens : bool, optional (default True)
-        Whether to remove hydrogens prior to generating SMILES.
-    allow_duplicates : bool, optional (default True)
-        Whether to allow duplicate SMILES.
+        Remove hydrogens prior to generating SMILES.
+    assign_stereo_from_3d : bool, optional (default False)
+        Assign stereochemistry from 3D coordinates. This will overwrite any
+        existing stereochemistry information on molecules.
     """
-    def __init__(self, prefix=None, remove_hydrogens=True,
-                 allow_duplicates=True):
-        self.prefix = prefix
+    def __init__(self, remove_hydrogens=True, assign_stereo_from_3d=False):
         self.remove_hydrogens = remove_hydrogens
-        self.allow_duplicates = allow_duplicates
-        self.map = {}
+        self.assign_stereo_from_3d = assign_stereo_from_3d
 
     def get_smiles(self, mol):
         """
@@ -238,9 +234,42 @@ class SmilesMap(object):
         mol : RDKit Mol
             Molecule.
         """
+        if self.assign_stereo_from_3d:  # do this before removing hydrogens
+            Chem.AssignAtomChiralTagsFromStructure(mol)
         if self.remove_hydrogens:
-            mol = Chem.RemoveHs(mol)
+            mol = Chem.RemoveHs(mol)  # creates a copy
         return Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+
+    def get_unique_smiles(self, mols):
+        """
+        Get unique SMILES for a set of molecules.
+
+        Parameters
+        ----------
+        mols : iterable
+            Molecules.
+        """
+        return np.unique([self.get_smiles(mol) for mol in mols])
+
+
+class SmilesMap(object):
+    """
+    Map compound names to SMILES.
+
+    Parameters
+    ----------
+    prefix : str, optional
+        Prefix to prepend to IDs.
+    allow_duplicates : bool, optional (default True)
+        Allow duplicate SMILES.
+    kwargs : dict, optional
+        Keyword arguments for SmilesGenerator.
+    """
+    def __init__(self, prefix=None, allow_duplicates=True, **kwargs):
+        self.prefix = prefix
+        self.allow_duplicates = allow_duplicates
+        self.engine = SmilesGenerator(**kwargs)
+        self.map = {}
 
     def add_mol(self, mol):
         """
@@ -261,7 +290,7 @@ class SmilesMap(object):
             pass
         if self.prefix is not None:
             name = '{}{}'.format(self.prefix, name)
-        smiles = self.get_smiles(mol)
+        smiles = self.engine.get_smiles(mol)
 
         # Failures:
         # * Name is already mapped to a different SMILES
