@@ -37,20 +37,31 @@ class TestMoleculeDatabase(unittest.TestCase):
         """
         shutil.rmtree(self.temp_dir)
 
-    def _test_load(self, filename):
+    def check_database(self, mols=None, filename=None):
         """
-        Test MoleculeDatabase.load.
+        Check database contents.
 
         Parameters
         ----------
-        filename : str
+        mols : list, optional
+            Molecules that should be in the database. Defaults to self.mols.
+        filename : str, optional
             Existing database filename.
         """
-        self.database.load(filename)
-        assert len(self.database) == 1
-        for mol in self.mols:
-            self.database.add_mol(mol)
-        assert len(self.database) == len(self.mols)  # try adding duplicates
+        if mols is None:
+            mols = self.mols
+        if filename is not None:
+            database = MoleculeDatabase()
+            database.load(filename)
+        else:
+            database = self.database
+
+        # check for appropriate length
+        assert len(database) == len(mols)
+
+        # check that SMILES are what we expect
+        for mol in mols:
+            assert database.engine.get_smiles(mol) in database
 
     def test_load(self):
         """
@@ -60,7 +71,7 @@ class TestMoleculeDatabase(unittest.TestCase):
         with open(filename, 'wb') as f:
             f.write('{}\n'.format(
                 self.database.engine.get_smiles(self.mols[0])))
-        self._test_load(filename)
+        self.check_database([self.mols[0]], filename)
 
     def test_load_gz(self):
         """
@@ -70,7 +81,7 @@ class TestMoleculeDatabase(unittest.TestCase):
         with gzip.open(filename, 'wb') as f:
             f.write('{}\n'.format(
                 self.database.engine.get_smiles(self.mols[0])))
-        self._test_load(filename)
+        self.check_database([self.mols[0]], filename)
 
     def test_load_bogus(self):
         """
@@ -85,28 +96,15 @@ class TestMoleculeDatabase(unittest.TestCase):
         except ValueError:
             pass
 
-    def _test_save(self, filename):
-        """
-        Test MoleculeDatabase.save.
-
-        Parameters
-        ----------
-        filename : str
-            Output filename.
-        """
-        for mol in self.mols:
-            self.database.add_mol(mol)
-        self.database.save(filename)
-        self.database = MoleculeDatabase()
-        self.database.load(filename)
-        assert len(self.database) == len(self.mols)
-
     def test_save(self):
         """
         Test MoleculeDatabase.save.
         """
         _, filename = tempfile.mkstemp(dir=self.temp_dir)
-        self._test_save(filename)
+        for mol in self.mols:
+            self.database.add_mol(mol)
+        self.database.save(filename)
+        self.check_database(filename=filename)
         with open(filename) as f:
             assert len(f.readlines()) == len(self.mols)
 
@@ -115,7 +113,10 @@ class TestMoleculeDatabase(unittest.TestCase):
         Test MoleculeDatabase.save with gzipped output.
         """
         _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.gz')
-        self._test_save(filename)
+        for mol in self.mols:
+            self.database.add_mol(mol)
+        self.database.save(filename)
+        self.check_database(filename=filename)
         with gzip.open(filename) as f:
             assert len(f.readlines()) == len(self.mols)
 
@@ -125,7 +126,7 @@ class TestMoleculeDatabase(unittest.TestCase):
         """
         for mol in self.mols:
             self.database.add_mol(mol)
-        assert len(self.database) == len(self.mols)
+        self.check_database()
 
     def test_add_mol_duplicate(self):
         """
@@ -135,4 +136,4 @@ class TestMoleculeDatabase(unittest.TestCase):
             self.database.add_mol(mol)
         for mol in self.mols:  # add twice
             self.database.add_mol(mol)
-        assert len(self.database) == len(self.mols)
+        self.check_database()

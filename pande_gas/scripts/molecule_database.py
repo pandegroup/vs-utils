@@ -30,8 +30,7 @@ def parse_args(input_args=None):
     parser.add_argument('-d', '--database',
                         help='Existing database to update.')
     parser.add_argument('--stereo-from-3d', action='store_true',
-                        help='Whether to assign stereochemistry from 3D ' +
-                             'coordinates.')
+                        help='Assign stereochemistry from 3D coordinates.')
     return parser.parse_args(input_args)
 
 

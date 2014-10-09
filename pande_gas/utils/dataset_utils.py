@@ -35,6 +35,9 @@ class MoleculeDatabase(object):
         for smiles in self.smiles:
             yield smiles
 
+    def __contains__(self, item):
+        return item in self.smiles
+
     def add_mol(self, mol):
         """
         Add a molecule to the database.

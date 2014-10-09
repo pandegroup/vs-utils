@@ -67,7 +67,7 @@ class DatasetSharder(object):
     shard_size : int, optional (default 1000)
         Number of molecules per shard.
     write_shards : bool, optional (default True)
-        Whether to automatically write shards to disk.
+        Write shards to disk.
     prefix : str, optional
         Prefix for output files.
     flavor : str, optional (default 'pkl.gz')
@@ -188,7 +188,7 @@ def pad_array(x, shape, fill=0, both=False):
     fill : object, optional (default 0)
         Fill value.
     both : bool, optional (default False)
-        Whether to split the padding on both sides of each axis. If False,
+        If True, split the padding on both sides of each axis. If False,
         padding is applied to the end of each axis.
     """
     x = np.asarray(x)
@@ -216,10 +216,10 @@ class SmilesGenerator(object):
     Parameters
     ----------
     remove_hydrogens : bool, optional (default True)
-        Whether to remove hydrogens prior to generating SMILES.
+        Remove hydrogens prior to generating SMILES.
     assign_stereo_from_3d : bool, optional (default False)
-        Whether to assign stereochemistry from 3D coordinates. This will
-        overwrite any existing stereochemistry information on molecules.
+        Assign stereochemistry from 3D coordinates. This will overwrite any
+        existing stereochemistry information on molecules.
     """
     def __init__(self, remove_hydrogens=True, assign_stereo_from_3d=False):
         self.remove_hydrogens = remove_hydrogens
@@ -261,7 +261,7 @@ class SmilesMap(object):
     prefix : str, optional
         Prefix to prepend to IDs.
     allow_duplicates : bool, optional (default True)
-        Whether to allow duplicate SMILES.
+        Allow duplicate SMILES.
     kwargs : dict, optional
         Keyword arguments for SmilesGenerator.
     """
