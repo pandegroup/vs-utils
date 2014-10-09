@@ -17,7 +17,7 @@ from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit_utils import serial
 
 from pande_gas.features import get_featurizers
-from pande_gas.utils import read_pickle, SmilesMap, write_pickle
+from pande_gas.utils import read_pickle, SmilesGenerator, write_pickle
 from pande_gas.utils.parallel_utils import LocalCluster
 
 
@@ -180,7 +180,7 @@ def main(featurizer_class, input_filename, output_filename,
     data['features'] = features
 
     # calculate SMILES
-    smiles = SmilesMap(prefix='', remove_hydrogens=(not smiles_hydrogens))
+    smiles = SmilesGenerator(remove_hydrogens=(not smiles_hydrogens))
     data['smiles'] = np.asarray([smiles.get_smiles(mol) for mol in mols])
 
     # names, scaffolds, args
