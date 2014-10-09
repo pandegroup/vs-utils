@@ -1,6 +1,7 @@
 """
 Tests for dataset_utils.
 """
+import gzip
 import shutil
 import tempfile
 import unittest
@@ -36,6 +37,21 @@ class TestMoleculeDatabase(unittest.TestCase):
         """
         shutil.rmtree(self.temp_dir)
 
+    def _test_load(self, filename):
+        """
+        Test MoleculeDatabase.load.
+
+        Parameters
+        ----------
+        filename : str
+            Existing database filename.
+        """
+        self.database.load(filename)
+        assert len(self.database) == 1
+        for mol in self.mols:
+            self.database.add_mol(mol)
+        assert len(self.database) == len(self.mols)  # try adding duplicates
+
     def test_load(self):
         """
         Test MoleculeDatabase.load.
@@ -44,11 +60,17 @@ class TestMoleculeDatabase(unittest.TestCase):
         with open(filename, 'wb') as f:
             f.write('{}\n'.format(
                 self.database.engine.get_smiles(self.mols[0])))
-        self.database.load(filename)
-        assert len(self.database) == 1
-        for mol in self.mols:
-            self.database.add_mol(mol)
-        assert len(self.database) == len(self.mols)  # try adding duplicates
+        self._test_load(filename)
+
+    def test_load_gz(self):
+        """
+        Test MoleculeDatabase.load with gzipped input.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.gz')
+        with gzip.open(filename, 'wb') as f:
+            f.write('{}\n'.format(
+                self.database.engine.get_smiles(self.mols[0])))
+        self._test_load(filename)
 
     def test_load_bogus(self):
         """
@@ -63,17 +85,39 @@ class TestMoleculeDatabase(unittest.TestCase):
         except ValueError:
             pass
 
-    def test_save(self):
+    def _test_save(self, filename):
         """
         Test MoleculeDatabase.save.
+
+        Parameters
+        ----------
+        filename : str
+            Output filename.
         """
-        _, filename = tempfile.mkstemp(dir=self.temp_dir)
         for mol in self.mols:
             self.database.add_mol(mol)
         self.database.save(filename)
         self.database = MoleculeDatabase()
         self.database.load(filename)
         assert len(self.database) == len(self.mols)
+
+    def test_save(self):
+        """
+        Test MoleculeDatabase.save.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir)
+        self._test_save(filename)
+        with open(filename) as f:
+            assert len(f.readlines()) == len(self.mols)
+
+    def test_save_gz(self):
+        """
+        Test MoleculeDatabase.save with gzipped output.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.gz')
+        self._test_save(filename)
+        with gzip.open(filename) as f:
+            assert len(f.readlines()) == len(self.mols)
 
     def test_add_mol(self):
         """

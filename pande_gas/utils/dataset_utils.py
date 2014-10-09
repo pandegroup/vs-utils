@@ -31,6 +31,10 @@ class MoleculeDatabase(object):
     def __len__(self):
         return len(self.smiles)
 
+    def __iter__(self):
+        for smiles in self.smiles:
+            yield smiles
+
     def add_mol(self, mol):
         """
         Add a molecule to the database.

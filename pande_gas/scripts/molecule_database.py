@@ -68,4 +68,4 @@ def main(input_filenames, output_filename, database_filename=None,
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.input, args.output, args.database, args.assign_stereo_from_3d)
+    main(args.input, args.output, args.database, args.stereo_from_3d)
