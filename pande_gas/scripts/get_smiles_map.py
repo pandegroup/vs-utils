@@ -56,12 +56,12 @@ def main(input_filenames, output_filename, id_prefix=None,
     id_prefix : str, optional
         Prefix to prepend to IDs.
     allow_duplicates : bool, optional (default True)
-        Whether to allow duplicate SMILES.
+        Allow duplicate SMILES.
     update : bool, optional (default False)
-        Whether to update an existing map with the same output filename. If
-        False, a new map will be generated using only the input file(s).
+        Update an existing map with the same output filename. If False, a new
+        map will be generated using only the input file(s).
     assign_stereo_from_3d : bool, optional (default False)
-        Whether to assign stereochemistry from 3D coordinates.
+        Assign stereochemistry from 3D coordinates.
     """
     smiles = SmilesMap(prefix=id_prefix, allow_duplicates=allow_duplicates,
                        assign_stereo_from_3d=assign_stereo_from_3d)
