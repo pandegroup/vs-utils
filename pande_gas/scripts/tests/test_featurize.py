@@ -188,6 +188,12 @@ class TestFeaturize(unittest.TestCase):
         """
         self.check_output(['descriptors'], (2, 196))
 
+    def test_scaffold(self):
+        """
+        Test scaffold featurizer.
+        """
+        self.check_output(['scaffold'], (2,))
+
     def test_scaffolds(self):
         """
         Test scaffold generation.
