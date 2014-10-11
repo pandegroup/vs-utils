@@ -17,7 +17,8 @@ from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit_utils import serial
 
 from pande_gas.features import get_featurizers
-from pande_gas.utils import read_pickle, SmilesGenerator, write_pickle
+from pande_gas.utils import (read_pickle, ScaffoldGenerator, SmilesGenerator,
+                             write_pickle)
 from pande_gas.utils.parallel_utils import LocalCluster
 
 
@@ -267,7 +268,7 @@ def read_mols(input_filename):
         if mol.HasProp('_Name'):
             names.append(mol.GetProp('_Name'))
         else:
-            raise ValueError('Molecule names are required.')
+            names.append(None)
     reader.close()
     mols = np.asarray(mols)
     names = np.asarray(names)
@@ -290,10 +291,10 @@ def get_scaffolds(mols, include_chirality=False):
         Whether to include chirality in scaffolds.
     """
     print "Generating molecule scaffolds..."
+    engine = ScaffoldGenerator(include_chirality=include_chirality)
     scaffolds = []
     for mol in mols:
-        scaffolds.append(MurckoScaffold.MurckoScaffoldSmiles(
-            mol=mol, includeChirality=include_chirality))
+        scaffolds.append(engine.get_scaffold(mol))
     scaffolds = np.asarray(scaffolds)
     return scaffolds
 
