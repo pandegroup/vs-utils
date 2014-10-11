@@ -18,6 +18,7 @@ from ..utils.ob_utils import Ionizer
 def get_featurizers():
     """Compile a dict mapping strings to featurizer classes."""
 
+    # import all Featurizer subclasses to __subclasses__ will work
     # these have to be local imports to avoid circular imports
     from .basic import MolecularWeight, SimpleDescriptors
     from .coulomb_matrices import CoulombMatrix
