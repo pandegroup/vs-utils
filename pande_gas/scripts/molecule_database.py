@@ -8,6 +8,8 @@ __license__ = "BSD 3-clause"
 
 import argparse
 
+from rdkit import Chem
+
 from rdkit_utils import serial
 
 from pande_gas.utils.dataset_utils import MoleculeDatabase
@@ -58,7 +60,14 @@ def main(input_filenames, output_filename, database_filename=None,
         print filename
         with serial.MolReader().open(filename) as reader:
             for mol in reader:
-                database.add_mol(mol)
+                try:
+                    database.add_mol(mol)
+                except ValueError:
+                    if mol.HasProp('_Name'):
+                        print 'Skipping {}'.format(mol.GetProp('_Name'))
+                    else:
+                        print 'Skipping {}'.format(
+                            Chem.MolToSmiles(mol, isomericSmiles=True))
     final_size = len(database)
     print '{} molecules added to the database'.format(
         final_size - initial_size)
