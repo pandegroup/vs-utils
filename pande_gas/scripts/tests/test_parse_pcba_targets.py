@@ -35,7 +35,7 @@ class TestParsePcbaTargets(unittest.TestCase):
         # use a subset of AID588342
         this_dir = os.path.split(os.path.realpath(__file__))[0]
         self.data_filename = os.path.join(
-            this_dir, '../../utils/tests/data/test_assay_data.csv')
+            this_dir, '../../utils/tests/data/test_pcba_data.csv')
         _, self.output_filename = tempfile.mkstemp(dir=self.temp_dir,
                                                    suffix='.pkl')
 
