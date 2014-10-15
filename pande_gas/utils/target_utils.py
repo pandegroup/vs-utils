@@ -14,84 +14,121 @@ import pandas as pd
 from pande_gas.utils import read_pickle
 
 
-class PcbaParser(object):
+class AssayDataParser(object):
     """
-    Parse PubChem BioAssay (PCBA) target files.
+    Parse assay data files.
 
     Parameters
     ----------
     data_filename : str
-        PCBA data filename.
+        Data filename.
     map_filename : str
-        ID->SMILES map filename.
-    cols : list, optional
-        Data column indices to include. If None, compounds are classified by
-        assigned activity designations.
+        Compound ID->SMILES map filename.
+    primary_key : str
+        Name of column containing compound IDs.
+    id_prefix : str, optional
+        Prefix to prepend to compound IDs for mapping compound IDs to SMILES.
+    activity_key : str, optional
+        Name of column containing compound activity assignments. Must be
+        provided if column_indices is None. If both activity_key and
+        column_indices are set, column_indices will be used.
+    activity_value : str, optional
+        Value of positive class in activity_key. For example, 'Active' when
+        parsing PubChem BioAssay data.
+    column_indices : list, optional
+        Data column indices to include. Must be provided if activity_key is
+        None. If both activity_key and column_indices are set, column_indices
+        will be used.
+    delimiter : str, optional (default '\t')
+        Delimiter to use when parsing data file.
     """
-    def __init__(self, data_filename, map_filename, cols=None):
+    def __init__(self, data_filename, map_filename, primary_key,
+                 id_prefix=None, activity_key=None, activity_value=None,
+                 column_indices=None, delimiter='\t'):
         self.data_filename = data_filename
         self.map_filename = map_filename
-        self.cols = cols
+        self.primary_key = primary_key
+        self.id_prefix = id_prefix
+        if activity_key is None and column_indices is None:
+            raise ValueError(
+                'One of activity_key or column_indices must be set.')
+        if activity_key is not None and activity_value is None:
+            raise ValueError(
+                'You must set activity_value when using activity_key.')
+        self.activity_key = activity_key
+        self.activity_value = activity_value
+        if column_indices is not None:
+            column_indices = np.asarray(column_indices, dtype=int)
+        self.column_indices = column_indices
+        self.delimiter = delimiter
 
     def get_targets(self):
         """
         Parse data file and return targets and corresponding SMILES.
+
+        Procedure
+        ---------
+        1. Read data and get unique rows by compound ID.
+        2. Map compound IDs to SMILES.
+        3. Extract targets from data.
         """
-        data = self.read_pcba_data(self.data_filename)
+        data = self.read_data()
         id_map = read_pickle(self.map_filename)
 
         # get compound SMILES from map
         # indices are for data rows successfully mapped to SMILES
-        smiles, indices = self.map_cids_to_smiles(data.PUBCHEM_CID, id_map)
+        smiles, indices = self.map_ids_to_smiles(data[self.primary_key],
+                                                 id_map)
 
         # get targets
-        if self.cols is not None:
-            cols = np.asarray(self.cols, dtype=int)
-            targets = np.zeros((data.shape[0], len(cols)), dtype=float)
-            for i, idx in enumerate(cols):
+        if self.column_indices is not None:
+            targets = np.zeros((data.shape[0], len(self.column_indices)),
+                               dtype=float)
+            for i, idx in enumerate(self.column_indices):
                 targets[:, i] = data[data.columns[idx]]
         else:
-            targets = np.asarray(data.PUBCHEM_ACTIVITY_OUTCOME == 'Active')
+            targets = np.asarray(
+                data[self.activity_key] == self.activity_value)
         targets = targets[indices]  # reduce targets to matched structures
         return smiles, targets
 
-    def read_pcba_data(self, filename):
+    def read_data(self):
         """
-        Read PCBA data.
-
-        Parameters
-        ----------
-        filename : str
-            PCBA data filename.
+        Read assay data file.
         """
-        if filename.endswith('.gz'):
-            with gzip.open(filename) as f:
-                df = pd.read_csv(f)
+        if self.data_filename.endswith('.gz'):
+            with gzip.open(self.data_filename) as f:
+                df = pd.read_table(f, sep=self.delimiter)
         else:
-            df = pd.read_csv(filename)
-        df = df.drop_duplicates('PUBCHEM_CID')  # remove duplicate CIDs
+            df = pd.read_table(self.data_filename, sep=self.delimiter)
+        df = df.drop_duplicates(self.primary_key)  # remove duplicate IDs
         return df
 
-    def map_cids_to_smiles(self, cids, id_map):
+    def map_ids_to_smiles(self, ids, id_map):
         """
-        Look up SMILES for PubChem CIDs in a CID->SMILES map.
+        Look up SMILES for compound IDs in a compound ID->SMILES map.
 
         Parameters
         ----------
-        cids : array_like
-            List of PubChem CIDs.
+        ids : array_like
+            List of compound IDs.
         id_map : dict
-            CID->SMILES map.
+            Compound ID->SMILES map.
         """
         smiles = []
         indices = []
-        for i, cid in enumerate(cids):
-            if np.isnan(cid):
+        for i, this_id in enumerate(ids):
+            if np.isnan(this_id):
                 continue
-            cid = int(cid)  # CIDs are often read in as floats
-            name = 'CID{}'.format(cid)  # no bare IDs allowed in maps
-            if name in id_map:
-                smiles.append(id_map[name])
+            try:
+                this_id = int(this_id)  # CIDs are often read in as floats
+            except ValueError:
+                pass
+            if self.id_prefix is not None:
+                # no bare IDs allowed in maps
+                this_id = '{}{}'.format(self.id_prefix, this_id)
+            if this_id in id_map:
+                smiles.append(id_map[this_id])
                 indices.append(i)
         return np.asarray(smiles), np.asarray(indices)
 
@@ -99,9 +136,81 @@ class PcbaParser(object):
         """
         Get names of selected data columns.
         """
-        if self.cols is None:
+        if self.column_indices is None:
             return
         names = []
-        for i in self.cols:
-            names.append(self.read_pcba_data(self.data_filename).columns[i])
+        for i in self.column_indices:
+            names.append(self.read_data().columns[i])
         return names
+
+
+class PcbaParser(AssayDataParser):
+    """
+    Parse PubChem BioAssay (PCBA) target files.
+
+    Parameters
+    ----------
+    data_filename : str
+        Data filename.
+    map_filename : str
+        Compound ID->SMILES map filename.
+    primary_key : str, optional (default 'PUBCHEM_CID')
+        Name of column containing compound IDs.
+    id_prefix : str, optional (default 'CID')
+        Prefix to prepend to compound IDs for mapping compound IDs to SMILES.
+    activity_key : str, optional (default 'PUBCHEM_ACTIVITY_OUTCOME')
+        Name of column containing compound activity assignments. Must be
+        provided if column_indices is None. If both activity_key and
+        column_indices are set, column_indices will be used.
+    activity_value : str, optional (default 'Active')
+        Value of positive class in activity_key. For example, 'Active' when
+        parsing PubChem BioAssay data.
+    column_indices : list, optional
+        Data column indices to include. Must be provided if activity_key is
+        None. If both activity_key and column_indices are set, column_indices
+        will be used.
+    delimiter : str, optional (default ',')
+        Delimiter to use when parsing data file.
+    """
+    def __init__(self, data_filename, map_filename, primary_key='PUBCHEM_CID',
+                 id_prefix='CID', activity_key='PUBCHEM_ACTIVITY_OUTCOME',
+                 activity_value='Active', column_indices=None, delimiter=','):
+        super(PcbaParser, self).__init__(
+            data_filename, map_filename, primary_key, id_prefix, activity_key,
+            activity_value, column_indices, delimiter)
+
+
+class Nci60Parser(AssayDataParser):
+    """
+    Parse NCI60 target file.
+
+    Parameters
+    ----------
+    data_filename : str
+        Data filename.
+    map_filename : str
+        Compound ID->SMILES map filename.
+    primary_key : str, optional (default 'NSC')
+        Name of column containing compound IDs.
+    id_prefix : str, optional (default 'NSC')
+        Prefix to prepend to compound IDs for mapping compound IDs to SMILES.
+    activity_key : str, optional
+        Name of column containing compound activity assignments. Must be
+        provided if column_indices is None. If both activity_key and
+        column_indices are set, column_indices will be used.
+    activity_value : str, optional
+        Value of positive class in activity_key. For example, 'Active' when
+        parsing PubChem BioAssay data.
+    column_indices : list, optional (default range(4, 64))
+        Data column indices to include. Must be provided if activity_key is
+        None. If both activity_key and column_indices are set, column_indices
+        will be used.
+    delimiter : str, optional (default '\t')
+        Delimiter to use when parsing data file.
+    """
+    def __init__(self, data_filename, map_filename, primary_key='NSC',
+                 id_prefix='NSC', activity_key=None, activity_value=None,
+                 column_indices=range(4, 64), delimiter='\t'):
+        super(Nci60Parser, self).__init__(
+            data_filename, map_filename, primary_key, id_prefix, activity_key,
+            activity_value, column_indices, delimiter)
