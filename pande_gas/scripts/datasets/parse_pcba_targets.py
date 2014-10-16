@@ -60,8 +60,7 @@ def main(input_filename, map_filename, output_filename, column_indices=None):
     smiles, targets = parser.get_targets()
 
     # print the fraction of valid assay records that were found in the map
-    total = np.count_nonzero(~np.isnan(
-        parser.read_data(input_filename).PUBCHEM_CID))
+    total = np.count_nonzero(~np.isnan(parser.read_data().PUBCHEM_CID))
     print '{}/{} records matched'.format(len(targets), total)
 
     # save SMILES and targets

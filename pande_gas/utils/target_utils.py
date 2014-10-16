@@ -7,6 +7,7 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
+from collections import OrderedDict
 import gzip
 import numpy as np
 import pandas as pd
@@ -241,7 +242,7 @@ class Nci60Parser(AssayDataParser):
         df = self.read_data()
         names = df.columns[self.column_indices]
         smiles, targets = self.get_targets()
-        split_targets = {}
+        split_targets = OrderedDict()
         for i, name in enumerate(names):
             keep = ~np.isnan(targets[:, i])
             if not np.count_nonzero(keep):
