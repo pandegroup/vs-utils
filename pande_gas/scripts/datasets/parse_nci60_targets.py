@@ -60,4 +60,3 @@ def main(input_filename, map_filename, output_filename):
 if __name__ == '__main__':
     args = parse_args()
     main(args.input, args.map, args.output)
-
