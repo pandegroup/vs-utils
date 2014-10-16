@@ -35,7 +35,7 @@ def parse_args(input_args=None):
     return parser.parse_args(input_args)
 
 
-def main(input_filename, map_filename, output_filename, cols=None):
+def main(input_filename, map_filename, output_filename, column_indices=None):
     """
     Get regression targets.
 
@@ -47,20 +47,20 @@ def main(input_filename, map_filename, output_filename, cols=None):
         ID->SMILES map filename.
     output_filename : str
         Output filename.
-    cols : list, optional
+    column_indices : list, optional
         Column indices to include. If None, compounds are classified by
         activity.
     """
-    parser = PcbaParser(input_filename, map_filename, cols=cols)
-    if cols is not None:
+    parser = PcbaParser(input_filename, map_filename,
+                        column_indices=column_indices)
+    if column_indices is not None:
         print "Extracting data from the following columns:"
         for col in parser.get_column_names():
             print '\t', col
     smiles, targets = parser.get_targets()
 
     # print the fraction of valid assay records that were found in the map
-    total = np.count_nonzero(~np.isnan(
-        parser.read_pcba_data(input_filename).PUBCHEM_CID))
+    total = np.count_nonzero(~np.isnan(parser.read_data().PUBCHEM_CID))
     print '{}/{} records matched'.format(len(targets), total)
 
     # save SMILES and targets
