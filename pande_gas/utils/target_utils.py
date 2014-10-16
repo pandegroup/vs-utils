@@ -10,6 +10,7 @@ __license__ = "BSD 3-clause"
 import gzip
 import numpy as np
 import pandas as pd
+import warnings
 
 from pande_gas.utils import read_pickle
 
@@ -92,15 +93,21 @@ class AssayDataParser(object):
         targets = targets[indices]  # reduce targets to matched structures
         return smiles, targets
 
-    def read_data(self):
+    def read_data(self, **kwargs):
         """
         Read assay data file.
+
+        Parameters
+        ----------
+        kwargs : dict, optional
+            Keyword arguments for pd.read_table.
         """
         if self.data_filename.endswith('.gz'):
             with gzip.open(self.data_filename) as f:
-                df = pd.read_table(f, sep=self.delimiter)
+                df = pd.read_table(f, sep=self.delimiter, **kwargs)
         else:
-            df = pd.read_table(self.data_filename, sep=self.delimiter)
+            df = pd.read_table(self.data_filename, sep=self.delimiter,
+                               **kwargs)
         df = df.drop_duplicates(self.primary_key)  # remove duplicate IDs
         return df
 
@@ -214,3 +221,33 @@ class Nci60Parser(AssayDataParser):
         super(Nci60Parser, self).__init__(
             data_filename, map_filename, primary_key, id_prefix, activity_key,
             activity_value, column_indices, delimiter)
+
+    def read_data(self, **kwargs):
+        """
+        Read assay data file.
+
+        Parameters
+        ----------
+        kwargs : dict, optional
+            Keyword arguments for pd.read_table.
+        """
+        # treat '-' and 'na' values as NaNs
+        return super(Nci60Parser, self).read_data(na_values=['-', 'na'])
+
+    def split_targets(self):
+        """
+        Split targets among different assays.
+        """
+        df = self.read_data()
+        names = df.columns[self.column_indices]
+        smiles, targets = self.get_targets()
+        split_targets = {}
+        for i, name in enumerate(names):
+            keep = ~np.isnan(targets[:, i])
+            if not np.count_nonzero(keep):
+                warnings.warn(
+                    'Assay "{}" has no matching records.'.format(name))
+                continue
+            split_targets[name] = {'smiles': smiles[keep],
+                                   'targets': targets[keep]}
+        return split_targets

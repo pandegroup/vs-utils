@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Parse assay data from PubChem BioAssay (PCBA).
+Parse assay data from the NCI60 dataset.
 """
 
 __author__ = "Steven Kearnes"
@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 
 from pande_gas.utils import write_pickle
-from pande_gas.utils.target_utils import PcbaParser
+from pande_gas.utils.target_utils import Nci60Parser
 
 
 def parse_args(input_args=None):
@@ -30,12 +30,10 @@ def parse_args(input_args=None):
                         help='Molecule ID to SMILES map.')
     parser.add_argument('-o', '--output', required=1,
                         help='Output filename.')
-    parser.add_argument('-c', '--cols', nargs='+', type=int,
-                        help='Column indices to include.')
     return parser.parse_args(input_args)
 
 
-def main(input_filename, map_filename, output_filename, column_indices=None):
+def main(input_filename, map_filename, output_filename):
     """
     Get regression targets.
 
@@ -47,21 +45,13 @@ def main(input_filename, map_filename, output_filename, column_indices=None):
         ID->SMILES map filename.
     output_filename : str
         Output filename.
-    column_indices : list, optional
-        Column indices to include. If None, compounds are classified by
-        activity.
     """
-    parser = PcbaParser(input_filename, map_filename,
-                        column_indices=column_indices)
-    if column_indices is not None:
-        print "Extracting data from the following columns:"
-        for col in parser.get_column_names():
-            print '\t', col
+    parser = Nci60Parser(input_filename, map_filename)
     smiles, targets = parser.get_targets()
 
     # print the fraction of valid assay records that were found in the map
     total = np.count_nonzero(~np.isnan(
-        parser.read_data(input_filename).PUBCHEM_CID))
+        parser.read_data(input_filename).NSC))
     print '{}/{} records matched'.format(len(targets), total)
 
     # save SMILES and targets
@@ -69,4 +59,5 @@ def main(input_filename, map_filename, output_filename, column_indices=None):
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.input, args.map, args.output, args.cols)
+    main(args.input, args.map, args.output)
+
