@@ -1,6 +1,8 @@
 """
 Tests for miscellaneous utilities.
 """
+import cPickle
+import gzip
 import numpy as np
 import shutil
 import tempfile
@@ -9,9 +11,10 @@ import unittest
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from rdkit_utils import serial
+from rdkit_utils import conformers, serial
 
-from .. import DatasetSharder, pad_array, SmilesMap
+from .. import (DatasetSharder, pad_array, read_pickle, ScaffoldGenerator,
+                SmilesGenerator, SmilesMap, write_pickle)
 
 
 class TestDatasetSharder(unittest.TestCase):
@@ -137,17 +140,64 @@ class TestMiscUtils(unittest.TestCase):
     """
     Tests for miscellaneous utilities.
     """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """
+        Clean up tests.
+        """
+        shutil.rmtree(self.temp_dir)
+
     def test_pad_matrix(self):
-        """Pad matrix."""
+        """
+        Test pad_matrix.
+        """
         x = np.random.random((5, 6))
         assert pad_array(x, (10, 12)).shape == (10, 12)
         assert pad_array(x, 10).shape == (10, 10)
 
+    def test_read_pickle(self):
+        """
+        Test read_pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl')
+        with open(filename, 'wb') as f:
+            cPickle.dump({'foo': 'bar'}, f, cPickle.HIGHEST_PROTOCOL)
+        assert read_pickle(filename)['foo'] == 'bar'
 
-class TestSmilesMap(unittest.TestCase):
-    """
-    Test SmilesMap.
-    """
+    def test_read_pickle_gz(self):
+        """
+        Test read_pickle with gzipped pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl.gz')
+        with gzip.open(filename, 'wb') as f:
+            cPickle.dump({'foo': 'bar'}, f, cPickle.HIGHEST_PROTOCOL)
+        assert read_pickle(filename)['foo'] == 'bar'
+
+    def test_write_pickle(self):
+        """
+        Test write_pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl')
+        write_pickle({'foo': 'bar'}, filename)
+        with open(filename) as f:
+            assert cPickle.load(f)['foo'] == 'bar'
+
+    def test_write_pickle_gz(self):
+        """
+        Test write_pickle with gzipped pickle.
+        """
+        _, filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl.gz')
+        write_pickle({'foo': 'bar'}, filename)
+        with gzip.open(filename) as f:
+            assert cPickle.load(f)['foo'] == 'bar'
+
+
+class SmilesTests(unittest.TestCase):
     def setUp(self):
         """
         Set up tests.
@@ -161,6 +211,73 @@ class TestSmilesMap(unittest.TestCase):
             mol = Chem.MolFromSmiles(s)
             mol.SetProp('_Name', n)
             self.mols.append(mol)
+
+
+class TestSmilesGenerator(SmilesTests):
+    """
+    Test SmilesGenerator.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        super(TestSmilesGenerator, self).setUp()
+        self.engine = SmilesGenerator()
+
+    def test_get_smiles(self):
+        """
+        Test SmilesGenerator.get_smiles.
+        """
+        for mol in self.mols:
+            smiles = self.engine.get_smiles(mol)
+            new = Chem.MolFromSmiles(smiles)
+            assert new.GetNumAtoms() == mol.GetNumAtoms()
+
+    def test_get_smiles_3d(self):
+        """
+        Test SmilesGenerator.get_smiles with stereochemistry assigned from 3D
+        coordinates.
+        """
+        # generate conformers for ibuprofen
+        engine = conformers.ConformerGenerator()
+        mol = engine.generate_conformers(self.mols[1])
+        assert mol.GetNumConformers() > 0
+
+        # check that chirality has not yet been assigned
+        smiles = self.engine.get_smiles(mol)
+        assert '@' not in smiles  # check for absence of chirality marker
+        chiral_types = [Chem.ChiralType.CHI_TETRAHEDRAL_CW,
+                        Chem.ChiralType.CHI_TETRAHEDRAL_CCW]
+        chiral = False
+        for atom in mol.GetAtoms():
+            if atom.GetChiralTag() in chiral_types:
+                chiral = True
+        assert not chiral
+
+        # generate SMILES
+        self.engine = SmilesGenerator(assign_stereo_from_3d=True)
+        smiles = self.engine.get_smiles(mol)
+        assert '@' in smiles  # check for chirality marker
+        new = Chem.MolFromSmiles(smiles)
+        assert new.GetNumAtoms() == self.mols[1].GetNumAtoms()
+
+        # check that chirality was assigned to ibuprofen
+        chiral = False
+        for atom in mol.GetAtoms():
+            if atom.GetChiralTag() in chiral_types:
+                chiral = True
+        assert chiral
+
+
+class TestSmilesMap(SmilesTests):
+    """
+    Test SmilesMap.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        super(TestSmilesMap, self).setUp()
         self.map = SmilesMap()
 
     def test_add_mol(self):
@@ -229,3 +346,46 @@ class TestSmilesMap(unittest.TestCase):
             raise AssertionError
         except ValueError:
             pass
+
+
+class TestScaffoldGenerator(unittest.TestCase):
+    """
+    Test ScaffoldGenerator.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        smiles = ['CC(=O)OC1=CC=CC=C1C(=O)O',
+                  'CN1C=C(C2=CC=CC=C21)C(=O)[C@@H]3CCC4=C(C3)NC=N4']
+        names = ['aspirin', 'ramosetron']
+        self.mols = []
+        for this_smiles, name in zip(smiles, names):
+            mol = Chem.MolFromSmiles(this_smiles)
+            mol.SetProp('_Name', name)
+            self.mols.append(mol)
+        self.engine = ScaffoldGenerator()
+
+    def test_scaffolds(self):
+        """
+        Test scaffold generation.
+        """
+        scaffolds = [self.engine.get_scaffold(mol) for mol in self.mols]
+        scaffold_mols = [Chem.MolFromSmiles(scaffold)
+                         for scaffold in scaffolds]
+        for mol, ref_mol in zip(scaffold_mols, self.mols):
+            assert mol.GetNumAtoms() < ref_mol.GetNumAtoms()
+        assert scaffold_mols[0].GetNumAtoms() == 6
+        assert scaffold_mols[1].GetNumAtoms() == 20
+
+    def test_chiral_scaffolds(self):
+        """
+        Test chiral scaffold generation.
+        """
+        achiral_scaffold = self.engine.get_scaffold(self.mols[1])
+        self.engine = ScaffoldGenerator(include_chirality=True)
+        chiral_scaffold = self.engine.get_scaffold(self.mols[1])
+        assert '@' not in achiral_scaffold
+        assert '@' in chiral_scaffold
+        assert (Chem.MolFromSmiles(achiral_scaffold).GetNumAtoms() ==
+                Chem.MolFromSmiles(chiral_scaffold).GetNumAtoms())

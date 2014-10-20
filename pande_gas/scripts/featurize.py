@@ -9,8 +9,6 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import argparse
-import cPickle
-import gzip
 import inspect
 import joblib
 import numpy as np
@@ -19,7 +17,8 @@ from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit_utils import serial
 
 from pande_gas.features import get_featurizers
-from pande_gas.utils import SmilesMap
+from pande_gas.utils import (read_pickle, ScaffoldGenerator, SmilesGenerator,
+                             write_pickle)
 from pande_gas.utils.parallel_utils import LocalCluster
 
 
@@ -43,9 +42,9 @@ def parse_args(input_args=None):
                         help='Molecule targets.')
     parser.add_argument('--smiles-hydrogens', action='store_true')
     parser.add_argument('--scaffolds', action='store_true',
-                        help='Whether to calculate molecule scaffolds.')
+                        help='Calculate molecule scaffolds.')
     parser.add_argument('--names', action='store_true',
-                        help='Whether to include molecule names.')
+                        help='Include molecule names.')
     parser.add_argument('-p', '--parallel', action='store_true',
                         help='Whether to use IPython.parallel.')
     parser.add_argument('-id', '--cluster-id',
@@ -159,12 +158,7 @@ def main(featurizer_class, input_filename, output_filename,
     # get targets
     data = {}
     if target_filename is not None:
-        if target_filename.endswith('.gz'):
-            f = gzip.open(target_filename)
-        else:
-            f = open(target_filename)
-        targets = cPickle.load(f)
-        f.close()
+        targets = read_pickle(target_filename)
         if isinstance(targets, dict):
             mol_indices, target_indices = collate_mols(
                 mols, mol_names, targets['y'], targets['names'])
@@ -187,8 +181,8 @@ def main(featurizer_class, input_filename, output_filename,
     data['features'] = features
 
     # calculate SMILES
-    smiles = SmilesMap(prefix='', remove_hydrogens=(not smiles_hydrogens))
-    data['smiles'] = np.asarray([smiles.add_mol(mol) for mol in mols])
+    smiles = SmilesGenerator(remove_hydrogens=(not smiles_hydrogens))
+    data['smiles'] = np.asarray([smiles.get_smiles(mol) for mol in mols])
 
     # names, scaffolds, args
     if names:
@@ -274,7 +268,7 @@ def read_mols(input_filename):
         if mol.HasProp('_Name'):
             names.append(mol.GetProp('_Name'))
         else:
-            raise ValueError('Molecule names are required.')
+            names.append(None)
     reader.close()
     mols = np.asarray(mols)
     names = np.asarray(names)
@@ -297,10 +291,10 @@ def get_scaffolds(mols, include_chirality=False):
         Whether to include chirality in scaffolds.
     """
     print "Generating molecule scaffolds..."
+    engine = ScaffoldGenerator(include_chirality=include_chirality)
     scaffolds = []
     for mol in mols:
-        scaffolds.append(MurckoScaffold.MurckoScaffoldSmiles(
-            mol=mol, includeChirality=include_chirality))
+        scaffolds.append(engine.get_scaffold(mol))
     scaffolds = np.asarray(scaffolds)
     return scaffolds
 
@@ -318,12 +312,8 @@ def write_output_file(data, output_filename, compression_level=3):
     compression_level : int, optional (default 3)
         Compression level (0-9) to use with joblib.dump.
     """
-    if output_filename.endswith('.pkl'):
-        with open(output_filename, 'wb') as f:
-            cPickle.dump(data, f, cPickle.HIGHEST_PROTOCOL)
-    elif output_filename.endswith('.pkl.gz'):
-        with gzip.open(output_filename, 'wb') as f:
-            cPickle.dump(data, f, cPickle.HIGHEST_PROTOCOL)
+    if output_filename.endswith('.pkl') or output_filename.endswith('.pkl.gz'):
+        write_pickle(data, output_filename)
     elif output_filename.endswith('.joblib'):
         joblib.dump(data, output_filename, compress=compression_level)
     else:
