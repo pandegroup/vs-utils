@@ -2,12 +2,9 @@
 """
 Get Tox21 challenge datasets.
 
-Notes:
-* Some SMILES strings are represented by multiple compounds, with some overlap
-of assays. These compounds need to be condensed and their assay outcomes need
-to be reconciled.
-* For compounds with activities that do not agree...look at the assays if
-possible.
+Some SMILES strings are represented by multiple compounds, with some overlap of
+assays. These compounds need to be condensed and their assay outcomes need to
+be reconciled.
 """
 
 __author__ = "Steven Kearnes"
@@ -19,14 +16,19 @@ import cPickle
 import gzip
 import numpy as np
 
-from rdkit import Chem
-
 from rdkit_utils import serial
 
+from pande_gas.utils import SmilesGenerator
 
-def get_args():
+
+def get_args(input_args=None):
     """
     Get command-line arguments.
+
+    Parameters
+    ----------
+    input_args : list, optional
+        Input arguments. If not provided, defaults to sys.argv[1:].
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('input',
@@ -34,7 +36,7 @@ def get_args():
     parser.add_argument('--merge', choices=['max', 'min', 'majority-',
                                             'majority+'], required=1,
                         help='Target merge strategy.')
-    return parser.parse_args()
+    return parser.parse_args(input_args)
 
 
 def main(input_filename, merge):
@@ -55,9 +57,9 @@ def main(input_filename, merge):
                      'SR-HSE', 'SR-MMP', 'SR-p53']
     data = {dataset: {} for dataset in dataset_names}
     skipped = []
+    engine = SmilesGenerator()
     for mol in reader.get_mols():
-        smiles = Chem.MolToSmiles(Chem.RemoveHs(mol), isomericSmiles=True,
-                                  canonical=True)
+        smiles = engine.get_smiles(mol)
         for prop in list(mol.GetPropNames()):
             if prop in dataset_names:
                 score = int(mol.GetProp(prop))
