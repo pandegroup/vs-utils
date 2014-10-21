@@ -15,10 +15,9 @@ import argparse
 import cPickle
 import gzip
 import numpy as np
+import warnings
 
-from rdkit_utils import serial
-
-from pande_gas.utils import SmilesGenerator
+from pande_gas.utils.target_utils import Tox21Parser
 
 
 def get_args(input_args=None):
@@ -35,82 +34,43 @@ def get_args(input_args=None):
                         help='Input filename.')
     parser.add_argument('--merge', choices=['max', 'min', 'majority-',
                                             'majority+'], required=1,
+                        default='max',
                         help='Target merge strategy.')
     return parser.parse_args(input_args)
 
 
-def main(input_filename, merge):
+def main(filename, merge_strategy):
     """
     Get Tox21 chellenge datasets.
 
     Parameters
     ----------
-    input_filename : str
-        Input filename.
-    merge : str
-        Target merge strategy.
+    filename : str
+        Data filename.
+    merge_strategy : str, optional (default 'max')
+        Strategy to use when merging targets for duplicated molecules. Choose
+        from 'max' (active if active in any assay), 'min' (inactive if inactive
+        in any assay), 'majority+' (majority vote with ties assigned active),
+        or 'majority-' (majority vote with ties assigned inactive).
     """
-    reader = serial.MolReader()
-    reader.open(input_filename)
-    dataset_names = ['NR-AR', 'NR-AhR', 'NR-AR-LBD', 'NR-ER', 'NR-ER-LBD',
-                     'NR-Aromatase', 'NR-PPAR-gamma', 'SR-ARE', 'SR-ATAD5',
-                     'SR-HSE', 'SR-MMP', 'SR-p53']
-    data = {dataset: {} for dataset in dataset_names}
-    skipped = []
-    engine = SmilesGenerator()
-    for mol in reader.get_mols():
-        smiles = engine.get_smiles(mol)
-        for prop in list(mol.GetPropNames()):
-            if prop in dataset_names:
-                score = int(mol.GetProp(prop))
-                if smiles not in data[prop]:
-                    data[prop][smiles] = []
-                data[prop][smiles].append(score)
-            else:  # make sure we don't miss anything important
-                if prop not in skipped:
-                    skipped.append(prop)
-                    print "Skipping property '{}'".format(prop)
-                continue
-
-    # reconcile activity differences
-    for dataset in dataset_names:
-        for smiles, targets in data[dataset].items():
-            targets = np.asarray(targets, dtype=int)
-            if len(targets) == 1:
-                data[dataset][smiles] = targets[0]
-            elif np.all(targets == 0):
-                data[dataset][smiles] = 0
-            elif np.all(targets == 1):
-                data[dataset][smiles] = 1
-            else:
-                if merge == 'max':
-                    data[dataset][smiles] = max(targets)
-                elif merge == 'min':
-                    data[dataset][smiles] = min(targets)
-                elif merge == 'majority-':  # 0.5 rounds down
-                    data[dataset][smiles] = int(np.round(np.mean(targets)))
-                elif merge == 'majority+':  # 0.5 rounds up
-                    data[dataset][smiles] = (int(np.round(
-                        np.mean(targets) + 1)) - 1)
+    parser = Tox21Parser(filename, merge_strategy=merge_strategy)
+    data = parser.get_targets()
 
     # save individual datasets
-    for dataset in dataset_names:
-        assert len(data[dataset])  # check for at least one molecule
-
-        # build mol and target arrays
-        mols = []
-        targets = []
-        for mol, target in data[dataset].items():
-            mols.append(mol)
-            targets.append(target)
-        targets = np.asarray(targets, dtype=int)
+    for dataset in data:
+        if not len(data[dataset]):
+            warnings.warn('Dataset "{}" is empty.'.format(dataset))
+            continue
+        targets = data[dataset]['targets']
+        smiles = data[dataset]['smiles']
         pos = np.count_nonzero(targets == 1)
         neg = np.count_nonzero(targets == 0)
         assert pos + neg == targets.size
         print '{}\t{}\t{}'.format(dataset, pos, neg)
         with gzip.open('{}.ism.gz'.format(dataset), 'wb') as f:
-            for i, mol in enumerate(mols):
-                f.write('{}\t{}\n'.format(mol, '{}-{}'.format(dataset, i)))
+            for i, this_smiles in enumerate(smiles):
+                f.write('{}\t{}\n'.format(this_smiles, '{}-{}'.format(
+                    dataset, i)))  # molecules are given dataset-specific names
         with open('{}-targets.pkl'.format(dataset), 'wb') as f:
             cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
 
