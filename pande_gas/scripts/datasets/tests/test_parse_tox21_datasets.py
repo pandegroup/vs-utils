@@ -2,6 +2,7 @@
 Tests for parse_tox21_datasets.py.
 """
 import glob
+import os
 
 from rdkit import Chem
 
@@ -22,7 +23,7 @@ class TestParseTox21Datasets(TestTox21Parser):
         main(args.input, args.merge, args.dir)
 
         count = 0
-        for filename in glob.glob('*.pkl.gz'):
+        for filename in glob.glob(os.path.join(self.temp_dir, '*.pkl.gz')):
             count += 1
             data = read_pickle(filename)
             assert len(data['smiles']) == len(data['targets'])

@@ -71,7 +71,6 @@ def main(filename, merge_strategy, directory='.'):
         assert pos + neg == targets.size
         print '{}\t{}\t{}'.format(dataset, pos, neg)
         filename = os.path.join(directory, '{}-classes.pkl.gz'.format(dataset))
-        print filename
         with gzip.open(filename, 'wb') as f:
             cPickle.dump(data[dataset], f, cPickle.HIGHEST_PROTOCOL)
 
