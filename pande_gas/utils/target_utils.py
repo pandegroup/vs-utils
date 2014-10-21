@@ -267,8 +267,8 @@ class Tox21Parser(object):
     merge_strategy : str, optional (default 'max')
         Strategy to use when merging targets for duplicated molecules. Choose
         from 'max' (active if active in any assay), 'min' (inactive if inactive
-        in any assay), 'majority+' (majority vote with ties assigned active),
-        or 'majority-' (majority vote with ties assigned inactive).
+        in any assay), 'majority_pos' (majority vote with ties assigned
+        active), or 'majority_neg' (majority vote with ties assigned inactive).
     """
     dataset_names = ['NR-AR', 'NR-AhR', 'NR-AR-LBD', 'NR-ER', 'NR-ER-LBD',
                      'NR-Aromatase', 'NR-PPAR-gamma', 'SR-ARE', 'SR-ATAD5',
@@ -276,6 +276,7 @@ class Tox21Parser(object):
 
     def __init__(self, filename, merge_strategy='max'):
         self.filename = filename
+        assert merge_strategy in ['max', 'min', 'majority_pos', 'majority_neg']
         self.merge_strategy = merge_strategy
 
     def read_data(self):
@@ -318,7 +319,7 @@ class Tox21Parser(object):
     def merge_targets(self, data):
         """
         Merge labels for duplicate molecules according to a specified merge
-        stratecy ('max', 'min', 'majority+', 'majority-').
+        stratecy ('max', 'min', 'majority_pos', 'majority_neg').
 
         Parameters
         ----------
@@ -348,9 +349,11 @@ class Tox21Parser(object):
                         data[dataset][smiles] = max(targets)
                     elif self.merge_strategy == 'min':
                         data[dataset][smiles] = min(targets)
-                    elif self.merge_strategy == 'majority-':  # 0.5 rounds down
+                    # 0.5 rounds down
+                    elif self.merge_strategy == 'majority_neg':
                         data[dataset][smiles] = int(np.round(np.mean(targets)))
-                    elif self.merge_strategy == 'majority+':  # 0.5 rounds up
+                    # 0.5 rounds up
+                    elif self.merge_strategy == 'majority_pos':
                         data[dataset][smiles] = (int(np.round(
                             np.mean(targets) + 1)) - 1)
         return data

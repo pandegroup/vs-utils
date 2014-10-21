@@ -15,6 +15,7 @@ import argparse
 import cPickle
 import gzip
 import numpy as np
+import os
 import warnings
 
 from pande_gas.utils.target_utils import Tox21Parser
@@ -32,14 +33,15 @@ def get_args(input_args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('input',
                         help='Input filename.')
-    parser.add_argument('--merge', choices=['max', 'min', 'majority-',
-                                            'majority+'], required=1,
-                        default='max',
+    parser.add_argument('--merge', choices=['max', 'min', 'majority_neg',
+                                            'majority_pos'], default='max',
                         help='Target merge strategy.')
+    parser.add_argument('-d', '--dir', default='.',
+                        help='Directory in which to write target files.')
     return parser.parse_args(input_args)
 
 
-def main(filename, merge_strategy):
+def main(filename, merge_strategy, directory='.'):
     """
     Get Tox21 chellenge datasets.
 
@@ -50,8 +52,10 @@ def main(filename, merge_strategy):
     merge_strategy : str, optional (default 'max')
         Strategy to use when merging targets for duplicated molecules. Choose
         from 'max' (active if active in any assay), 'min' (inactive if inactive
-        in any assay), 'majority+' (majority vote with ties assigned active),
-        or 'majority-' (majority vote with ties assigned inactive).
+        in any assay), 'majority_pos' (majority vote with ties assigned
+        active), or 'majority_neg' (majority vote with ties assigned inactive).
+    directory : str, optional (default '.')
+        Directory in which to write target files.
     """
     parser = Tox21Parser(filename, merge_strategy=merge_strategy)
     data = parser.get_targets()
@@ -66,9 +70,11 @@ def main(filename, merge_strategy):
         neg = np.count_nonzero(targets == 0)
         assert pos + neg == targets.size
         print '{}\t{}\t{}'.format(dataset, pos, neg)
-        with gzip.open('{}-targets.pkl.gz'.format(dataset), 'wb') as f:
+        filename = os.path.join(directory, '{}-classes.pkl.gz'.format(dataset))
+        print filename
+        with gzip.open(filename, 'wb') as f:
             cPickle.dump(data[dataset], f, cPickle.HIGHEST_PROTOCOL)
 
 if __name__ == '__main__':
     args = get_args()
-    main(args.input, args.merge)
+    main(args.input, args.merge, args.dir)

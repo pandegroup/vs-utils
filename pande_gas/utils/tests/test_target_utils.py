@@ -7,8 +7,13 @@ import shutil
 import tempfile
 import unittest
 
+from rdkit import Chem
+
+from rdkit_utils import serial
+
 from .. import read_pickle, write_pickle
-from ..target_utils import AssayDataParser, Nci60Parser, PcbaParser
+from ..target_utils import (AssayDataParser, Nci60Parser, PcbaParser,
+                            Tox21Parser)
 
 
 class TestAssayDataParser(unittest.TestCase):
@@ -189,3 +194,235 @@ class TestNci60Parser(unittest.TestCase):
             if name == 'ME:MDA_N':
                 continue  # this assay is empty
             assert name in split_targets
+
+
+class TestTox21Parser(unittest.TestCase):
+    """
+    Test Tox21Parser.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        self.temp_dir = tempfile.mkdtemp()
+        self.mols = []
+        aspirin = Chem.MolFromSmiles('CC(=O)OC1=CC=CC=C1C(=O)O')
+        aspirin.SetProp('_Name', 'aspirin1')
+        aspirin.SetProp('NR-Aromatase', '0')
+        aspirin.SetProp('SR-ATAD5', '1')
+        aspirin.SetProp('NR-ER', '0')
+        aspirin.SetProp('SR-p53', '0')
+        aspirin.SetProp('NR-AhR', '1')
+        aspirin.SetProp('SR-ARE', '1')
+        aspirin.SetProp('Irrelevant', 'blah')
+        self.mols.append(aspirin)
+        ibuprofen = Chem.MolFromSmiles('CC(C)CC1=CC=C(C=C1)C(C)C(=O)O')
+        ibuprofen.SetProp('_Name', 'ibuprofen')
+        ibuprofen.SetProp('SR-ATAD5', '1')
+        ibuprofen.SetProp('NR-ER', '1')
+        ibuprofen.SetProp('SR-p53', '1')
+        ibuprofen.SetProp('NR-AhR', '1')
+        ibuprofen.SetProp('SR-ARE', '0')
+        ibuprofen.SetProp('Irrelevant', 'blah2')
+        self.mols.append(ibuprofen)
+        aspirin2 = Chem.MolFromSmiles('CC(=O)OC1=CC=CC=C1C(=O)O')
+        aspirin2.SetProp('_Name', 'aspirin2')
+        aspirin2.SetProp('SR-ATAD5', '0')
+        aspirin2.SetProp('NR-ER', '0')
+        aspirin2.SetProp('SR-p53', '0')
+        aspirin2.SetProp('NR-AhR', '1')
+        aspirin2.SetProp('SR-ARE', '1')
+        aspirin2.SetProp('Irrelevant', 'blah3')
+        self.mols.append(aspirin2)
+        aspirin3 = Chem.MolFromSmiles('CC(=O)OC1=CC=CC=C1C(=O)O')
+        aspirin3.SetProp('_Name', 'aspirin3')
+        aspirin3.SetProp('SR-ATAD5', '1')
+        aspirin3.SetProp('NR-ER', '0')
+        aspirin3.SetProp('SR-p53', '0')
+        aspirin3.SetProp('NR-AhR', '1')
+        aspirin3.SetProp('SR-ARE', '1')
+        aspirin3.SetProp('Irrelevant', 'blah4')
+        self.mols.append(aspirin3)
+        aspirin4 = Chem.MolFromSmiles('CC(=O)OC1=CC=CC=C1C(=O)O')
+        aspirin4.SetProp('_Name', 'aspirin4')
+        aspirin4.SetProp('SR-ATAD5', '0')
+        aspirin4.SetProp('NR-ER', '0')
+        aspirin4.SetProp('SR-p53', '1')
+        aspirin4.SetProp('NR-AhR', '0')
+        aspirin4.SetProp('SR-ARE', '1')
+        aspirin4.SetProp('Irrelevant', 'blah5')
+        self.mols.append(aspirin4)
+        self.smiles = [Chem.MolToSmiles(mol, isomericSmiles=True)
+                       for mol in self.mols]
+
+        # write input file
+        _, self.filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.sdf')
+        with serial.MolWriter().open(self.filename) as writer:
+            writer.write(self.mols)
+
+        # set up parser
+        self.engine = Tox21Parser(self.filename)
+
+    def tearDown(self):
+        """
+        Clean up tests.
+        """
+        shutil.rmtree(self.temp_dir)
+
+    def test_read_data(self):
+        """
+        Test Tox21Parser.read_data.
+        """
+        assert len(self.engine.read_data()) == 5
+
+    def test_read_targets(self):
+        """
+        Test Tox21Parser.read_targets.
+        """
+        data = self.engine.read_targets()
+        count = 0
+        for dataset in data:
+            assert dataset in self.engine.dataset_names
+            if len(data[dataset]):
+                count += 1
+            else:
+                continue
+        assert count == 6
+
+        # check individual datasets
+        for dataset in data:
+            if not len(data[dataset]):
+                continue
+            if dataset == 'NR-Aromatase':
+                assert set(data[dataset].keys()) == {self.smiles[0]}
+            else:
+                assert set(data[dataset].keys()) == set(self.smiles)
+
+        assert np.array_equal(data['NR-Aromatase'].values(), [[0]])
+
+        assert [1, 0, 1, 0] in data['SR-ATAD5'].values()
+        assert [1] in data['SR-ATAD5'].values()
+        assert [0] not in data['SR-ATAD5'].values()
+
+        assert [0, 0, 0, 0] in data['NR-ER'].values()
+        assert [1] in data['NR-ER'].values()
+        assert [0] not in data['NR-ER'].values()
+
+        assert [0, 0, 0, 1] in data['SR-p53'].values()
+        assert [1] in data['SR-p53'].values()
+        assert [0] not in data['SR-p53'].values()
+
+        assert [1, 1, 1, 0] in data['NR-AhR'].values()
+        assert [1] in data['NR-AhR'].values()
+        assert [0] not in data['NR-AhR'].values()
+
+        assert [1, 1, 1, 1] in data['SR-ARE'].values()
+        assert [0] in data['SR-ARE'].values()
+        assert [1] not in data['SR-ARE'].values()
+
+    def test_merge_targets_max(self):
+        """
+        Test Tox21Parser.merge_targets with 'max' merge_strategy.
+        """
+        self.engine.merge_strategy = 'max'
+        data = self.engine.merge_targets(self.engine.read_targets())
+
+        assert np.array_equal(data['NR-Aromatase'].values(), [0])
+
+        assert data['SR-ATAD5'][self.smiles[0]] == 1
+        assert data['SR-ATAD5'][self.smiles[1]] == 1
+
+        assert data['NR-ER'][self.smiles[0]] == 0
+        assert data['NR-ER'][self.smiles[1]] == 1
+
+        assert data['SR-p53'][self.smiles[0]] == 1
+        assert data['SR-p53'][self.smiles[1]] == 1
+
+        assert data['NR-AhR'][self.smiles[0]] == 1
+        assert data['NR-AhR'][self.smiles[1]] == 1
+
+        assert data['SR-ARE'][self.smiles[0]] == 1
+        assert data['SR-ARE'][self.smiles[1]] == 0
+
+    def test_merge_targets_min(self):
+        """
+        Test Tox21Parser.merge_targets with 'min' merge_strategy.
+        """
+        self.engine.merge_strategy = 'min'
+        data = self.engine.merge_targets(self.engine.read_targets())
+
+        assert np.array_equal(data['NR-Aromatase'].values(), [0])
+
+        assert data['SR-ATAD5'][self.smiles[0]] == 0
+        assert data['SR-ATAD5'][self.smiles[1]] == 1
+
+        assert data['NR-ER'][self.smiles[0]] == 0
+        assert data['NR-ER'][self.smiles[1]] == 1
+
+        assert data['SR-p53'][self.smiles[0]] == 0
+        assert data['SR-p53'][self.smiles[1]] == 1
+
+        assert data['NR-AhR'][self.smiles[0]] == 0
+        assert data['NR-AhR'][self.smiles[1]] == 1
+
+        assert data['SR-ARE'][self.smiles[0]] == 1
+        assert data['SR-ARE'][self.smiles[1]] == 0
+
+    def test_merge_targets_majority_pos(self):
+        """
+        Test Tox21Parser.merge_targets with 'majority_pos' merge_strategy.
+        """
+        self.engine.merge_strategy = 'majority_pos'
+        data = self.engine.merge_targets(self.engine.read_targets())
+
+        assert np.array_equal(data['NR-Aromatase'].values(), [0])
+
+        assert data['SR-ATAD5'][self.smiles[0]] == 1
+        assert data['SR-ATAD5'][self.smiles[1]] == 1
+
+        assert data['NR-ER'][self.smiles[0]] == 0
+        assert data['NR-ER'][self.smiles[1]] == 1
+
+        assert data['SR-p53'][self.smiles[0]] == 0
+        assert data['SR-p53'][self.smiles[1]] == 1
+
+        assert data['NR-AhR'][self.smiles[0]] == 1
+        assert data['NR-AhR'][self.smiles[1]] == 1
+
+        assert data['SR-ARE'][self.smiles[0]] == 1
+        assert data['SR-ARE'][self.smiles[1]] == 0
+
+    def test_merge_targets_majority_neg(self):
+        """
+        Test Tox21Parser.merge_targets with 'majority_neg' merge_strategy.
+        """
+        self.engine.merge_strategy = 'majority_neg'
+        data = self.engine.merge_targets(self.engine.read_targets())
+
+        assert np.array_equal(data['NR-Aromatase'].values(), [0])
+
+        assert data['SR-ATAD5'][self.smiles[0]] == 0
+        assert data['SR-ATAD5'][self.smiles[1]] == 1
+
+        assert data['NR-ER'][self.smiles[0]] == 0
+        assert data['NR-ER'][self.smiles[1]] == 1
+
+        assert data['SR-p53'][self.smiles[0]] == 0
+        assert data['SR-p53'][self.smiles[1]] == 1
+
+        assert data['NR-AhR'][self.smiles[0]] == 1
+        assert data['NR-AhR'][self.smiles[1]] == 1
+
+        assert data['SR-ARE'][self.smiles[0]] == 1
+        assert data['SR-ARE'][self.smiles[1]] == 0
+
+    def test_get_targets(self):
+        """
+        Test Tox21Parser.get_targets.
+        """
+        data = self.engine.get_targets()
+        assert len(data) == 6
+        for dataset in data:
+            smiles = data[dataset]['smiles']
+            targets = data[dataset]['targets']
+            assert len(smiles) == len(targets) > 0
