@@ -13,7 +13,9 @@ import numpy as np
 import pandas as pd
 import warnings
 
-from pande_gas.utils import read_pickle
+from rdkit_utils import serial
+
+from pande_gas.utils import read_pickle, SmilesGenerator
 
 
 class AssayDataParser(object):
@@ -251,4 +253,119 @@ class Nci60Parser(AssayDataParser):
                 continue
             split_targets[name] = {'smiles': smiles[keep],
                                    'targets': targets[keep]}
+        return split_targets
+
+
+class Tox21Parser(object):
+    """
+    Parse Tox21 data files.
+
+    Parameters
+    ----------
+    filename : str
+        Data filename.
+    merge_strategy : str, optional (default 'max')
+        Strategy to use when merging targets for duplicated molecules. Choose
+        from 'max' (active if active in any assay), 'min' (inactive if inactive
+        in any assay), 'majority_pos' (majority vote with ties assigned
+        active), or 'majority_neg' (majority vote with ties assigned inactive).
+    """
+    dataset_names = ['NR-AR', 'NR-AhR', 'NR-AR-LBD', 'NR-ER', 'NR-ER-LBD',
+                     'NR-Aromatase', 'NR-PPAR-gamma', 'SR-ARE', 'SR-ATAD5',
+                     'SR-HSE', 'SR-MMP', 'SR-p53']
+
+    def __init__(self, filename, merge_strategy='max'):
+        self.filename = filename
+        assert merge_strategy in ['max', 'min', 'majority_pos', 'majority_neg']
+        self.merge_strategy = merge_strategy
+
+    def read_data(self):
+        """
+        Read labeled molecules.
+        """
+        with serial.MolReader().open(self.filename) as reader:
+            mols = list(reader)
+        return mols
+
+    def read_targets(self):
+        """
+        Get labels for molecules from SD data fields matching dataset names.
+
+        Returns
+        -------
+        data : dict
+            Nested dictionary containing SMILES and targets for compounds in
+            each dataset. Keyed by data->dataset->SMILES->target, where target
+            is a list.
+        """
+        engine = SmilesGenerator()
+        data = {dataset: {} for dataset in self.dataset_names}
+        skipped = []
+        for mol in self.read_data():
+            smiles = engine.get_smiles(mol)
+            for prop in list(mol.GetPropNames()):
+                if prop in data:
+                    score = int(mol.GetProp(prop))
+                    if smiles not in data[prop]:
+                        data[prop][smiles] = []
+                    data[prop][smiles].append(score)
+                else:  # skip irrelevant SD fields
+                    if prop not in skipped:
+                        skipped.append(prop)
+                    continue
+        print 'Skipped properties:\n{}'.format('\n'.join(skipped))
+        return data
+
+    def merge_targets(self, data):
+        """
+        Merge labels for duplicate molecules according to a specified merge
+        stratecy ('max', 'min', 'majority_pos', 'majority_neg').
+
+        Parameters
+        ----------
+        data : dict
+            Nested dictionary containing SMILES and targets for compounds in
+            each dataset. Keyed by data->dataset->SMILES->target, where target
+            is a list.
+
+        Returns
+        -------
+        data : dict
+            Nested dictionary containing SMILES and targets for compounds in
+            each dataset. Keyed by data->dataset->SMILES->target, where target
+            is an integer.
+        """
+        for dataset in self.dataset_names:
+            for smiles, targets in data[dataset].items():
+                targets = np.asarray(targets, dtype=int)
+                if self.merge_strategy == 'max':
+                    data[dataset][smiles] = max(targets)
+                elif self.merge_strategy == 'min':
+                    data[dataset][smiles] = min(targets)
+                # 0.5 rounds down
+                elif self.merge_strategy == 'majority_neg':
+                    data[dataset][smiles] = int(np.round(np.mean(targets)))
+                # 0.5 rounds up
+                elif self.merge_strategy == 'majority_pos':
+                    data[dataset][smiles] = (int(np.round(
+                        np.mean(targets) + 1)) - 1)
+        return data
+
+    def get_targets(self):
+        """
+        Get SMILES and targets for each Tox21 dataset.
+        """
+        split_targets = {}
+        data = self.merge_targets(self.read_targets())
+        for dataset in data:
+            if not len(data[dataset]):
+                warnings.warn('Dataset "{}" is empty'.format(dataset))
+                continue
+            smiles, targets = [], []
+            for this_smiles, target in data[dataset].items():
+                smiles.append(this_smiles)
+                targets.append(target)
+            split_targets[dataset] = {'smiles': np.asarray(smiles),
+                                      'targets': np.asarray(
+                                          targets, dtype=int)}
         return split_targets
