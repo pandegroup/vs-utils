@@ -22,9 +22,11 @@ class TestParseTox21Datasets(TestTox21Parser):
         args = get_args([self.filename, '-d', self.temp_dir])
         main(args.input, args.merge, args.dir)
 
-        count = 0
+        # check for the right number of files
+        assert len(glob.glob(os.path.join(self.temp_dir, '*.pkl.gz'))) == 6
+
+        # inspect files individually
         for filename in glob.glob(os.path.join(self.temp_dir, '*.pkl.gz')):
-            count += 1
             data = read_pickle(filename)
             assert len(data['smiles']) == len(data['targets'])
 
@@ -34,4 +36,3 @@ class TestParseTox21Datasets(TestTox21Parser):
 
             # check type of targets
             assert data['targets'].dtype == int
-        assert count == 6

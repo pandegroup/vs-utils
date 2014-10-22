@@ -338,24 +338,17 @@ class Tox21Parser(object):
         for dataset in self.dataset_names:
             for smiles, targets in data[dataset].items():
                 targets = np.asarray(targets, dtype=int)
-                if len(targets) == 1:  # only one target
-                    data[dataset][smiles] = targets[0]
-                elif np.all(targets == 0):  # all inactive
-                    data[dataset][smiles] = 0
-                elif np.all(targets == 1):  # all active
-                    data[dataset][smiles] = 1
-                else:  # use the chosen merge strategy
-                    if self.merge_strategy == 'max':
-                        data[dataset][smiles] = max(targets)
-                    elif self.merge_strategy == 'min':
-                        data[dataset][smiles] = min(targets)
-                    # 0.5 rounds down
-                    elif self.merge_strategy == 'majority_neg':
-                        data[dataset][smiles] = int(np.round(np.mean(targets)))
-                    # 0.5 rounds up
-                    elif self.merge_strategy == 'majority_pos':
-                        data[dataset][smiles] = (int(np.round(
-                            np.mean(targets) + 1)) - 1)
+                if self.merge_strategy == 'max':
+                    data[dataset][smiles] = max(targets)
+                elif self.merge_strategy == 'min':
+                    data[dataset][smiles] = min(targets)
+                # 0.5 rounds down
+                elif self.merge_strategy == 'majority_neg':
+                    data[dataset][smiles] = int(np.round(np.mean(targets)))
+                # 0.5 rounds up
+                elif self.merge_strategy == 'majority_pos':
+                    data[dataset][smiles] = (int(np.round(
+                        np.mean(targets) + 1)) - 1)
         return data
 
     def get_targets(self):
@@ -368,8 +361,7 @@ class Tox21Parser(object):
             if not len(data[dataset]):
                 warnings.warn('Dataset "{}" is empty'.format(dataset))
                 continue
-            smiles = []
-            targets = []
+            smiles, targets = [], []
             for this_smiles, target in data[dataset].items():
                 smiles.append(this_smiles)
                 targets.append(target)
