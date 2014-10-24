@@ -50,6 +50,7 @@ class MolImage(Featurizer):
             image = ob_utils.MolImage(self.size)(mol)
         elif self.engine == 'rdkit':
             image = Draw.MolToImage(mol, dim, fitImage=True)
+            image = image.convert('RGB')  # drop alpha channel
         else:
             raise NotImplementedError(self.engine)
         pixels = image_utils.get_pixels(image)

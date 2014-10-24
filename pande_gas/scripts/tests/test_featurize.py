@@ -1,8 +1,6 @@
 """
 Test featurize.py.
 """
-import cPickle
-import gzip
 import joblib
 import numpy as np
 from rdkit_utils import conformers, serial
@@ -14,6 +12,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from pande_gas.scripts.featurize import main, parse_args
+from pande_gas.utils import read_pickle, write_pickle
 
 
 class TestFeaturize(unittest.TestCase):
@@ -25,14 +24,18 @@ class TestFeaturize(unittest.TestCase):
         Set up for tests. Writes molecules and targets to files.
         """
         self.temp_dir = tempfile.mkdtemp()
-        smiles = ['CC(=O)OC1=CC=CC=C1C(=O)O', 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O']
+        smiles = ['CC(=O)OC1=CC=CC=C1C(=O)O',
+                  'C[C@@H](C1=CC=C(C=C1)CC(C)C)C(=O)O']
         self.names = ['aspirin', 'ibuprofen']
         engine = conformers.ConformerGenerator(max_conformers=1)
         self.mols = []
+        self.smiles = []  # use RDKit-generated SMILES
         for i in xrange(len(smiles)):
             mol = Chem.MolFromSmiles(smiles[i])
             mol.SetProp('_Name', self.names[i])
             self.mols.append(engine.generate_conformers(mol))
+            self.smiles.append(Chem.MolToSmiles(mol, isomericSmiles=True,
+                                                canonical=True))
 
         # write mols
         _, self.input_filename = tempfile.mkstemp(suffix='.sdf',
@@ -46,8 +49,7 @@ class TestFeaturize(unittest.TestCase):
         self.targets = [0, 1]
         _, self.targets_filename = tempfile.mkstemp(suffix='.pkl',
                                                     dir=self.temp_dir)
-        with open(self.targets_filename, 'wb') as f:
-            cPickle.dump(self.targets, f, cPickle.HIGHEST_PROTOCOL)
+        write_pickle(self.targets, self.targets_filename)
 
     def tearDown(self):
         """
@@ -61,7 +63,7 @@ class TestFeaturize(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def check_output(self, featurize_args, shape, targets=None, names=None,
-                     output_suffix='.pkl'):
+                     smiles=None, output_suffix='.pkl'):
         """
         Check features shape, targets, and names.
 
@@ -77,6 +79,8 @@ class TestFeaturize(unittest.TestCase):
             Expected targets. Defaults to self.targets.
         names : list, optional
             Expected names. Defaults to self.names.
+        smiles : list, optional
+            Expected SMILES. Defaults to self.smiles.
         output_suffix : str, optional (default '.pkl')
             Suffix for output files.
         """
@@ -85,32 +89,31 @@ class TestFeaturize(unittest.TestCase):
         _, output_filename = tempfile.mkstemp(suffix=output_suffix,
                                               dir=self.temp_dir)
         input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename] + featurize_args
+                      output_filename, '--names'] + featurize_args
 
         # run script
         args = parse_args(input_args)
-        main(args.klass, args.input, args.output, args.targets,
-             vars(args.featurizer_kwargs),
-             chiral_scaffolds=args.chiral_scaffolds)
+        main(args.klass, args.input, args.output, target_filename=args.targets,
+             featurizer_kwargs=vars(args.featurizer_kwargs), names=args.names,
+             scaffolds=args.scaffolds, chiral_scaffolds=args.chiral_scaffolds)
 
         # read output file
         if output_filename.endswith('.joblib'):
             data = joblib.load(output_filename)
-        elif output_filename.endswith('.gz'):
-            with gzip.open(output_filename) as f:
-                data = cPickle.load(f)
         else:
-            with open(output_filename) as f:
-                data = cPickle.load(f)
+            data = read_pickle(output_filename)
 
         # check values
         if targets is None:
             targets = self.targets
         if names is None:
             names = self.names
+        if smiles is None:
+            smiles = self.smiles
         assert data['features'].shape == shape, data['features'].shape
         assert np.array_equal(data['y'], targets), data['y']
         assert np.array_equal(data['names'], names), data['names']
+        assert np.array_equal(data['smiles'], smiles), data['smiles']
 
         # return output in case anything else needs to be checked
         return data
@@ -185,11 +188,17 @@ class TestFeaturize(unittest.TestCase):
         """
         self.check_output(['descriptors'], (2, 196))
 
+    def test_scaffold(self):
+        """
+        Test scaffold featurizer.
+        """
+        self.check_output(['scaffold'], (2,))
+
     def test_scaffolds(self):
         """
         Test scaffold generation.
         """
-        data = self.check_output(['circular'], (2, 2048))
+        data = self.check_output(['--scaffolds', 'circular'], (2, 2048))
         assert Chem.MolFromSmiles(data['scaffolds'][0]).GetNumAtoms() == 6
         assert Chem.MolFromSmiles(data['scaffolds'][1]).GetNumAtoms() == 6
 
@@ -205,6 +214,7 @@ class TestFeaturize(unittest.TestCase):
         AllChem.Compute2DCoords(mol)
         self.mols[1] = mol
         self.names[1] = 'romosetron'
+        self.smiles[1] = Chem.MolToSmiles(mol, isomericSmiles=True)
 
         # write mols
         _, self.input_filename = tempfile.mkstemp(suffix='.sdf',
@@ -215,11 +225,12 @@ class TestFeaturize(unittest.TestCase):
         writer.close()
 
         # run script w/o chiral scaffolds
-        data = self.check_output(['circular'], (2, 2048))
+        data = self.check_output(['--scaffolds', 'circular'], (2, 2048))
         achiral_scaffold = data['scaffolds'][1]
 
         # run script w/ chiral scaffolds
-        data = self.check_output(['--chiral-scaffolds', 'circular'], (2, 2048))
+        data = self.check_output(['--scaffolds', '--chiral-scaffolds',
+                                  'circular'], (2, 2048))
         chiral_scaffold = data['scaffolds'][1]
 
         assert achiral_scaffold != chiral_scaffold
@@ -231,12 +242,11 @@ class TestFeaturize(unittest.TestCase):
 
         # write targets
         targets = {'names': ['ibuprofen'], 'y': [0]}
-        with open(self.targets_filename, 'wb') as f:
-            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+        write_pickle(targets, self.targets_filename)
 
         # run script
         self.check_output(['circular'], (1, 2048), targets=targets['y'],
-                          names=targets['names'])
+                          names=targets['names'], smiles=[self.smiles[1]])
 
     def test_collate_mols2(self):
         """
@@ -245,8 +255,7 @@ class TestFeaturize(unittest.TestCase):
 
         # write targets
         targets = {'names': ['aspirin', 'ibuprofen'], 'y': [0, 1]}
-        with open(self.targets_filename, 'wb') as f:
-            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+        write_pickle(targets, self.targets_filename)
 
         # write mols
         writer = serial.MolWriter()
@@ -256,7 +265,7 @@ class TestFeaturize(unittest.TestCase):
 
         # run script
         self.check_output(['circular'], (1, 2048), targets=[0],
-                          names=['aspirin'])
+                          names=['aspirin'], smiles=[self.smiles[0]])
 
     def test_collate_mols3(self):
         """
@@ -266,8 +275,7 @@ class TestFeaturize(unittest.TestCase):
 
         # write targets
         targets = {'names': ['ibuprofen', 'aspirin'], 'y': [1, 0]}
-        with open(self.targets_filename, 'wb') as f:
-            cPickle.dump(targets, f, cPickle.HIGHEST_PROTOCOL)
+        write_pickle(targets, self.targets_filename)
 
         # run script
         self.check_output(['circular'], (2, 2048))

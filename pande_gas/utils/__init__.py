@@ -6,10 +6,54 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
+import cPickle
+import gzip
 import numpy as np
 import os
 
+from rdkit import Chem
+from rdkit.Chem.Scaffolds import MurckoScaffold
+
 from rdkit_utils import PicklableMol, serial
+
+
+def read_pickle(filename):
+    """
+    Read pickled data from (possibly gzipped) files.
+
+    Parameters
+    ----------
+    filename : str
+        Filename.
+    """
+    if filename.endswith('.gz'):
+        f = gzip.open(filename)
+    else:
+        f = open(filename)
+    data = cPickle.load(f)
+    f.close()
+    return data
+
+
+def write_pickle(data, filename, protocol=cPickle.HIGHEST_PROTOCOL):
+    """
+    Write data to a (possibly gzipped) pickle.
+
+    Parameters
+    ----------
+    data : object
+        Object to pickle.
+    filename : str
+        Filename.
+    protocol : int, optional (default cPickle.HIGHEST_PROTOCOL)
+        Pickle protocol.
+    """
+    if filename.endswith('.gz'):
+        f = gzip.open(filename, 'wb')
+    else:
+        f = open(filename, 'wb')
+    cPickle.dump(data, f, protocol)
+    f.close()
 
 
 class DatasetSharder(object):
@@ -25,7 +69,7 @@ class DatasetSharder(object):
     shard_size : int, optional (default 1000)
         Number of molecules per shard.
     write_shards : bool, optional (default True)
-        Whether to automatically write shards to disk.
+        Write shards to disk.
     prefix : str, optional
         Prefix for output files.
     flavor : str, optional (default 'pkl.gz')
@@ -146,7 +190,7 @@ def pad_array(x, shape, fill=0, both=False):
     fill : object, optional (default 0)
         Fill value.
     both : bool, optional (default False)
-        Whether to split the padding on both sides of each axis. If False,
+        If True, split the padding on both sides of each axis. If False,
         padding is applied to the end of each axis.
     """
     x = np.asarray(x)
@@ -165,3 +209,140 @@ def pad_array(x, shape, fill=0, both=False):
     pad = tuple(pad)
     x = np.pad(x, pad, mode='constant', constant_values=fill)
     return x
+
+
+class SmilesGenerator(object):
+    """
+    Generate SMILES strings for molecules.
+
+    Parameters
+    ----------
+    remove_hydrogens : bool, optional (default True)
+        Remove hydrogens prior to generating SMILES.
+    assign_stereo_from_3d : bool, optional (default False)
+        Assign stereochemistry from 3D coordinates. This will overwrite any
+        existing stereochemistry information on molecules.
+    """
+    def __init__(self, remove_hydrogens=True, assign_stereo_from_3d=False):
+        self.remove_hydrogens = remove_hydrogens
+        self.assign_stereo_from_3d = assign_stereo_from_3d
+
+    def get_smiles(self, mol):
+        """
+        Map a molecule name to its corresponding SMILES string.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        if self.assign_stereo_from_3d:  # do this before removing hydrogens
+            Chem.AssignAtomChiralTagsFromStructure(mol)
+        if self.remove_hydrogens:
+            mol = Chem.RemoveHs(mol)  # creates a copy
+        return Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)
+
+    def get_unique_smiles(self, mols):
+        """
+        Get unique SMILES for a set of molecules.
+
+        Parameters
+        ----------
+        mols : iterable
+            Molecules.
+        """
+        return np.unique([self.get_smiles(mol) for mol in mols])
+
+
+class SmilesMap(object):
+    """
+    Map compound names to SMILES.
+
+    Parameters
+    ----------
+    prefix : str, optional
+        Prefix to prepend to IDs.
+    allow_duplicates : bool, optional (default True)
+        Allow duplicate SMILES.
+    kwargs : dict, optional
+        Keyword arguments for SmilesGenerator.
+    """
+    def __init__(self, prefix=None, allow_duplicates=True, **kwargs):
+        self.prefix = prefix
+        self.allow_duplicates = allow_duplicates
+        self.engine = SmilesGenerator(**kwargs)
+        self.map = {}
+
+    def add_mol(self, mol):
+        """
+        Map a molecule name to its corresponding SMILES string and store in the
+        SMILES map.
+
+        Parameters
+        ----------
+        mol : RDKit Mol
+            Molecule.
+        """
+        name = mol.GetProp('_Name')
+        try:
+            int(name)  # check if this is a bare ID
+            if self.prefix is None:
+                raise TypeError('Bare IDs are not allowed.')
+        except ValueError:
+            pass
+        if self.prefix is not None:
+            name = '{}{}'.format(self.prefix, name)
+        smiles = self.engine.get_smiles(mol)
+
+        # Failures:
+        # * Name is already mapped to a different SMILES
+        # * SMILES is already used for a different name
+        if name in self.map:  # catch all cases where name is already used
+            if self.map[name] != smiles:
+                raise ValueError('ID collision for "{}".'.format(name))
+        elif not self.allow_duplicates and smiles in self.map.values():
+            other = None
+            for key, val in self.map.items():
+                if val == smiles:
+                    other = key
+                    break
+            raise ValueError(
+                'SMILES collision between "{}" and "{}":\n\t{}'.format(
+                    name, other, smiles))
+        else:
+            self.map[name] = smiles
+
+    def get_map(self):
+        """
+        Get the map.
+        """
+        return self.map
+
+
+class ScaffoldGenerator(object):
+    """
+    Generate molecular scaffolds.
+
+    Parameters
+    ----------
+    include_chirality : : bool, optional (default False)
+        Include chirality in scaffolds.
+    """
+    def __init__(self, include_chirality=False):
+        self.include_chirality = include_chirality
+
+    def get_scaffold(self, mol):
+        """
+        Get Murcko scaffolds for molecules.
+
+        Murcko scaffolds are described in DOI: 10.1021/jm9602928. They are
+        essentially that part of the molecule consisting of rings and the
+        linker atoms between them.
+
+        Parameters
+        ----------
+        mols : array_like
+            Molecules.
+        """
+        return MurckoScaffold.MurckoScaffoldSmiles(
+            mol=mol, includeChirality=self.include_chirality)
