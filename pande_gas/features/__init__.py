@@ -22,6 +22,7 @@ def get_featurizers():
     # these have to be local imports to avoid circular imports
     from .basic import MolecularWeight, SimpleDescriptors
     from .coulomb_matrices import CoulombMatrix
+    from .dragon import DragonDescriptors
     from .esp import ESP
     from .fingerprints import CircularFingerprint
     from .images import MolImage
