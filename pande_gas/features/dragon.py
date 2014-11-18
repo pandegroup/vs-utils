@@ -9,7 +9,6 @@ __license__ = "BSD 3-clause"
 import numpy as np
 
 from pande_gas.features import Featurizer
-from pande_gas.utils import SmilesGenerator
 from pande_gas.utils.dragon_utils import Dragon
 
 
