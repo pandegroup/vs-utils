@@ -136,20 +136,20 @@ class Dragon(object):
         else:
             raise NotImplementedError
 
-    def get_descriptors(self, mol):
+    def get_descriptors(self, mols):
         """
         Parameters
         ----------
-        mol : RDMol
-            Molecule.
+        mols : array_like
+            Molecules.
         """
         if not self.initialized:
             self.initialize()
-        smiles = self.smiles_engine.get_smiles(mol)
+        smiles = [self.smiles_engine.get_smiles(mol) for mol in mols]
         args = ['dragon6shell', '-s', self.config_filename]
         p = subprocess.Popen(args, stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = p.communicate(smiles)
+        stdout, stderr = p.communicate('\n'.join(smiles))
         if not stdout:
             raise RuntimeError(stderr)
         return self.parse_descriptors(stdout)
@@ -164,8 +164,10 @@ class Dragon(object):
             Output from dragon6shell.
         """
         df = pd.read_table(StringIO(string))
-        assert df.shape[0] == 1
         if self.subset == '2d':
             del df['nHBonds'], df['Psi_e_1d'], df['Psi_e_1s']
-        # skip the first two columns: ID and name
-        return np.asarray(df.ix[0][2:].values, dtype=float)
+
+        # delete No. and NAME columns
+        del df['No.'], df['NAME']
+
+        return np.asarray(df, dtype=float)
