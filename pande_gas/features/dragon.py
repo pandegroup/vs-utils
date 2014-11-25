@@ -58,7 +58,7 @@ class DragonDescriptors(Featurizer):
                 self._featurize,
                 np.array_split(mols, len(client.direct_view())), block=False)
             features = call.get()
-            features = np.vstack(features)
+            features = np.concatenate(features)
 
             # get output from engines
             call.display_outputs()

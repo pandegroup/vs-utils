@@ -157,17 +157,17 @@ class Dragon(object):
         # adjust for skipped molecules
         # descriptors are in same order as smiles
         missing = np.setdiff1d(smiles, names)
-        features = []
-        i = 0  # index into calculated features
-        for this_smiles in smiles:
+        features = np.zeros(len(smiles), dtype=object)
+        idx = 0  # index into calculated features
+        for i, this_smiles in enumerate(smiles):
             if this_smiles in missing:
-                features.append(None)
+                features[i] = None
             else:
-                assert this_smiles == names[i]  # confirm match
-                features.append(data[i])
-                i += 1
+                assert this_smiles == names[idx]  # confirm match
+                features[i] = data[idx]
+                idx += 1
         assert len(features) == len(mols)
-        return np.asarray(features)
+        return features
 
     def parse_descriptors(self, string):
         """
