@@ -36,9 +36,8 @@ class DragonDescriptors(Featurizer):
         ----------
         mols : iterable
             RDKit Mol objects.
-        parallel : bool, optional
-            Whether to train subtrainers in parallel using
-            IPython.parallel (default False).
+        parallel : bool, optional (default False)
+            Train subtrainers in parallel using IPython.parallel.
         client_kwargs : dict, optional
             Keyword arguments for IPython.parallel Client.
         view_flags : dict, optional
