@@ -184,6 +184,12 @@ def main(featurizer_class, input_filename, output_filename,
     smiles = SmilesGenerator(remove_hydrogens=(not smiles_hydrogens))
     data['smiles'] = np.asarray([smiles.get_smiles(mol) for mol in mols])
 
+    # sanity checks
+    assert data['features'].shape[0] == len(mols), (
+        "Features do not match molecules.")
+    assert data['smiles'].shape[0] == len(mols), (
+        "SMILES do not match molecules.")
+
     # names, scaffolds, args
     if names:
         data['names'] = mol_names

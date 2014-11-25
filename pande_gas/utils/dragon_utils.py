@@ -152,7 +152,22 @@ class Dragon(object):
         stdout, stderr = p.communicate('\n'.join(smiles))
         if not stdout:
             raise RuntimeError(stderr)
-        return self.parse_descriptors(stdout)
+        data, names = self.parse_descriptors(stdout)
+
+        # adjust for skipped molecules
+        # descriptors are in same order as smiles
+        missing = np.setdiff1d(smiles, names)
+        features = []
+        i = 0  # index into calculated features
+        for this_smiles in smiles:
+            if this_smiles in missing:
+                features.append(None)
+            else:
+                assert this_smiles == names[i]  # confirm match
+                features.append(data[i])
+                i += 1
+        assert len(features) == len(mols)
+        return np.asarray(features)
 
     def parse_descriptors(self, string):
         """
@@ -167,7 +182,10 @@ class Dragon(object):
         if self.subset == '2d':
             del df['nHBonds'], df['Psi_e_1d'], df['Psi_e_1s']
 
+        # extract names
+        names = df['NAME'].values
+
         # delete No. and NAME columns
         del df['No.'], df['NAME']
 
-        return np.asarray(df, dtype=float)
+        return np.asarray(df, dtype=float), names
