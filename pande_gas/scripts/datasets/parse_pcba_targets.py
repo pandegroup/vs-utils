@@ -62,6 +62,8 @@ def main(input_filename, map_filename, output_filename, column_indices=None):
     # print the fraction of valid assay records that were found in the map
     total = np.count_nonzero(~np.isnan(parser.read_data().PUBCHEM_CID))
     print '{}/{} records matched'.format(len(targets), total)
+    print '\t'.join(['{}:{}'.format(i, np.count_nonzero(targets == i))
+                     for i in np.unique(targets)])
 
     # save SMILES and targets
     write_pickle({'smiles': smiles, 'targets': targets}, output_filename)

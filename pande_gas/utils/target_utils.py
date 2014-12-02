@@ -48,7 +48,7 @@ class AssayDataParser(object):
     """
     def __init__(self, data_filename, map_filename, primary_key,
                  id_prefix=None, activity_key=None, activity_value=None,
-                 column_indices=None, delimiter='\t'):
+                 inactivity_value=None, column_indices=None, delimiter='\t'):
         self.data_filename = data_filename
         self.map_filename = map_filename
         self.primary_key = primary_key
@@ -61,6 +61,7 @@ class AssayDataParser(object):
                 'You must set activity_value when using activity_key.')
         self.activity_key = activity_key
         self.activity_value = activity_value
+        self.inactivity_value = inactivity_value
         if column_indices is not None:
             column_indices = np.asarray(column_indices, dtype=int)
         self.column_indices = column_indices
@@ -91,8 +92,14 @@ class AssayDataParser(object):
             for i, idx in enumerate(self.column_indices):
                 targets[:, i] = data[data.columns[idx]]
         else:
-            targets = np.asarray(
-                data[self.activity_key] == self.activity_value)
+            # targets other than self.activity_value and self.inactivity_value
+            # are assigned -1
+            targets = -1 * np.ones_like(data[self.activity_key], dtype=int)
+            pos = (data[self.activity_key] == self.activity_value).values
+            neg = (data[self.activity_key] == self.inactivity_value).values
+            assert pos.sum() and neg.sum()
+            targets[pos] = 1
+            targets[neg] = 0
         targets = targets[indices]  # reduce targets to matched structures
         return smiles, targets
 
@@ -184,10 +191,11 @@ class PcbaParser(AssayDataParser):
     """
     def __init__(self, data_filename, map_filename, primary_key='PUBCHEM_CID',
                  id_prefix='CID', activity_key='PUBCHEM_ACTIVITY_OUTCOME',
-                 activity_value='Active', column_indices=None, delimiter=','):
+                 activity_value='Active', inactivity_value='Inactive',
+                 column_indices=None, delimiter=','):
         super(PcbaParser, self).__init__(
             data_filename, map_filename, primary_key, id_prefix, activity_key,
-            activity_value, column_indices, delimiter)
+            activity_value, inactivity_value, column_indices, delimiter)
 
 
 class Nci60Parser(AssayDataParser):
@@ -220,10 +228,11 @@ class Nci60Parser(AssayDataParser):
     """
     def __init__(self, data_filename, map_filename, primary_key='NSC',
                  id_prefix='NSC', activity_key=None, activity_value=None,
-                 column_indices=range(4, 64), delimiter='\t'):
+                 inactivity_value=None, column_indices=range(4, 64),
+                 delimiter='\t'):
         super(Nci60Parser, self).__init__(
             data_filename, map_filename, primary_key, id_prefix, activity_key,
-            activity_value, column_indices, delimiter)
+            activity_value, inactivity_value, column_indices, delimiter)
 
     def read_data(self, **kwargs):
         """
