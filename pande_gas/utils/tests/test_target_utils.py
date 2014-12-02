@@ -12,8 +12,8 @@ from rdkit import Chem
 from rdkit_utils import serial
 
 from .. import read_pickle, write_pickle
-from ..target_utils import (AssayDataParser, Nci60Parser, PcbaParser,
-                            Tox21Parser)
+from ..target_utils import (AssayDataParser, Counterscreen, Nci60Parser,
+                            PcbaParser, Tox21Parser)
 
 
 class TestAssayDataParser(unittest.TestCase):
@@ -30,7 +30,7 @@ class TestAssayDataParser(unittest.TestCase):
             'Cc1ccc(-n2c3c(cc(C(=O)Nc4cccc(C)n4)c2=O)C(=O)CCC3)cc1',
             'CID2997889': 'CC(C)(C)C(=O)Nc1ccc(-c2cn3ccsc3n2)cc1',
             'CID2244': 'CC(=O)Oc1ccccc1C(=O)O',
-            'CID2662': 'Cc1ccc(-c2cc(C(F)(F)F)nn2-c2ccc(S(N)(=O)=O)cc2)cc1',
+            'CID654924': 'Cc1ccc(-c2cc(C(F)(F)F)nn2-c2ccc(S(N)(=O)=O)cc2)cc1',
             'CID3672': 'CC(C)Cc1ccc(C(C)C(=O)O)cc1'}
         _, self.map_filename = tempfile.mkstemp(dir=self.temp_dir,
                                                 suffix='.pkl')
@@ -46,7 +46,9 @@ class TestAssayDataParser(unittest.TestCase):
         self.engine = AssayDataParser(self.data_filename, self.map_filename,
                                       delimiter=',', primary_key='PUBCHEM_CID',
                                       activity_key='PUBCHEM_ACTIVITY_OUTCOME',
-                                      activity_value='Active', id_prefix='CID')
+                                      activity_value='Active',
+                                      inactivity_value='Inactive',
+                                      id_prefix='CID')
 
     def tearDown(self):
         """
@@ -71,10 +73,18 @@ class TestAssayDataParser(unittest.TestCase):
         id_map = read_pickle(self.map_filename)
         smiles, indices = self.engine.map_ids_to_smiles(
             data.PUBCHEM_CID, id_map)
-        assert len(smiles) == len(indices) == 2
+        assert len(smiles) == len(indices) == 3
         assert smiles[0] == self.map['CID645443']
-        assert smiles[1] == self.map['CID2997889']
-        assert np.array_equal(indices, [0, 3])
+        assert smiles[1] == self.map['CID654924']
+        assert smiles[2] == self.map['CID2997889']
+        assert np.array_equal(indices, [0, 2, 3]), indices
+
+    def test_inconclusive(self):
+        """
+        Test labeling of 'Inconclusive' results.
+        """
+        smiles, targets = self.engine.get_targets()
+        assert np.array_equal(targets, [0, -1, 1]), targets
 
 
 class TestPcbaParser(unittest.TestCase):
@@ -426,3 +436,16 @@ class TestTox21Parser(unittest.TestCase):
             smiles = data[dataset]['smiles']
             targets = data[dataset]['targets']
             assert len(smiles) == len(targets) > 0
+
+
+class TestCounterscreen(TestAssayDataParser):
+    """
+    Tests for Counterscreen.
+    """
+    def test_counterscreen(self):
+        """
+        Test reassignment of counterscreen actives.
+        """
+        counter = Counterscreen(self.engine, [self.engine])
+        smiles, targets = counter.get_targets()
+        assert np.array_equal(targets, [0, -1, -2]), targets

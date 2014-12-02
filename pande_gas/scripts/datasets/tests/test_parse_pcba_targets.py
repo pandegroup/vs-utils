@@ -55,7 +55,7 @@ class TestParsePcbaTargets(unittest.TestCase):
             Arguments.
         """
         args = parse_args(input_args)
-        main(args.input, args.map, args.output, args.cols)
+        main(args.input, args.map, args.output, args.cols, args.counterscreen)
         with open(self.output_filename) as f:
             data = cPickle.load(f)
         assert len(data['smiles']) == len(data['targets']) == 2
@@ -69,9 +69,9 @@ class TestParsePcbaTargets(unittest.TestCase):
                 self.output_filename]
         smiles, targets = self.run_script(args)
         idx = np.where(smiles == self.map['CID2997889'])[0][0]
-        assert targets[idx]  # marked Active
+        assert targets[idx] == 1  # marked Active
         idx = np.where(smiles == self.map['CID645443'])[0][0]
-        assert not targets[idx]  # marked Inactive
+        assert targets[idx] == 0  # marked Inactive
 
     def test_regression(self):
         """
@@ -86,3 +86,13 @@ class TestParsePcbaTargets(unittest.TestCase):
         assert not np.any(np.isnan(targets[idx]))
         idx = np.where(smiles == self.map['CID645443'])[0][0]
         assert np.any(np.isnan(targets[idx]))  # will have NaNs
+
+    def test_counterscreen(self):
+        """
+        Test counterscreen.
+        """
+        args = ['-i', self.data_filename, '-m', self.map_filename, '-o',
+                self.output_filename, '--counterscreen', self.data_filename]
+        smiles, targets = self.run_script(args)
+        idx = np.where(smiles == self.map['CID2997889'])[0][0]
+        assert targets[idx] == -2, (smiles, targets, self.map)
