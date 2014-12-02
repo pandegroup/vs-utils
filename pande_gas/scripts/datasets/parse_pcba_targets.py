@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 
 from pande_gas.utils import write_pickle
-from pande_gas.utils.target_utils import PcbaParser
+from pande_gas.utils.target_utils import Counterscreen, PcbaParser
 
 
 def parse_args(input_args=None):
@@ -26,6 +26,8 @@ def parse_args(input_args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', required=1,
                         help='Input data file.')
+    parser.add_argument('--counterscreen', nargs='+',
+                        help='Counterscreen data file(s).')
     parser.add_argument('-m', '--map', required=1,
                         help='Molecule ID to SMILES map.')
     parser.add_argument('-o', '--output', required=1,
@@ -35,7 +37,8 @@ def parse_args(input_args=None):
     return parser.parse_args(input_args)
 
 
-def main(input_filename, map_filename, output_filename, column_indices=None):
+def main(input_filename, map_filename, output_filename, column_indices=None,
+         counterscreen_filenames=None):
     """
     Get regression targets.
 
@@ -50,6 +53,9 @@ def main(input_filename, map_filename, output_filename, column_indices=None):
     column_indices : list, optional
         Column indices to include. If None, compounds are classified by
         activity.
+    counterscreen_filenames : list, optional
+        PCBA counterscreen data filenames. Compounds marked 'Active' in a
+        counterscreen will not be considered active in the input screen.
     """
     parser = PcbaParser(input_filename, map_filename,
                         column_indices=column_indices)
@@ -57,7 +63,15 @@ def main(input_filename, map_filename, output_filename, column_indices=None):
         print "Extracting data from the following columns:"
         for col in parser.get_column_names():
             print '\t', col
-    smiles, targets = parser.get_targets()
+
+    if counterscreen_filenames is None:
+        smiles, targets = parser.get_targets()
+    else:
+        counter = Counterscreen(
+            parser, [PcbaParser(filename, map_filename,
+                                column_indices=column_indices)
+                     for filename in counterscreen_filenames])
+        smiles, targets = counter.get_targets()
 
     # print the fraction of valid assay records that were found in the map
     total = np.count_nonzero(~np.isnan(parser.read_data().PUBCHEM_CID))
@@ -70,4 +84,4 @@ def main(input_filename, map_filename, output_filename, column_indices=None):
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.input, args.map, args.output, args.cols)
+    main(args.input, args.map, args.output, args.cols, args.counterscreens)

@@ -97,7 +97,8 @@ class AssayDataParser(object):
             targets = -1 * np.ones_like(data[self.activity_key], dtype=int)
             pos = (data[self.activity_key] == self.activity_value).values
             neg = (data[self.activity_key] == self.inactivity_value).values
-            assert pos.sum() and neg.sum()
+            assert pos.sum() and neg.sum(), (
+                'Dataset must have both active and inactive results.')
             targets[pos] = 1
             targets[neg] = 0
         targets = targets[indices]  # reduce targets to matched structures
@@ -378,3 +379,31 @@ class Tox21Parser(object):
                                       'targets': np.asarray(
                                           targets, dtype=int)}
         return split_targets
+
+
+class Counterscreen(object):
+    """
+    Reassign labels based on counterscreen results.
+
+    Parameters
+    ----------
+    primary : AssayDataParser
+        Primary assay.
+    counter : list
+        Counterscreens.
+    """
+    def __init__(self, primary, counter):
+        self.primary = primary
+        self.counter = counter
+
+    def get_targets(self):
+        """
+        Reassign labels based on counterscreen results. Compounds marked
+        'Active' in primary and counter will be reassigned to label -2.
+        """
+        smiles, targets = self.primary.get_targets()
+        for counter in self.counter:
+            counter_smiles, counter_targets = counter.get_targets()
+            counter_actives = counter_smiles[counter_targets == 1]
+            targets[np.in1d(smiles, counter_actives)] = -2
+        return smiles, targets
