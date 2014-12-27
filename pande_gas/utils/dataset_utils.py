@@ -101,33 +101,34 @@ class Dataset(object):
     targets : str
         Target filename.
     """
-    def __init__(self, features, targets):
-        self.features = features
-        self.targets = targets
-        self.X = None
-        self.y = None
-        self.smiles = None
-        self._get_dataset()
+    def __init__(self, features, feature_smiles, targets, target_smiles):
+        self.X, self.y, self.smiles = self.get_dataset(
+            features, feature_smiles, targets, target_smiles)
 
-    def _get_dataset(self):
+    def get_dataset(self, features, feature_smiles, targets, target_smiles):
         """
-        Get features, targets, and SMILES for this dataset.
+        Get features, targets, and SMILES for a dataset.
+
+        Parameters
+        ----------
+        features : array_like
+            Features.
+        feature_smiles : array_like
+            SMILES for features.
+        targets : array_like
+            Targets.
+        target_smiles : array_like
+            SMILES for targets.
+
+        Returns
+        -------
+        X : array_like
+            Features matching targets.
+        y : array_like
+            Targets.
+        smiles : array_like
+            SMILES matching targets.
         """
-        # load features
-        features = []
-        feature_smiles = []
-        for filename in self.features:
-            data = read_pickle(filename)
-            features.append(data['features'])
-            feature_smiles.append(data['smiles'])
-        features = np.ma.vstack(features)
-        feature_smiles = np.concatenate(feature_smiles)
-
-        # load targets
-        data = read_pickle(self.targets)
-        targets = data['targets']
-        target_smiles = data['smiles']
-
         # match targets and features
         # there may be duplicate target SMILES, so use searchsorted
         features_mask = np.in1d(feature_smiles, target_smiles)
@@ -140,6 +141,7 @@ class Dataset(object):
         assert np.array_equal(
             feature_smiles[features_mask][features_sort][features_sel],
             target_smiles[targets_mask][targets_sort])
-        self.X = features[features_mask][features_sort][features_sel]
-        self.y = targets[targets_mask][targets_sort]
-        self.smiles = target_smiles[targets_mask][targets_sort]
+        X = features[features_mask][features_sort][features_sel]
+        y = targets[targets_mask][targets_sort]
+        smiles = target_smiles[targets_mask][targets_sort]
+        return X, y, smiles
