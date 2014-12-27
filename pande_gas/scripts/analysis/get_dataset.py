@@ -10,7 +10,7 @@ import argparse
 import numpy as np
 import os
 
-from pande_gas.utils import read_pickle, write_pickle
+from pande_gas.utils import h5_utils, read_pickle
 from pande_gas.utils.dataset_utils import Dataset
 
 
@@ -68,7 +68,10 @@ def main(feature_filenames, target_filenames, suffix):
         print target_filename
         print '{}/{} target records extracted'.format(
             dataset.X.shape[0], targets.shape[0])
-        write_pickle(dataset, '{}-{}.pkl.gz'.format(prefix, suffix))
+        h5_utils.dump(
+            {'X': dataset.X, 'y': dataset.y, 'smiles': dataset.smiles},
+            '{}-{}.h5'.format(prefix, suffix),
+            attrs={'target_filename': target_filename})
 
 if __name__ == '__main__':
     args = get_args()
