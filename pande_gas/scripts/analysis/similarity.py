@@ -46,7 +46,7 @@ def main(ref_filename, fit_filename, output_filename):
     """
     ref = h5_utils.load(ref_filename)
     fit = h5_utils.load(fit_filename)
-    sim = tanimoto(ref.X[:], fit.X[:])
+    sim = tanimoto(ref['X'][:], fit['X'][:])
     h5_utils.dump(sim, output_filename)
 
 
