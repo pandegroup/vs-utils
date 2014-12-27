@@ -8,7 +8,9 @@ import unittest
 
 from rdkit import Chem
 
+from .. import write_pickle
 from ..dataset_utils import MoleculeDatabase
+from pande_gas.scripts.tests.test_featurize import TestFeaturize
 
 
 class TestMoleculeDatabase(unittest.TestCase):
@@ -137,3 +139,30 @@ class TestMoleculeDatabase(unittest.TestCase):
         for mol in self.mols:  # add twice
             self.database.add_mol(mol)
         self.check_database()
+
+
+class TestDataset(unittest.TestCase):
+    """
+    Tests for Dataset.
+    """
+    def setUp(self):
+        """
+        Set up tests.
+        """
+        self.temp_dir = tempfile.mkdtemp()
+
+        # get two sets of features
+        engine = TestFeaturize()
+        data = engine.check_output(['circular', '--size', '1024'], (2, 1024))
+        _, a_filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl.gz')
+        _, b_filename = tempfile.mkstemp(dir=self.temp_dir, suffix='.pkl.gz')
+        write_pickle(data, a_filename)
+        data['smiles'] = ['C', 'Si']
+        write_pickle(data, b_filename)
+
+    def test_get_dataset(self):
+        """
+        Test Dataset._get_dataset.
+
+        I need two features and one targets, not totally matched.
+        """

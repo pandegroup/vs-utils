@@ -13,7 +13,6 @@ from joblib import delayed, Parallel
 import matplotlib.pyplot as pp
 import numpy as np
 from scipy.misc import comb
-import sys
 
 
 def parse_args(input_args=None):

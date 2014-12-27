@@ -7,10 +7,11 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import gzip
+import numpy as np
 
 from rdkit import Chem
 
-from . import SmilesGenerator
+from . import read_pickle, SmilesGenerator
 
 
 class MoleculeDatabase(object):
@@ -87,3 +88,53 @@ class MoleculeDatabase(object):
         for smiles in self.smiles:
             f.write('{}\n'.format(smiles))
         f.close()
+
+
+class Dataset(object):
+    """
+    Extract features for a specific dataset.
+
+    Parameters
+    ----------
+    features : list
+        Feature filenames.
+    targets : str
+        Target filename.
+    """
+    def __init__(self, features, targets):
+        self.features = features
+        self.targets = targets
+        self.X = None
+        self.y = None
+        self.smiles = None
+        self._get_dataset()
+
+    def _get_dataset(self):
+        """
+        Get features, targets, and SMILES for this dataset.
+        """
+        # load features
+        features = []
+        feature_smiles = []
+        for filename in self.features:
+            data = read_pickle(filename)
+            features.append(data['features'])
+            feature_smiles.append(data['smiles'])
+        features = np.ma.vstack(features)
+        feature_smiles = np.concatenate(feature_smiles)
+
+        # load targets
+        data = read_pickle(self.targets)
+        targets = data['targets']
+        target_smiles = data['smiles']
+
+        # match targets and features
+        features_mask = np.in1d(feature_smiles, target_smiles)
+        features_sort = np.argsort(feature_smiles[features_mask])
+        targets_mask = np.in1d(target_smiles, feature_smiles)
+        targets_sort = np.argsort(target_smiles[targets_mask])
+        assert np.array_equal(feature_smiles[features_mask][features_sort],
+                              target_smiles[targets_mask][targets_sort])
+        self.X = features[features_mask][features_sort]
+        self.y = targets[targets_mask][targets_sort]
+        self.smiles = target_smiles[targets_mask][targets_sort]
