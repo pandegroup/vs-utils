@@ -40,3 +40,15 @@ def dump(data, filename, attrs=None, options=None):
                 if value is None:
                     value = 'None'
                 f.attrs[key] = value
+
+
+def load(filename, mode='r'):
+    """
+    Open an h5py file.
+
+    Parameters
+    ----------
+    filename : str
+        Filename.
+    """
+    return h5py.File(filename, mode=mode)

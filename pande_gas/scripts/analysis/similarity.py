@@ -9,7 +9,7 @@ __license__ = "BSD 3-clause"
 import argparse
 import numpy as np
 
-from pande_gas.utils import read_pickle, write_pickle
+from pande_gas.utils import h5_utils
 
 
 def get_args(input_args=None):
@@ -44,10 +44,10 @@ def main(ref_filename, fit_filename, output_filename):
     output_filename : str
         Output filename.
     """
-    ref = read_pickle(ref_filename)
-    fit = read_pickle(fit_filename)
-    sim = tanimoto(ref.X, fit.X)
-    write_pickle(sim, output_filename)
+    ref = h5_utils.load(ref_filename)
+    fit = h5_utils.load(fit_filename)
+    sim = tanimoto(ref.X[:], fit.X[:])
+    h5_utils.dump(sim, output_filename)
 
 
 def tanimoto(ref, fit):
