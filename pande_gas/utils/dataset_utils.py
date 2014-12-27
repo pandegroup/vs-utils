@@ -129,12 +129,17 @@ class Dataset(object):
         target_smiles = data['smiles']
 
         # match targets and features
+        # there may be duplicate target SMILES, so use searchsorted
         features_mask = np.in1d(feature_smiles, target_smiles)
         features_sort = np.argsort(feature_smiles[features_mask])
         targets_mask = np.in1d(target_smiles, feature_smiles)
         targets_sort = np.argsort(target_smiles[targets_mask])
-        assert np.array_equal(feature_smiles[features_mask][features_sort],
-                              target_smiles[targets_mask][targets_sort])
-        self.X = features[features_mask][features_sort]
+        features_sel = np.searchsorted(
+            feature_smiles[features_mask][features_sort],
+            target_smiles[targets_mask][targets_sort])
+        assert np.array_equal(
+            feature_smiles[features_mask][features_sort][features_sel],
+            target_smiles[targets_mask][targets_sort])
+        self.X = features[features_mask][features_sort][features_sel]
         self.y = targets[targets_mask][targets_sort]
         self.smiles = target_smiles[targets_mask][targets_sort]
