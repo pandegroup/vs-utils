@@ -65,6 +65,7 @@ def main(feature_filenames, target_filenames, suffix):
         target_smiles = data['smiles']
 
         dataset = Dataset(features, feature_smiles, targets, target_smiles)
+        print target_filename
         print '{}/{} target records extracted'.format(
             dataset.X.shape[0], targets.shape[0])
         write_pickle(dataset, '{}-{}.pkl.gz'.format(prefix, suffix))
