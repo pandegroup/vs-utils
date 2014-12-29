@@ -33,6 +33,8 @@ def get_args(input_args=None):
                         help='Fit dataset.')
     parser.add_argument('-o', '--output', required=1,
                         help='Output filename.')
+    parser.add_argument('--chunk-size', type=int, default=100,
+                        help='Parallel chunk size.')
     parser.add_argument('-np', '--n-jobs', type=int, default=1,
                         help='Number of parallel jobs.')
     return parser.parse_args(input_args)
@@ -127,4 +129,4 @@ def tanimoto(ref, fit, a_overlap=None, b_overlap=None):
 
 if __name__ == '__main__':
     args = get_args()
-    main(args.ref, args.fit, args.output)
+    main(args.ref, args.fit, args.output, args.chunk_size, args.n_jobs)
