@@ -14,7 +14,7 @@ import argparse
 from joblib import delayed, Parallel
 import numpy as np
 
-from pande_gas.utils import h5_utils, write_pickle
+from pande_gas.utils import h5_utils, vector_tanimoto, write_pickle
 
 
 def get_args(input_args=None):
@@ -104,28 +104,7 @@ def get_max_tanimoto(ref, fit, ref_overlap=None, fit_overlap=None):
         Features for fit molecules.
     """
     assert ref.ndim == 2
-    return np.amax(tanimoto(ref, fit, ref_overlap, fit_overlap), axis=1)
-
-
-def tanimoto(ref, fit, a_overlap=None, b_overlap=None):
-    """
-    Calculate Tanimotos.
-
-    Parameters
-    ----------
-    ref : array_like
-        Reference dataset features.
-    fit : array_like
-        Fit dataset features.
-    """
-    if a_overlap is None:
-        a_overlap = np.sum(np.multiply(ref, ref), axis=1)
-    if b_overlap is None:
-        b_overlap = np.sum(np.multiply(fit, fit), axis=1)
-    b_overlap, a_overlap = np.meshgrid(b_overlap, a_overlap)
-    ab_overlap = np.dot(ref, fit.T)
-    return np.true_divide(
-        ab_overlap, a_overlap + b_overlap - ab_overlap)
+    return np.amax(vector_tanimoto(ref, fit, ref_overlap, fit_overlap), axis=1)
 
 if __name__ == '__main__':
     args = get_args()

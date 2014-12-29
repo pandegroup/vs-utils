@@ -8,13 +8,13 @@ import shutil
 import tempfile
 import unittest
 
-from rdkit import Chem
+from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 
 from rdkit_utils import conformers, serial
 
 from .. import (DatasetSharder, pad_array, read_pickle, ScaffoldGenerator,
-                SmilesGenerator, SmilesMap, write_pickle)
+                SmilesGenerator, SmilesMap, vector_tanimoto, write_pickle)
 
 
 class TestDatasetSharder(unittest.TestCase):
@@ -389,3 +389,24 @@ class TestScaffoldGenerator(unittest.TestCase):
         assert '@' in chiral_scaffold
         assert (Chem.MolFromSmiles(achiral_scaffold).GetNumAtoms() ==
                 Chem.MolFromSmiles(chiral_scaffold).GetNumAtoms())
+
+
+class TestVectorTanimoto(unittest.TestCase):
+    """
+    Test vector_tanimoto.
+    """
+    def test_vector_tanimoto(self):
+        """
+        Compare to RDKit output for bit vectors.
+        """
+        v = np.random.randint(2, size=(100, 1024))
+        fp = [DataStructs.ExplicitBitVect(1024) for _ in xrange(len(v))]
+        for i in xrange(len(v)):
+            fp[i].SetBitsFromList(np.where(v[i])[0])
+        assert np.array_equal(np.asarray(fp), v)
+        rdkit_tan = np.zeros((len(v), len(v)), dtype=float)
+        for i in xrange(len(v)):
+            for j in xrange(len(v)):
+                rdkit_tan[i, j] = DataStructs.TanimotoSimilarity(fp[i], fp[j])
+        this_tan = vector_tanimoto(v, v)
+        assert np.allclose(rdkit_tan, this_tan)

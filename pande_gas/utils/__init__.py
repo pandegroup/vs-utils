@@ -346,3 +346,29 @@ class ScaffoldGenerator(object):
         """
         return MurckoScaffold.MurckoScaffoldSmiles(
             mol=mol, includeChirality=self.include_chirality)
+
+
+def vector_tanimoto(a, b, a_overlap=None, b_overlap=None):
+    """
+    Calculate vector Tanimotos.
+
+    Parameters
+    ----------
+    a, b : array_like
+        Vectors to compare.
+    a_overlap, b_overlap : array_like, optional
+        Precalculated self-overlap values for a and/or b.
+
+    Returns
+    -------
+    tanimotos : array_like (len(a) x len(b))
+        Tanimoto similarity between vectors.
+    """
+    if a_overlap is None:
+        a_overlap = np.sum(np.multiply(a, a), axis=1)
+    if b_overlap is None:
+        b_overlap = np.sum(np.multiply(b, b), axis=1)
+    b_overlap, a_overlap = np.meshgrid(b_overlap, a_overlap)
+    ab_overlap = np.dot(a, b.T)
+    return np.true_divide(
+        ab_overlap, a_overlap + b_overlap - ab_overlap)
