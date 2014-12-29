@@ -1,5 +1,9 @@
 """
 Calculate similarity between two datasets using feature Tanimotos.
+
+First check for overlap between datasets and only calculate Tanimotos for
+compounds that do not overlap. Then we get both metrics at once and reduce
+total computation.
 """
 
 __author__ = "Steven Kearnes"
@@ -34,7 +38,7 @@ def get_args(input_args=None):
     return parser.parse_args(input_args)
 
 
-def main(ref_filename, fit_filename, output_filename, chunk_size=1000,
+def main(ref_filename, fit_filename, output_filename, chunk_size=100,
          n_jobs=1):
     """
     Calculate similarity between two datasets.
@@ -54,25 +58,39 @@ def main(ref_filename, fit_filename, output_filename, chunk_size=1000,
     """
     ref_data = h5_utils.load(ref_filename)
     fit_data = h5_utils.load(fit_filename)
-    ref = ref_data['X']#[:]
+
+    ref_inter = np.in1d(ref_data['smiles'], fit_data['smiles'])
+    sel = ~ref_inter
+    ref = ref_data['X'][:]
     fit = fit_data['X'][:]
-    '''
-    rval = Parallel(n_jobs=n_jobs, verbose=5)(
-        delayed(get_max_tanimoto)(this_ref, fit)
-        for this_ref in np.array_split(ref, ref.shape[0] / chunk_size))
-    '''
-    rval = []
-    i = 0
-    while i < ref.shape[0]:
-        print i
-        this_ref = ref[i:i+chunk_size]
-        rval.append(get_max_tanimoto(this_ref, fit))
-        print len(rval)
-    rval = np.asarray(rval, dtype=float)
-    write_pickle(rval, output_filename)
+    if np.array_equal(np.unique(fit), [0, 1]):
+        fit_overlap = np.sum(fit, axis=1)
+    else:
+        fit_overlap = np.sum(np.multiply(fit, fit), axis=1)
+
+    print 'Ref intersection: {}/{}'.format(
+        np.count_nonzero(ref_inter), ref_inter.size)
+
+    n_todo = np.count_nonzero(sel)
+    print 'Need to calculate similarity for {} compounds'.format(n_todo)
+    if n_todo:
+        rval = Parallel(n_jobs=n_jobs, verbose=5)(
+            delayed(get_max_tanimoto)(this_ref, fit, fit_overlap=fit_overlap)
+            for this_ref in np.array_split(
+                ref[sel], n_todo / chunk_size))
+
+        sim = np.zeros_like(ref_inter, dtype=float)
+        sim[ref_inter] = 1.0
+        sim[sel] = np.concatenate(rval)
+    else:
+        sim = np.ones_like(ref_inter, dtype=float)
+
+    print 'Ref similarity: {}/{}'.format(np.mean(sim), np.median(sim))
+
+    write_pickle({'sim': sim, 'inter': ref_inter}, output_filename)
 
 
-def get_max_tanimoto(ref, fit):
+def get_max_tanimoto(ref, fit, ref_overlap=None, fit_overlap=None):
     """
     Get the maximum Tanimoto between a reference molecule and another dataset.
 
@@ -84,10 +102,10 @@ def get_max_tanimoto(ref, fit):
         Features for fit molecules.
     """
     assert ref.ndim == 2
-    return np.amax(tanimoto(ref, fit), axis=1)
+    return np.amax(tanimoto(ref, fit, ref_overlap, fit_overlap), axis=1)
 
 
-def tanimoto(ref, fit):
+def tanimoto(ref, fit, a_overlap=None, b_overlap=None):
     """
     Calculate Tanimotos.
 
@@ -98,8 +116,10 @@ def tanimoto(ref, fit):
     fit : array_like
         Fit dataset features.
     """
-    a_overlap = np.sum(np.multiply(ref, ref), axis=1)
-    b_overlap = np.sum(np.multiply(fit, fit), axis=1)
+    if a_overlap is None:
+        a_overlap = np.sum(np.multiply(ref, ref), axis=1)
+    if b_overlap is None:
+        b_overlap = np.sum(np.multiply(fit, fit), axis=1)
     b_overlap, a_overlap = np.meshgrid(b_overlap, a_overlap)
     ab_overlap = np.dot(ref, fit.T)
     return np.true_divide(
