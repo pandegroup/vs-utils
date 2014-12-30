@@ -35,13 +35,15 @@ def get_args(input_args=None):
                         help='Output filename.')
     parser.add_argument('--chunk-size', type=int, default=100,
                         help='Parallel chunk size.')
+    parser.add_argument('--identity', action='store_true',
+                        help='Only compute identity metrics.')
     parser.add_argument('-np', '--n-jobs', type=int, default=1,
                         help='Number of parallel jobs.')
     return parser.parse_args(input_args)
 
 
 def main(ref_filename, fit_filename, output_filename, chunk_size=100,
-         n_jobs=1):
+         identity=False, n_jobs=1):
     """
     Calculate similarity between two datasets.
 
@@ -56,6 +58,10 @@ def main(ref_filename, fit_filename, output_filename, chunk_size=100,
         Fit dataset.
     output_filename : str
         Output filename.
+    chunk_size : int, optional (default 100)
+        Chunk size for Tanimoto calculations.
+    identity : bool, optional (default False)
+        Only compute identity metrics.
     n_jobs : int, optional (default 1)
     """
     ref_data = h5_utils.load(ref_filename)
@@ -72,6 +78,10 @@ def main(ref_filename, fit_filename, output_filename, chunk_size=100,
 
     print 'Ref intersection: {}/{}'.format(
         np.count_nonzero(ref_inter), ref_inter.size)
+
+    if identity:
+        write_pickle({'inter': ref_inter}, output_filename)
+        return
 
     n_todo = np.count_nonzero(sel)
     print 'Need to calculate similarity for {} compounds'.format(n_todo)
