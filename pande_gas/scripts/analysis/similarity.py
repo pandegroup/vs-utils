@@ -68,6 +68,11 @@ def main(ref_filename, fit_filename, output_filename, chunk_size=100,
     fit_data = h5_utils.load(fit_filename)
 
     ref_inter = np.in1d(ref_data['smiles'], fit_data['smiles'])
+
+    if identity:
+        write_pickle({'inter': ref_inter}, output_filename)
+        return
+    
     sel = ~ref_inter
     ref = ref_data['X'][:]
     fit = fit_data['X'][:]
@@ -78,10 +83,6 @@ def main(ref_filename, fit_filename, output_filename, chunk_size=100,
 
     print 'Ref intersection: {}/{}'.format(
         np.count_nonzero(ref_inter), ref_inter.size)
-
-    if identity:
-        write_pickle({'inter': ref_inter}, output_filename)
-        return
 
     n_todo = np.count_nonzero(sel)
     print 'Need to calculate similarity for {} compounds'.format(n_todo)
