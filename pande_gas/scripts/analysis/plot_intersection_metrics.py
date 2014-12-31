@@ -71,7 +71,7 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
     inter = {}
     sizes = {}
     for inter_filename in inter_filenames:
-        m = re.search('^(\d+)-(\d+)-', os.path.basename(inter_filename))
+        m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
         a, b = m.groups()
         if a == b:
             continue  # don't count self-intersection

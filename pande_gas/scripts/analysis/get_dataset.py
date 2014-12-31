@@ -57,7 +57,9 @@ def main(feature_filenames, target_filenames, suffix):
     feature_smiles = np.concatenate(feature_smiles)
 
     for target_filename in target_filenames:
-        prefix = os.path.basename(target_filename).split('-')[0]
+        prefix = os.path.basename(target_filename).split('-')
+        prefix.pop()  # toss suffix
+        prefix = '-'.join(prefix)
 
         # load targets
         data = read_pickle(target_filename)
