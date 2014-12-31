@@ -7,6 +7,8 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import argparse
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as pp
 import numpy as np
 import os
@@ -102,8 +104,7 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
             name = name.split('DUDE-')[-1]
         scores[name] = score
 
-    assert len(inter) == len(scores)
-    assert np.intersect1d(inter.keys(), scores.keys()).size == len(inter)
+    assert np.all(np.in1d(inter.keys(), scores.keys()))
 
     # plot
     x, y = [], []
@@ -113,6 +114,8 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
     fig = pp.figure()
     ax = fig.add_subplot(111)
     ax.scatter(x, y)
+    ax.set_xlabel('Mean Intersection')
+    ax.set_ylabel('Mean AUC')
     fig.savefig(output_filename, dpi=300, bbox_inches='tight')
 
 if __name__ == '__main__':
