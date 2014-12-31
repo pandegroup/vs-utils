@@ -94,6 +94,12 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
     for name, score in zip(df.columns[1:], df.values[-1][1:]):
         if name.startswith('PCBA'):
             name = name.split('PCBA-AID')[-1]
+        elif name.startswith('MUV'):
+            name = name.split('MUV-')[-1]
+        elif name.startswith('TOX'):
+            name = name.split('TOX-')[-1]
+        elif name.startswith('DUDE'):
+            name = name.split('DUDE-')[-1]
         scores[name] = score
 
     assert len(inter) == len(scores)
