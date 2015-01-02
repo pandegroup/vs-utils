@@ -62,8 +62,9 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
     targets = {}
     if datasets is not None:
         for dataset in datasets:
-            m = re.search('^(\d+)-', os.path.basename(dataset))
+            m = re.search('^(.*?)-', os.path.basename(dataset))
             name, = m.groups()
+            #name = name.replace('_', '-')  # fix for names
             data = h5_utils.load(dataset)
             targets[name] = data['y'][:]
 
@@ -79,6 +80,9 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
         if a not in inter:
             inter[a] = []
         if actives:
+            if data['inter'].shape != targets[a].shape:
+              import IPython
+              IPython.embed()
             assert data['inter'].shape == targets[a].shape
             sel = np.where(targets[a])[0]
             inter[a].append(np.count_nonzero(data['inter'][sel]))
@@ -88,6 +92,7 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
             sizes[a] = data['inter'].size
 
     for key in inter:
+        print key, len(inter[key])
         inter[key] = np.mean(inter[key]) / sizes[key]
 
     # get scores
@@ -99,11 +104,14 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
         elif name.startswith('MUV'):
             name = name.split('MUV-')[-1]
         elif name.startswith('TOX'):
-            name = name.split('TOX-')[-1]
+            name = name.split('-')
+            name.pop()
+            name.pop(0)
+            name = '_'.join(name)
         elif name.startswith('DUDE'):
             name = name.split('DUDE-')[-1]
         scores[name] = score
-
+    
     assert np.all(np.in1d(inter.keys(), scores.keys()))
 
     # plot
