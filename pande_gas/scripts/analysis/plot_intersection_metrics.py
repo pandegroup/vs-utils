@@ -1,6 +1,7 @@
 """
 Plot intersection metrics.
 """
+from __future__ import division
 
 __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
@@ -38,11 +39,13 @@ def get_args(input_args=None):
                         help='Datasets containing labels.')
     parser.add_argument('-o', '--output', required=1,
                         help='Output filename.')
+    parser.add_argument('--sim', action='store_true',
+                        help='Calculate similarity metrics.')
     return parser.parse_args(input_args)
 
 
-def main(inter_filenames, scores_filename, output_filename, actives=False,
-         datasets=None):
+def main(inter_filenames, scores_filename, output_filename, sim=False, 
+         actives=False, datasets=None):
     """
     Plot intersection metrics.
 
@@ -54,6 +57,8 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
         Scores.
     output_filename : str
         Output filename.
+    sim : bool, optional (default False)
+        Calculate similarity metrics.
     actives : bool, optional (default False)
         Only use actives in metrics (reqires datasets).
     datasets : list, optional
@@ -70,30 +75,33 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
 
     # get average intersection percentage for each dataset
     inter = {}
-    sizes = {}
     for inter_filename in inter_filenames:
         m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
         a, b = m.groups()
         if a == b:
             continue  # don't count self-intersection
         data = read_pickle(inter_filename)
+        if 'sim' in data:
+            assert data['sim'].shape == data['inter'].shape
         if a not in inter:
             inter[a] = []
         if actives:
-            if data['inter'].shape != targets[a].shape:
-              import IPython
-              IPython.embed()
             assert data['inter'].shape == targets[a].shape
             sel = np.where(targets[a])[0]
-            inter[a].append(np.count_nonzero(data['inter'][sel]))
-            sizes[a] = np.count_nonzero(targets[a])
+            if sim:
+                inter[a].append(np.mean(data['sim'][sel]))
+            else:
+                inter[a].append(
+                    np.count_nonzero(data['inter'][sel]) / np.count_nonzero(targets[a]))
         else:
-            inter[a].append(np.count_nonzero(data['inter']))
-            sizes[a] = data['inter'].size
+            if sim:
+                inter[a].append(np.mean(data['sim']))
+            else:
+                inter[a].append(np.count_nonzero(data['inter']) / data['inter'].size)
 
     for key in inter:
         print key, len(inter[key])
-        inter[key] = np.mean(inter[key]) / sizes[key]
+        #inter[key] = np.mean(inter[key])
 
     # get scores
     df = pd.read_table(scores_filename)
@@ -115,17 +123,22 @@ def main(inter_filenames, scores_filename, output_filename, actives=False,
     assert np.all(np.in1d(inter.keys(), scores.keys()))
 
     # plot
-    x, y = [], []
+    x, y, x_err = [], [], []
     for key in inter.keys():
-        x.append(inter[key])
+        x.append(np.mean(inter[key]))
+        x_err.append(np.std(inter[key]))
         y.append(scores[key])
     fig = pp.figure()
     ax = fig.add_subplot(111)
     ax.scatter(x, y)
-    ax.set_xlabel('Mean Intersection')
+    ax.errorbar(x, y, xerr=x_err, linestyle='None')
+    if sim:
+        ax.set_xlabel('Mean Max Tanimoto Similarity')
+    else:
+        ax.set_xlabel('Mean Intersection')
     ax.set_ylabel('Mean AUC')
     fig.savefig(output_filename, dpi=300, bbox_inches='tight')
 
 if __name__ == '__main__':
     args = get_args()
-    main(args.inter, args.scores, args.output, args.actives, args.datasets)
+    main(args.inter, args.scores, args.output, args.sim, args.actives, args.datasets)
