@@ -41,6 +41,8 @@ def get_args(input_args=None):
                         help='Output filename.')
     parser.add_argument('--sim', action='store_true',
                         help='Calculate similarity metrics.')
+    parser.add_argument('--union', action='store_true',
+                        help='Compare vs. union of all other datasets.')
     return parser.parse_args(input_args)
 
 
@@ -66,7 +68,7 @@ def get_weighted_mean_and_std(x, w):
 
 
 def main(inter_filenames, scores_filename, output_filename, sim=False,
-         actives=False, datasets=None):
+         actives=False, datasets=None, union=False):
     """
     Plot intersection metrics.
 
@@ -109,37 +111,67 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
         if 'sim' in data:
             assert data['sim'].shape == data['inter'].shape
         if a not in inter:
-            inter[a] = {}
+            if union:
+                inter[a] = np.zeros_like(data['inter'], dtype=float)
+            else:
+                inter[a] = {}
         assert b not in inter[a]
+
+        # get metric
         if actives:
             assert data['inter'].shape == targets[a].shape
-            sel = np.where(targets[a])[0]
+            a_sel = np.where(targets[a])[0]
+            b_sel = np.where(targets[b])[0]
             if sim:
-                inter[a][b] = np.mean(data['sim'][sel])
+                if union:
+                    inter[a] = np.maximum(inter[a], data['sim'])
+                else:
+                    inter[a][b] = np.mean(data['sim'][sel])
             else:
-                inter[a][b] = np.true_divide(
-                    np.count_nonzero(data['inter'][sel]),
-                    active_sizes[a])
+                if union:
+                    inter[a] = np.add(inter[a], data['inter'])
+                else:
+                    inter[a][b] = np.true_divide(
+                        np.count_nonzero(data['inter'][sel]),
+                        active_sizes[a])
         else:
             if sim:
-                inter[a][b] = np.mean(data['sim'])
+                if union:
+                    inter[a] = np.maximum(inter[a], data['sim'])
+                else:
+                    inter[a][b] = np.mean(data['sim'])
             else:
-                inter[a][b] = np.true_divide(
-                    np.count_nonzero(data['inter']),
-                    data['inter'].size)
+                if union:
+                    inter[a] = np.add(inter[a], data['inter'])
+                else:
+                    inter[a][b] = np.true_divide(
+                        np.count_nonzero(data['inter']),
+                        data['inter'].size)
         if a in sizes:
             assert active_sizes[a] == np.count_nonzero(targets[a])
             assert sizes[a] == data['inter'].size
 
     for key in inter:
         print key, len(inter[key])
-        assert len(inter[key]) == 258
+        if union:
+            #if actives:
+            #    assert len(inter[key]) == active_sizes[key]
+            #else:
+            #    assert len(inter[key]) == sizes[key]
+            assert len(inter[key]) == sizes[key]
+        else:
+            assert len(inter[key]) == 258
         #inter[key] = np.mean(inter[key])
 
     # get scores
     df = pd.read_table(scores_filename)
     scores = {}
-    for name, score in zip(df.columns[1:], df.values[10][1:]):
+    ref_idx = 1
+    new_idx = 27
+    print df.values[ref_idx][0], df.values[new_idx][0]  # print scores
+    for name, ref_score, new_score in zip(
+            df.columns[1:], df.values[ref_idx][1:], df.values[new_idx][1:]):
+        score = new_score - ref_score
         if name.startswith('PCBA'):
             name = name.split('PCBA-AID')[-1]
         elif name.startswith('MUV'):
@@ -158,28 +190,43 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
     # plot
     x, y, x_err = [], [], []
     for key in inter.keys():
-        values, weights = [], []
-        for other in inter[key].keys():
-            values.append(inter[key][other])
+        if union:
+
+            # fix active selection
             if actives:
-                weights.append(active_sizes[other])
+                sel = np.where(targets[key])[0]
+                inter[key] = inter[key][sel]
+
+            # get metrics
+            if sim:
+                x.append(np.mean(inter[key]))
             else:
-                weights.append(sizes[other])
-        mean, stdev = get_weighted_mean_and_std(values, weights)
-        x.append(mean)
-        x_err.append(stdev)
+                x.append(np.count_nonzero(inter[key]) / inter[key].size)
+        else:
+            values, weights = [], []
+            for other in inter[key].keys():
+                values.append(inter[key][other])
+                if actives:
+                    weights.append(active_sizes[other])
+                else:
+                    weights.append(sizes[other])
+            mean, stdev = get_weighted_mean_and_std(values, weights)
+            x.append(mean)
+            x_err.append(stdev)
         y.append(scores[key])
     fig = pp.figure()
     ax = fig.add_subplot(111)
     ax.scatter(x, y)
-    ax.errorbar(x, y, xerr=x_err, linestyle='None')
+    if len(x_err):
+        ax.errorbar(x, y, xerr=x_err, linestyle='None')
     if sim:
         ax.set_xlabel('Mean Max Tanimoto Similarity')
     else:
         ax.set_xlabel('Mean Intersection')
-    ax.set_ylabel('Mean AUC')
+    ax.set_ylabel(r'$\Delta$ Mean AUC')
     fig.savefig(output_filename, dpi=300, bbox_inches='tight')
 
 if __name__ == '__main__':
     args = get_args()
-    main(args.inter, args.scores, args.output, args.sim, args.actives, args.datasets)
+    main(args.inter, args.scores, args.output, args.sim, args.actives,
+         args.datasets, args.union)
