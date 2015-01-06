@@ -44,6 +44,27 @@ def get_args(input_args=None):
     return parser.parse_args(input_args)
 
 
+def get_weighted_mean_and_std(x, w):
+    """
+    Weighted mean and standard deviation.
+
+    See http://stats.stackexchange.com/questions/6534.
+
+    Parameters
+    ----------
+    x : array_like
+        Observations.
+    w : array_like
+        Weights.
+    """
+    mean = np.true_divide(np.sum(np.multiply(w, x)), np.sum(w))
+    nonzero = np.count_nonzero(w)
+    stdev = np.sqrt(np.true_divide(
+        np.sum(np.multiply(w, np.square(x - mean))),
+        np.true_divide(nonzero - 1, nonzero) * np.sum(w)))
+    return mean, stdev
+
+
 def main(inter_filenames, scores_filename, output_filename, sim=False,
          actives=False, datasets=None):
     """
@@ -65,6 +86,8 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
         Datasets containing labels.
     """
     targets = {}
+    sizes = {}
+    active_sizes = {}
     if datasets is not None:
         for dataset in datasets:
             m = re.search('^(.*?)-', os.path.basename(dataset))
@@ -72,6 +95,8 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
             #name = name.replace('_', '-')  # fix for names
             data = h5_utils.load(dataset)
             targets[name] = data['y'][:]
+            sizes[name] = data['X'].shape[0]
+            active_sizes[name] = np.count_nonzero(data['y'])
 
     # get average intersection percentage for each dataset
     inter = {}
@@ -84,23 +109,31 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
         if 'sim' in data:
             assert data['sim'].shape == data['inter'].shape
         if a not in inter:
-            inter[a] = []
+            inter[a] = {}
+        assert b not in inter[a]
         if actives:
             assert data['inter'].shape == targets[a].shape
             sel = np.where(targets[a])[0]
             if sim:
-                inter[a].append(np.mean(data['sim'][sel]))
+                inter[a][b] = np.mean(data['sim'][sel])
             else:
-                inter[a].append(
-                    np.count_nonzero(data['inter'][sel]) / np.count_nonzero(targets[a]))
+                inter[a][b] = np.true_divide(
+                    np.count_nonzero(data['inter'][sel]),
+                    active_sizes[a])
         else:
             if sim:
-                inter[a].append(np.mean(data['sim']))
+                inter[a][b] = np.mean(data['sim'])
             else:
-                inter[a].append(np.count_nonzero(data['inter']) / data['inter'].size)
+                inter[a][b] = np.true_divide(
+                    np.count_nonzero(data['inter']),
+                    data['inter'].size)
+        if a in sizes:
+            assert active_sizes[a] == np.count_nonzero(targets[a])
+            assert sizes[a] == data['inter'].size
 
     for key in inter:
         print key, len(inter[key])
+        assert len(inter[key]) == 258
         #inter[key] = np.mean(inter[key])
 
     # get scores
@@ -125,8 +158,16 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
     # plot
     x, y, x_err = [], [], []
     for key in inter.keys():
-        x.append(np.mean(inter[key]))
-        x_err.append(np.std(inter[key]))
+        values, weights = [], []
+        for other in inter[key].keys():
+            values.append(inter[key][other])
+            if actives:
+                weights.append(active_sizes[other])
+            else:
+                weights.append(sizes[other])
+        mean, stdev = get_weighted_mean_and_std(values, weights)
+        x.append(mean)
+        x_err.append(stdev)
         y.append(scores[key])
     fig = pp.figure()
     ax = fig.add_subplot(111)
