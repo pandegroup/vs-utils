@@ -44,7 +44,7 @@ def get_args(input_args=None):
     return parser.parse_args(input_args)
 
 
-def main(inter_filenames, scores_filename, output_filename, sim=False, 
+def main(inter_filenames, scores_filename, output_filename, sim=False,
          actives=False, datasets=None):
     """
     Plot intersection metrics.
@@ -106,7 +106,7 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
     # get scores
     df = pd.read_table(scores_filename)
     scores = {}
-    for name, score in zip(df.columns[1:], df.values[-1][1:]):
+    for name, score in zip(df.columns[1:], df.values[10][1:]):
         if name.startswith('PCBA'):
             name = name.split('PCBA-AID')[-1]
         elif name.startswith('MUV'):
@@ -119,7 +119,7 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
         elif name.startswith('DUDE'):
             name = name.split('DUDE-')[-1]
         scores[name] = score
-    
+
     assert np.all(np.in1d(inter.keys(), scores.keys()))
 
     # plot
