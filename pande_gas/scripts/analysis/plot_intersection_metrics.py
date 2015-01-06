@@ -29,8 +29,9 @@ def get_args(input_args=None):
         Input arguments. If not provided, defaults to sys.argv[1:].
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--inter', required=1, nargs='+',
+    parser.add_argument('-i', '--inter', required=0, nargs='+',
                         help='Intersections.')
+    parser.add_argument('-f', '--file', help='Input filename.')
     parser.add_argument('-s', '--scores', required=1,
                         help='Scores.')
     parser.add_argument('--actives', action='store_true',
@@ -104,6 +105,10 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
     inter = {}
     for inter_filename in inter_filenames:
         m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
+        if m is None:
+            import IPython
+            IPython.embed()
+            sys.exit()
         a, b = m.groups()
         if a == b:
             continue  # don't count self-intersection
@@ -160,7 +165,7 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
             #    assert len(inter[key]) == sizes[key]
             assert len(inter[key]) == sizes[key]
         else:
-            assert len(inter[key]) == 258
+            assert len(inter[key]) == 258, (key, len(inter[key]))
         #inter[key] = np.mean(inter[key])
 
     # get scores
@@ -168,28 +173,41 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
     scores = {}
     ref_idx = 1
     new_idx = 27
+    datasets = {'PCBA': [], 'MUV': [], 'TOX': [], 'DUDE': []}
     print df.values[ref_idx][0], df.values[new_idx][0]  # print scores
     for name, ref_score, new_score in zip(
             df.columns[1:], df.values[ref_idx][1:], df.values[new_idx][1:]):
         score = new_score - ref_score
         if name.startswith('PCBA'):
             name = name.split('PCBA-AID')[-1]
+            datasets['PCBA'].append(name)
         elif name.startswith('MUV'):
             name = name.split('MUV-')[-1]
+            datasets['MUV'].append(name)
         elif name.startswith('TOX'):
             name = name.split('-')
             name.pop()
             name.pop(0)
             name = '_'.join(name)
+            datasets['TOX'].append(name)
         elif name.startswith('DUDE'):
             name = name.split('DUDE-')[-1]
+            datasets['DUDE'].append(name)
+        else:
+            raise ValueError(name)
         scores[name] = score
+    total = 0
+    for key in datasets:
+        total += len(datasets[key])
+    assert total == 259, total
 
     assert np.all(np.in1d(inter.keys(), scores.keys()))
 
     # plot
     x, y, x_err = [], [], []
+    names = []
     for key in inter.keys():
+        names.append(key)
         if union:
 
             # fix active selection
@@ -214,19 +232,54 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
             x.append(mean)
             x_err.append(stdev)
         y.append(scores[key])
+    x = np.asarray(x)
+    x_err = np.asarray(x_err)
+    y = np.asarray(y)
+    names = np.asarray(names)
+
     fig = pp.figure()
     ax = fig.add_subplot(111)
-    ax.scatter(x, y)
-    if len(x_err):
-        ax.errorbar(x, y, xerr=x_err, linestyle='None')
+    for key in datasets:
+        #if key == 'DUDE':
+        #    print 'NOT PLOTTING DUDE'
+        #    continue
+        sel = []
+        for name in datasets[key]:
+            if name not in names:
+                import IPython
+                IPython.embed()
+                sys.exit()
+            try:
+                idx = np.where(names == name)[0][0]
+            except IndexError:
+                import IPython
+                IPython.embed()
+                sys.exit()
+            sel.append(idx)
+        sel = np.asarray(sel, dtype=int)
+        assert sel.size == len(datasets[key])
+        ax.plot(x[sel], y[sel], 'o', label=key)
+        if len(x_err):
+            ax.errorbar(x[sel], y[sel], xerr=x_err[sel], linestyle='None')
+    #ax.scatter(x, y)
+    #if len(x_err):
+    #    ax.errorbar(x, y, xerr=x_err, linestyle='None')
     if sim:
         ax.set_xlabel('Mean Max Tanimoto Similarity')
     else:
         ax.set_xlabel('Mean Intersection')
     ax.set_ylabel(r'$\Delta$ Mean AUC')
+    pp.legend()
     fig.savefig(output_filename, dpi=300, bbox_inches='tight')
 
 if __name__ == '__main__':
     args = get_args()
-    main(args.inter, args.scores, args.output, args.sim, args.actives,
+    if args.inter:
+        inter = args.inter
+    else:
+        inter = []
+        with open(args.file) as f:
+            for line in f:
+                inter.append(line.strip())
+    main(inter, args.scores, args.output, args.sim, args.actives,
          args.datasets, args.union)
