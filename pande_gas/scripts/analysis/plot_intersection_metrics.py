@@ -8,16 +8,13 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import argparse
-import matplotlib
-matplotlib.use('Agg')
 from matplotlib import pyplot as pp
 import numpy as np
 import os
 import pandas as pd
 import re
 from scipy.stats import linregress
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
+import seaborn as sns
 
 from pande_gas.utils import h5_utils, read_pickle
 
@@ -37,146 +34,35 @@ def get_args(input_args=None):
     parser.add_argument('-f', '--file', help='Input filename.')
     parser.add_argument('-s', '--scores', required=1,
                         help='Scores.')
-    parser.add_argument('--actives', action='store_true',
-                        help='Only use actives in metrics.')
-    parser.add_argument('-d', '--datasets', nargs='+',
-                        help='Datasets containing labels.')
+    parser.add_argument('-t', '--targets', nargs='+', required=1,
+                        help='Datasets containing targets.')
     parser.add_argument('-o', '--output', required=1,
                         help='Output filename.')
-    parser.add_argument('--sim', action='store_true',
-                        help='Calculate similarity metrics.')
-    parser.add_argument('--union', action='store_true',
-                        help='Compare vs. union of all other datasets.')
     return parser.parse_args(input_args)
 
 
-def get_weighted_mean_and_std(x, w):
+def get_targets(filenames):
     """
-    Weighted mean and standard deviation.
-
-    See http://stats.stackexchange.com/questions/6534.
-
-    Parameters
-    ----------
-    x : array_like
-        Observations.
-    w : array_like
-        Weights.
-    """
-    mean = np.true_divide(np.sum(np.multiply(w, x)), np.sum(w))
-    nonzero = np.count_nonzero(w)
-    stdev = np.sqrt(np.true_divide(
-        np.sum(np.multiply(w, np.square(x - mean))),
-        np.true_divide(nonzero - 1, nonzero) * np.sum(w)))
-    return mean, stdev
-
-
-def main(inter_filenames, scores_filename, output_filename, sim=False,
-         actives=False, datasets=None, union=False, occurrence=True):
-    """
-    Plot intersection metrics.
-
-    Parameters
-    ----------
-    inter_filenames : list
-        Intersections.
-    scores_filename : str
-        Scores.
-    output_filename : str
-        Output filename.
-    sim : bool, optional (default False)
-        Calculate similarity metrics.
-    actives : bool, optional (default False)
-        Only use actives in metrics (reqires datasets).
-    datasets : list, optional
-        Datasets containing labels.
+    Get targets and dataset sizes.
     """
     targets = {}
     sizes = {}
     active_sizes = {}
-    if datasets is not None:
-        for dataset in datasets:
-            m = re.search('^(.*?)-', os.path.basename(dataset))
-            name, = m.groups()
-            #name = name.replace('_', '-')  # fix for names
-            data = h5_utils.load(dataset)
-            targets[name] = data['y'][:]
-            sizes[name] = data['X'].shape[0]
-            active_sizes[name] = np.count_nonzero(data['y'])
+    for filename in filenames:
+        m = re.search('^(.*?)-', os.path.basename(filename))
+        name, = m.groups()
+        data = h5_utils.load(filename)
+        targets[name] = data['y'][:]
+        sizes[name] = data['X'].shape[0]
+        active_sizes[name] = np.count_nonzero(data['y'])
+    return targets, sizes, active_sizes
 
-    # get average intersection percentage for each dataset
-    inter = {}
-    for inter_filename in inter_filenames:
-        m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
-        if m is None:
-            import IPython
-            IPython.embed()
-            sys.exit()
-        a, b = m.groups()
-        if a == b:
-            continue  # don't count self-intersection
-        data = read_pickle(inter_filename)
-        if 'sim' in data:
-            assert data['sim'].shape == data['inter'].shape
-        if a not in inter:
-            if union:
-                inter[a] = np.zeros_like(data['inter'], dtype=float)
-            elif occurrence:
-                inter[a] = np.zeros_like(data['inter'], dtype=int)
-            else:
-                inter[a] = {}
-        assert b not in inter[a]
 
-        # get metric
-        if actives:
-            assert data['inter'].shape == targets[a].shape
-            a_sel = np.where(targets[a])[0]
-            b_sel = np.where(targets[b])[0]
-            if sim:
-                if union:
-                    inter[a] = np.maximum(inter[a], data['sim'])
-                else:
-                    inter[a][b] = np.mean(data['sim'][sel])
-            else:
-                if union:
-                    inter[a] = np.add(inter[a], data['inter'])
-                else:
-                    inter[a][b] = np.true_divide(
-                        np.count_nonzero(data['inter'][sel]),
-                        active_sizes[a])
-        else:
-            if sim:
-                if union:
-                    inter[a] = np.maximum(inter[a], data['sim'])
-                else:
-                    inter[a][b] = np.mean(data['sim'])
-            elif occurrence:
-                inter[a] += np.asarray(data['inter'], dtype=int)
-            else:
-                if union:
-                    inter[a] = np.add(inter[a], data['inter'])
-                else:
-                    inter[a][b] = np.true_divide(
-                        np.count_nonzero(data['inter']),
-                        data['inter'].size)
-        if a in sizes:
-            assert active_sizes[a] == np.count_nonzero(targets[a])
-            assert sizes[a] == data['inter'].size
-
-    for key in inter:
-        print key, len(inter[key])
-        if union or occurrence:
-            #if actives:
-            #    assert len(inter[key]) == active_sizes[key]
-            #else:
-            #    assert len(inter[key]) == sizes[key]
-            assert len(inter[key]) == sizes[key]
-        else:
-            assert len(inter[key]) == 258, (key, len(inter[key]))
-        #inter[key] = np.mean(inter[key])
-
-    # get scores
-    df = pd.read_table(scores_filename)
+def get_scores(filename):
+    """
+    Get scores and dataset divisions.
+    """
+    df = pd.read_table(filename)
     scores = {}
     ref_idx = 1
     new_idx = 27
@@ -203,95 +89,109 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
         else:
             raise ValueError(name)
         scores[name] = score
+
+    # sanity checks
     total = 0
     for key in datasets:
         total += len(datasets[key])
     assert total == 259, total
 
+    return scores, datasets
+
+
+def main(inter_filenames, scores_filename, output_filename,
+         target_filenames=None):
+    """
+    Plot intersection metrics.
+
+    Parameters
+    ----------
+    inter_filenames : list
+        Intersections.
+    scores_filename : str
+        Scores.
+    output_filename : str
+        Output filename.
+    sim : bool, optional (default False)
+        Calculate similarity metrics.
+    actives : bool, optional (default False)
+        Only use actives in metrics (reqires datasets).
+    datasets : list, optional
+        Datasets containing labels.
+    """
+    targets, sizes, active_sizes = get_targets(target_filenames)
+    scores, datasets = get_scores(scores_filename)
+
+    inter = {}
+    for inter_filename in inter_filenames:
+        m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
+        a, b = m.groups()
+        if a == b:
+            continue  # don't count self-intersections
+        data = read_pickle(inter_filename)
+
+        # sanity checks
+        assert active_sizes[a] == np.count_nonzero(targets[a])
+        assert sizes[a] == data['inter'].size
+
+        # get metric
+        if a not in inter:
+            inter[a] = np.zeros_like(data['inter'], dtype=int)
+        inter[a] += np.asarray(data['inter'], dtype=int)
+
+    # sanity checks
+    for key in inter:
+        #print key, len(inter[key])
+        assert len(inter[key]) == sizes[key]
     assert np.all(np.in1d(inter.keys(), scores.keys()))
 
-    # plot
+    # get x and y
     x, y, x_err = [], [], []
     names = []
     for key in inter.keys():
+        if key in datasets['DUDE']:
+            continue
         names.append(key)
-        if union:
-
-            # fix active selection
-            if actives:
-                sel = np.where(targets[key])[0]
-                inter[key] = inter[key][sel]
-
-            # get metrics
-            if sim:
-                x.append(np.mean(inter[key]))
-            else:
-                x.append(np.count_nonzero(inter[key]) / inter[key].size)
-
-        elif occurrence:
-            x.append(np.mean(inter[key]))
-            x_err.append(np.std(inter[key]))
-
-        else:
-            values, weights = [], []
-            for other in inter[key].keys():
-                values.append(inter[key][other])
-                if actives:
-                    weights.append(active_sizes[other])
-                else:
-                    weights.append(sizes[other])
-            mean, stdev = get_weighted_mean_and_std(values, weights)
-            x.append(mean)
-            x_err.append(stdev)
+        x.append(np.mean(inter[key]))
+        x_err.append(np.std(inter[key]))
         y.append(scores[key])
     x = np.asarray(x)
     x_err = np.asarray(x_err)
     y = np.asarray(y)
     names = np.asarray(names)
+    print "DATASETS:", len(x)
 
-    # linear fit
-    #lr = LinearRegression()
-    #lr.fit(x, y)
-    #r2 = r2_score(y, lr.predict(x))
-    #print "R2", r2, r2_score(x, y)
+    # statistics
     m, b, r, p, err = linregress(x, y)
     print m, b, r, p, err
-    print "R2", r ** 2
+    print r, r**2
 
+    # plot
     fig = pp.figure()
     ax = fig.add_subplot(111)
-    #ax.plot([0, 1], [b, m + b], color='k')
-    for key in datasets:
+    for key in ['PCBA', 'DUDE', 'MUV', 'TOX']:
         if key == 'DUDE':
             print 'NOT PLOTTING DUDE'
             continue
         sel = []
         for name in datasets[key]:
-            if name not in names:
-                import IPython
-                IPython.embed()
-                sys.exit()
-            try:
-                idx = np.where(names == name)[0][0]
-            except IndexError:
-                import IPython
-                IPython.embed()
-                sys.exit()
+            idx = np.where(names == name)[0][0]
             sel.append(idx)
         sel = np.asarray(sel, dtype=int)
-        assert sel.size == len(datasets[key])
+        assert sel.size == len(datasets[key])  # sanity check
         ax.plot(x[sel], y[sel], 'o', label=key)
         if len(x_err):
-            ax.errorbar(x[sel], y[sel], xerr=x_err[sel], linestyle='None')
-    #ax.scatter(x, y)
-    #if len(x_err):
-    #    ax.errorbar(x, y, xerr=x_err, linestyle='None')
-    if sim:
-        ax.set_xlabel('Mean Max Tanimoto Similarity')
-    elif occurrence:
-        ax.set_xlabel('Compound Occurrence Rate')
-    else:
-        ax.set_xlabel('Mean Intersection')
+            color = 'gray'
+            #if key == 'PCBA':
+            #    color = 'blue'
+            #elif key == 'MUV':
+            #    color = 'green'
+            #elif key == 'TOX':
+            #    color = 'red'
+            ax.errorbar(x[sel], y[sel], xerr=x_err[sel], linestyle='None',
+                        color=color, elinewidth=0.5)
+    #ax.plot([-20, 140], [-20*m + b, 140*m + b])
+    ax.set_xlabel('Compound Occurrence Rate')
     ax.set_ylabel(r'$\Delta$ Mean AUC')
     pp.legend(loc=0)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight')
@@ -305,5 +205,4 @@ if __name__ == '__main__':
         with open(args.file) as f:
             for line in f:
                 inter.append(line.strip())
-    main(inter, args.scores, args.output, args.sim, args.actives,
-         args.datasets, args.union)
+    main(inter, args.scores, args.output, args.targets)
