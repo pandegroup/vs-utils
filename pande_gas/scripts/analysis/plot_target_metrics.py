@@ -5,6 +5,7 @@ import argparse
 import matplotlib.pyplot as pp
 import numpy as np
 import pandas as pd
+from scipy.stats import linregress
 import seaborn as sns
 
 from pande_gas.utils import read_pickle
@@ -112,17 +113,48 @@ def main(classes_filenames, scores_filename, output_filename):
     x_labels = np.asarray(x_labels)
 
     # sort by mass
-    masses = [len(a) for a in data]
+    masses = np.asarray([len(a) for a in data], dtype=int)
     sort = np.argsort(masses)[::-1]
+    for klass, mass in zip(x_labels[sort], masses[sort]):
+        print klass, mass
+
+    # get x and y for manual points
+    x, y = [], []
+    for i, this in enumerate(data[sort]):
+        for score in this:
+            x.append(i + 1)
+            y.append(score)
 
     # plot
     fig = pp.figure()
     ax = fig.add_subplot(111)
+    #sns.violinplot(data[sort], inner='points', ax=ax, positions=masses[sort])
+    #ax.set_xticks(masses[sort])
     sns.violinplot(data[sort], inner='points', ax=ax)
     ax.set_xlabel('Target Class')
     ax.set_xticklabels(x_labels[sort], rotation=90)
-    ax.set_ylabel(r'\Delta Mean AUC')
+    ax.set_ylabel(r'$\Delta$ Mean AUC')
+    ax.plot(x, y, '.', color='k')
     fig.savefig(output_filename, dpi=300, bbox_inches='tight')
+
+    # correlation
+    x, y = [], []
+    for mass, this in zip(masses[sort], data[sort]):
+        for score in this:
+            x.append(mass - 1)  # count number of other datasets in this class
+            y.append(score)
+    m, b, r, p, s = linregress(x, y)
+    print r, r ** 2
+    fig = pp.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(x, y, '.', color='k')
+    ax.set_xlabel('Number of Like Targets')
+    ax.set_xticks(masses[sort] - 1)
+    #ax.set_xticklabels(x_labels[sort], rotation=90)
+    ax.set_ylabel(r'$\Delta$ Mean AUC')
+    ax.plot([0, 136], [b, 137*m + b])
+    fig.savefig('scaled.png', dpi=300, bbox_inches='tight')
+
 
 if __name__ == '__main__':
     args = get_args()

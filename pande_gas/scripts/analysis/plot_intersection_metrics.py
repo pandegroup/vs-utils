@@ -72,7 +72,7 @@ def get_weighted_mean_and_std(x, w):
 
 
 def main(inter_filenames, scores_filename, output_filename, sim=False,
-         actives=False, datasets=None, union=False):
+         actives=False, datasets=None, union=False, occurrence=True):
     """
     Plot intersection metrics.
 
@@ -121,6 +121,8 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
         if a not in inter:
             if union:
                 inter[a] = np.zeros_like(data['inter'], dtype=float)
+            elif occurrence:
+                inter[a] = np.zeros_like(data['inter'], dtype=int)
             else:
                 inter[a] = {}
         assert b not in inter[a]
@@ -148,6 +150,8 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
                     inter[a] = np.maximum(inter[a], data['sim'])
                 else:
                     inter[a][b] = np.mean(data['sim'])
+            elif occurrence:
+                inter[a] += np.asarray(data['inter'], dtype=int)
             else:
                 if union:
                     inter[a] = np.add(inter[a], data['inter'])
@@ -161,7 +165,7 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
 
     for key in inter:
         print key, len(inter[key])
-        if union:
+        if union or occurrence:
             #if actives:
             #    assert len(inter[key]) == active_sizes[key]
             #else:
@@ -223,6 +227,11 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
                 x.append(np.mean(inter[key]))
             else:
                 x.append(np.count_nonzero(inter[key]) / inter[key].size)
+
+        elif occurrence:
+            x.append(np.mean(inter[key]))
+            x_err.append(np.std(inter[key]))
+
         else:
             values, weights = [], []
             for other in inter[key].keys():
@@ -279,10 +288,12 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
     #    ax.errorbar(x, y, xerr=x_err, linestyle='None')
     if sim:
         ax.set_xlabel('Mean Max Tanimoto Similarity')
+    elif occurrence:
+        ax.set_xlabel('Compound Occurrence Rate')
     else:
         ax.set_xlabel('Mean Intersection')
     ax.set_ylabel(r'$\Delta$ Mean AUC')
-    pp.legend()
+    pp.legend(loc=0)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight')
 
 if __name__ == '__main__':
