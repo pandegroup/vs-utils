@@ -15,6 +15,9 @@ import numpy as np
 import os
 import pandas as pd
 import re
+from scipy.stats import linregress
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
 
 from pande_gas.utils import h5_utils, read_pickle
 
@@ -237,12 +240,22 @@ def main(inter_filenames, scores_filename, output_filename, sim=False,
     y = np.asarray(y)
     names = np.asarray(names)
 
+    # linear fit
+    #lr = LinearRegression()
+    #lr.fit(x, y)
+    #r2 = r2_score(y, lr.predict(x))
+    #print "R2", r2, r2_score(x, y)
+    m, b, r, p, err = linregress(x, y)
+    print m, b, r, p, err
+    print "R2", r ** 2
+
     fig = pp.figure()
     ax = fig.add_subplot(111)
+    #ax.plot([0, 1], [b, m + b], color='k')
     for key in datasets:
-        #if key == 'DUDE':
-        #    print 'NOT PLOTTING DUDE'
-        #    continue
+        if key == 'DUDE':
+            print 'NOT PLOTTING DUDE'
+            continue
         sel = []
         for name in datasets[key]:
             if name not in names:
