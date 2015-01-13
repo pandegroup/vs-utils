@@ -8,7 +8,7 @@ import pandas as pd
 from scipy.stats import linregress
 import seaborn as sns
 
-from pande_gas.utils import read_pickle
+from . import get_scores
 
 
 def get_args(input_args=None):
@@ -53,41 +53,6 @@ def get_classes(filenames):
     return classes
 
 
-def get_scores(filename):
-    df = pd.read_table(filename)
-    scores = {}
-    ref_idx = 1
-    new_idx = 27
-    print df.values[ref_idx][0], df.values[new_idx][0]  # print scores
-    datasets = {'PCBA': [], 'MUV': [], 'TOX': [], 'DUDE': []}
-    for name, ref_score, new_score in zip(
-            df.columns[1:], df.values[ref_idx][1:], df.values[new_idx][1:]):
-        score = new_score - ref_score
-        if name.startswith('PCBA'):
-            name = name.split('PCBA-AID')[-1]
-            datasets['PCBA'].append(name)
-        elif name.startswith('MUV'):
-            name = name.split('MUV-')[-1]
-            datasets['MUV'].append(name)
-        elif name.startswith('TOX'):
-            name = name.split('-')
-            name.pop()
-            name.pop(0)
-            name = '_'.join(name)
-            datasets['TOX'].append(name)
-        elif name.startswith('DUDE'):
-            name = name.split('DUDE-')[-1]
-            datasets['DUDE'].append(name)
-        else:
-            raise ValueError(name)
-        scores[name] = score
-    total = 0
-    for key in datasets:
-        total += len(datasets[key])
-    assert total == 259, total
-    return scores, datasets
-
-
 def main(classes_filenames, scores_filename, output_filename):
     """
 
@@ -128,8 +93,6 @@ def main(classes_filenames, scores_filename, output_filename):
     # plot
     fig = pp.figure()
     ax = fig.add_subplot(111)
-    #sns.violinplot(data[sort], inner='points', ax=ax, positions=masses[sort])
-    #ax.set_xticks(masses[sort])
     sns.violinplot(data[sort], inner='points', ax=ax)
     ax.set_xlabel('Target Class')
     ax.set_xticklabels(x_labels[sort], rotation=90)
@@ -145,15 +108,6 @@ def main(classes_filenames, scores_filename, output_filename):
             y.append(score)
     m, b, r, p, s = linregress(x, y)
     print r, r ** 2
-    fig = pp.figure()
-    ax = fig.add_subplot(111)
-    ax.plot(x, y, '.', color='k')
-    ax.set_xlabel('Number of Like Targets')
-    ax.set_xticks(masses[sort] - 1)
-    #ax.set_xticklabels(x_labels[sort], rotation=90)
-    ax.set_ylabel(r'$\Delta$ Mean AUC')
-    ax.plot([0, 136], [b, 137*m + b])
-    fig.savefig('scaled.png', dpi=300, bbox_inches='tight')
 
 
 if __name__ == '__main__':
