@@ -154,7 +154,8 @@ def main(inter_filenames, scores_filename, output_filename,
     ax.set_xlabel('Compound Occurrence Rate')
     ax.set_ylabel(r'$\Delta$ Mean AUC')
     pp.legend(loc=0)
-    fig.savefig(output_filename, dpi=300, bbox_inches='tight')
+    fig.savefig(output_filename, dpi=300, bbox_inches='tight',
+                transparent=True)
 
 if __name__ == '__main__':
     args = get_args()

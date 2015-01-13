@@ -98,7 +98,8 @@ def main(classes_filenames, scores_filename, output_filename):
     ax.set_xticklabels(x_labels[sort], rotation=90)
     ax.set_ylabel(r'$\Delta$ Mean AUC')
     ax.plot(x, y, '.', color='k')
-    fig.savefig(output_filename, dpi=300, bbox_inches='tight')
+    fig.savefig(output_filename, dpi=300, bbox_inches='tight',
+                transparent=True)
 
     # correlation
     x, y = [], []
