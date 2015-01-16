@@ -10,25 +10,25 @@ def get_scores(filename):
     ref_idx = 1
     new_idx = 27
     datasets = {'PCBA': [], 'MUV': [], 'TOX': [], 'DUDE': []}
-    print df.values[ref_idx][0], df.values[new_idx][0]  # print scores
+    print df.values[ref_idx][0], 'VS.', df.values[new_idx][0]  # print scores
     for name, ref_score, new_score in zip(
             df.columns[1:], df.values[ref_idx][1:], df.values[new_idx][1:]):
         score = new_score - ref_score
-        if name.startswith('pcba'):
-            name = name.split('pcba-aid')[-1]
-            datasets['pcba'].append(name)
-        elif name.startswith('muv'):
-            name = name.split('muv-')[-1]
-            datasets['muv'].append(name)
-        elif name.startswith('tox'):
+        if name.startswith('PCBA'):
+            name = name.split('PCBA-AID')[-1]
+            datasets['PCBA'].append(name)
+        elif name.startswith('MUV'):
+            name = name.split('MUV-')[-1]
+            datasets['MUV'].append(name)
+        elif name.startswith('TOX'):
             name = name.split('-')
             name.pop()
             name.pop(0)
             name = '_'.join(name)
-            datasets['tox'].append(name)
-        elif name.startswith('dude'):
-            name = name.split('dude-')[-1]
-            datasets['dude'].append(name)
+            datasets['TOX'].append(name)
+        elif name.startswith('DUDE'):
+            name = name.split('DUDE-')[-1]
+            datasets['DUDE'].append(name)
         else:
             raise ValueError(name)
         scores[name] = score

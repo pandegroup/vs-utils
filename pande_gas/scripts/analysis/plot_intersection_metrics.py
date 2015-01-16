@@ -8,6 +8,7 @@ __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
 import argparse
+from collections import OrderedDict
 from matplotlib import pyplot as pp
 import numpy as np
 import os
@@ -15,10 +16,10 @@ import re
 from scipy.stats import linregress
 import seaborn as sns
 sns.set(style='whitegrid')
+#sns.set(context='paper')
 
-from . import get_scores
-
-from pande_gas.utils import h5_utils, read_pickle
+from pande_gas.scripts.analysis import get_scores
+from pande_gas.utils import h5_utils, read_pickle, write_pickle
 
 
 def get_args(input_args=None):
@@ -83,22 +84,33 @@ def main(inter_filenames, scores_filename, output_filename,
     targets, sizes, active_sizes = get_targets(target_filenames)
     scores, datasets = get_scores(scores_filename)
 
-    inter = {}
-    for inter_filename in inter_filenames:
-        m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
-        a, b = m.groups()
-        if a == b:
-            continue  # don't count self-intersections
-        data = read_pickle(inter_filename)
+    if len(inter_filenames) == 1:
+        inter, inter_pairwise = read_pickle(inter_filenames[0])
+    else:
+        inter = {}
+        inter_pairwise = {}
+        for inter_filename in inter_filenames:
+            m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
+            a, b = m.groups()
+            data = read_pickle(inter_filename)
 
-        # sanity checks
-        assert active_sizes[a] == np.count_nonzero(targets[a])
-        assert sizes[a] == data['inter'].size
+            # sanity checks
+            assert active_sizes[a] == np.count_nonzero(targets[a])
+            assert sizes[a] == data['inter'].size
 
-        # get metric
-        if a not in inter:
-            inter[a] = np.zeros_like(data['inter'], dtype=int)
-        inter[a] += np.asarray(data['inter'], dtype=int)
+            # get metric
+            if a != b:  # don't count self-intersections
+                if a not in inter:
+                    inter[a] = np.zeros_like(data['inter'], dtype=int)
+                inter[a] += np.asarray(data['inter'], dtype=int)
+
+            # get pairwise metric
+            if a not in inter_pairwise:
+                inter_pairwise[a] = {}
+            assert b not in inter_pairwise[a]
+            inter_pairwise[a][b] = np.count_nonzero(
+                np.asarray(data['inter'], dtype=int))
+        write_pickle([inter, inter_pairwise], 'data.pkl.gz')
 
     # sanity checks
     for key in inter:
@@ -110,8 +122,8 @@ def main(inter_filenames, scores_filename, output_filename,
     x, y, x_err = [], [], []
     names = []
     for key in inter.keys():
-        if key in datasets['DUDE']:
-            continue
+        #if key in datasets['DUDE']:
+        #    continue
         names.append(key)
         x.append(np.mean(inter[key]))
         x_err.append(np.std(inter[key]))
@@ -130,17 +142,22 @@ def main(inter_filenames, scores_filename, output_filename,
     # plot
     fig = pp.figure()
     ax = fig.add_subplot(111)
-    for key in ['PCBA', 'DUDE', 'MUV', 'TOX']:
-        if key == 'DUDE':
-            print 'NOT PLOTTING DUDE'
-            continue
+    groups = OrderedDict()
+    groups['PCBA'] = 'PCBA'
+    groups['MUV'] = 'MUV'
+    groups['Tox21'] = 'TOX'
+    groups['DUD-E'] = 'DUDE'
+    for group, key in groups.iteritems():
+        #if key == 'DUDE':
+        #    print 'NOT PLOTTING DUDE'
+        #    continue
         sel = []
         for name in datasets[key]:
             idx = np.where(names == name)[0][0]
             sel.append(idx)
         sel = np.asarray(sel, dtype=int)
         assert sel.size == len(datasets[key])  # sanity check
-        ax.plot(x[sel], y[sel], 'o', label=key)
+        ax.plot(x[sel], y[sel], 'o', label=group)
         if len(x_err):
             color = 'gray'
             #if key == 'PCBA':
@@ -153,11 +170,55 @@ def main(inter_filenames, scores_filename, output_filename,
                         color=color, elinewidth=0.5)
     #ax.plot([-20, 140], [-20*m + b, 140*m + b])
     ax.set_xlim(0, None)
-    ax.set_xlabel(r'Compound Occurrence Rate ($COR_i$)')
+    ax.set_xlabel(r'Compound Occurrence Rate (COR$_{i, \alpha}$)')
     ax.set_ylabel(r'$\Delta$ Mean AUC')
     pp.legend(loc=0)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',
                 transparent=True)
+
+    # plot full pairwise heatmap
+    # the color bar will show the fraction of dataset A in dataset B
+    fig = pp.figure()
+    ax = fig.add_subplot(111)
+    m = np.ma.masked_all(
+        (len(inter_pairwise), len(inter_pairwise)), dtype=float)
+    names = []
+    for group, key in groups.iteritems():
+        for name in datasets[key]:
+            names.append(name)
+    names = np.asarray(names)
+    print names
+    for i, a in enumerate(names):
+        for j, b in enumerate(names):
+            m[i, j] = np.true_divide(inter_pairwise[a][b], sizes[a])
+    assert np.count_nonzero(m.mask) == 0
+    #cmap = sns.cubehelix_palette(8, start=0.5, rot=-0.75, as_cmap=True)
+    cmap = None
+    '''
+    from scipy.spatial.distance import squareform
+    from scipy.cluster.hierarchy import linkage
+    s = np.zeros_like(m, dtype=float)
+    for group, key in groups.iteritems():
+        for name in datasets[key]:
+            i = np.where(names == name)[0][0]
+            for j, other in enumerate(names):
+                if other in datasets[key]:
+                    s[i, j] = 0
+                else:
+                    s[i, j] = 1
+    link = linkage(squareform(s))
+    sns.clustermap(m, square=True, xticklabels=False, yticklabels=False,
+                   linewidths=0, cmap=cmap, row_linkage=link, col_linkage=link)
+    '''
+    sns.heatmap(m, square=True, xticklabels=False, yticklabels=False,
+                linewidths=0, cmap=cmap)
+    ax.vlines([128, 145, 157], 0, 259, linestyles='solid', linewidth=0.1,
+              color='gray')
+    ax.hlines([259-128, 259-145, 259-157], 0, 259, linestyles='solid',
+              linewidth=0.1, color='gray')
+    fig.savefig('heatmap.png', dpi=300, bbox_inches='tight', transparent=True)
+    import IPython
+    IPython.embed()
 
 if __name__ == '__main__':
     args = get_args()
