@@ -13,7 +13,8 @@ import numpy as np
 import os
 import re
 from scipy.stats import linregress
-import seaborn as sns  # import for style
+import seaborn as sns
+sns.set(style='whitegrid')
 
 from . import get_scores
 
@@ -151,7 +152,8 @@ def main(inter_filenames, scores_filename, output_filename,
             ax.errorbar(x[sel], y[sel], xerr=x_err[sel], linestyle='None',
                         color=color, elinewidth=0.5)
     #ax.plot([-20, 140], [-20*m + b, 140*m + b])
-    ax.set_xlabel('Compound Occurrence Rate')
+    ax.set_xlim(0, None)
+    ax.set_xlabel(r'Compound Occurrence Rate ($COR_i$)')
     ax.set_ylabel(r'$\Delta$ Mean AUC')
     pp.legend(loc=0)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',

@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import linregress
 import seaborn as sns
+sns.set(style='whitegrid')
 
 from . import get_scores
 
