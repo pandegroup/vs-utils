@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def get_scores(filename):
+def get_scores(filename, modify=True):
     """
     Get scores and dataset divisions.
     """
@@ -14,24 +14,29 @@ def get_scores(filename):
     for name, ref_score, new_score in zip(
             df.columns[1:], df.values[ref_idx][1:], df.values[new_idx][1:]):
         score = new_score - ref_score
+        original = name
+        dataset = None
         if name.startswith('PCBA'):
             name = name.split('PCBA-AID')[-1]
-            datasets['PCBA'].append(name)
+            dataset = 'PCBA'
         elif name.startswith('MUV'):
             name = name.split('MUV-')[-1]
-            datasets['MUV'].append(name)
+            dataset = 'MUV'
         elif name.startswith('TOX'):
             name = name.split('-')
             name.pop()
             name.pop(0)
             name = '_'.join(name)
-            datasets['TOX'].append(name)
+            dataset = 'TOX'
         elif name.startswith('DUDE'):
             name = name.split('DUDE-')[-1]
-            datasets['DUDE'].append(name)
+            dataset = 'DUDE'
         else:
             raise ValueError(name)
+        if not modify:
+            name = original.lower()
         scores[name] = score
+        datasets[dataset].append(name)
 
     # sanity checks
     total = 0

@@ -9,7 +9,7 @@ from scipy.stats import linregress
 import seaborn as sns
 sns.set(style='whitegrid')
 
-from . import get_scores
+from pande_gas.scripts.analysis import get_scores
 
 
 def get_args(input_args=None):
@@ -36,13 +36,22 @@ def get_classes(filenames):
     corrections = {'nuclear receptor': 'transcription factor'}
     for filename in filenames:
         df = pd.read_table(filename)
-        for aid, klass in zip(df['AID'], df['Target Class']):
+        for aid, klass, subklass in zip(df['Dataset'], df['Target Class'],
+                                        df['Target Subclass']):
             if 'Bad' in df.columns:
-                marks = df['Bad'][df['AID'] == aid].values
+                marks = df['Bad'][df['Dataset'] == aid].values
                 assert len(marks) == 1
                 if marks[0] == 'x':
                     print 'SKIPPING', aid
                     continue
+
+            # handle subclasses
+            if klass.lower() == 'enzyme':
+                if (isinstance(subklass, str) and
+                        subklass.lower() in ['protein kinase', 'protease']):
+                    klass = subklass
+                else:
+                    klass = 'other enzyme'
 
             # class corrections
             if klass in corrections:
@@ -50,7 +59,24 @@ def get_classes(filenames):
 
             if klass not in classes:
                 classes[klass] = []
-            classes[klass].append(str(aid))
+
+            if aid.startswith('dude'):
+                print 'SKIPPING', aid
+                continue  # skipping dude
+
+            classes[klass].append(str(aid).lower())
+
+    # merge small classes into misc.
+    merge = []
+    for klass, members in classes.iteritems():
+        if len(members) < 5:
+            merge.append(klass)
+    for klass in merge:
+        print 'Merging {} into misc.'.format(klass)
+        for member in classes[klass]:
+            classes['miscellaneous'].append(member)
+        del classes[klass]
+
     return classes
 
 
@@ -59,15 +85,21 @@ def main(classes_filenames, scores_filename, output_filename):
 
     Notes:
         * Count 'nuclear receptor' as 'transcription factor'.
+        * Subdivide enzymes into
+            - protein kinases
+            - proteases
+            - other enzymes
     """
     classes = get_classes(classes_filenames)  # class -> name
-    scores, datasets = get_scores(scores_filename)  # name -> score
+    scores, datasets = get_scores(scores_filename, False)  # name -> score
     data = []
     x_labels = []
     for klass in classes.keys():
         x_labels.append(klass)
         class_data = []
         for name in classes[klass]:
+            if name.startswith('tox'):
+                name += '-train'
             try:
                 class_data.append(scores[name])
             except KeyError as e:
@@ -80,6 +112,9 @@ def main(classes_filenames, scores_filename, output_filename):
 
     # sort by mass
     masses = np.asarray([len(a) for a in data], dtype=int)
+    assert np.sum(masses) == 157, np.sum(masses)
+    means = np.asarray([np.mean(a) for a in data], dtype=float)
+    masses = means
     sort = np.argsort(masses)[::-1]
     for klass, mass in zip(x_labels[sort], masses[sort]):
         print klass, mass
@@ -111,6 +146,14 @@ def main(classes_filenames, scores_filename, output_filename):
     m, b, r, p, s = linregress(x, y)
     print r, r ** 2
 
+    # pie chart showing target distribution
+    masses = np.asarray([len(a) for a in data], dtype=int)
+    sort = np.argsort(masses)[::-1]
+    fig = pp.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111)
+    ax.pie(masses[sort], labels=x_labels[sort], autopct='%d')
+    fig.savefig('target_pie.png', dpi=300, bbox_inches='tight',
+                transparent=True)
 
 if __name__ == '__main__':
     args = get_args()
