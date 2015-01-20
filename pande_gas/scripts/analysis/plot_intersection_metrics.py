@@ -153,7 +153,12 @@ def main(inter_filenames, scores_filename, output_filename,
         #    continue
         sel = []
         for name in datasets[key]:
-            idx = np.where(names == name)[0][0]
+            try:
+                idx = np.where(names == name)[0][0]
+            except IndexError:
+                import IPython
+                IPython.embed()
+                sys.exit()
             sel.append(idx)
         sel = np.asarray(sel, dtype=int)
         assert sel.size == len(datasets[key])  # sanity check
@@ -213,12 +218,23 @@ def main(inter_filenames, scores_filename, output_filename,
     sns.heatmap(m, square=True, xticklabels=False, yticklabels=False,
                 linewidths=0, cmap=cmap)
     ax.vlines([128, 145, 157], 0, 259, linestyles='solid', linewidth=0.1,
-              color='gray')
+              color='red')
     ax.hlines([259-128, 259-145, 259-157], 0, 259, linestyles='solid',
-              linewidth=0.1, color='gray')
+              linewidth=0.1, color='red')
+
+    ax.text(50, 261, 'PCBA', fontdict={'fontsize': 6})
+    ax.text(131, 261, 'MUV', fontdict={'fontsize': 6})
+    ax.text(145, 261, 'Tox21', fontdict={'fontsize': 6})
+    ax.text(195, 261, 'DUD-E', fontdict={'fontsize': 6})
+
+    ax.text(-5, 205, 'PCBA', fontdict={'fontsize': 6, 'rotation': 90})
+    ax.text(-5, 124, 'MUV', fontdict={'fontsize': 6, 'rotation': 90})
+    ax.text(-5, 110, 'Tox21', fontdict={'fontsize': 6, 'rotation': 90})
+    ax.text(-5, 60, 'DUD-E', fontdict={'fontsize': 6, 'rotation': 90})
+
     fig.savefig('heatmap.png', dpi=300, bbox_inches='tight', transparent=True)
-    import IPython
-    IPython.embed()
+    #import IPython
+    #IPython.embed()
 
 if __name__ == '__main__':
     args = get_args()
