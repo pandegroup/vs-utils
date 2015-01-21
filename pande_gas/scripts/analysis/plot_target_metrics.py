@@ -31,7 +31,7 @@ def get_args(input_args=None):
     return parser.parse_args(input_args)
 
 
-def get_classes(filenames):
+def get_classes(filenames, skip='dude'):
     classes = {}
     corrections = {'nuclear receptor': 'transcription factor'}
     for filename in filenames:
@@ -60,7 +60,7 @@ def get_classes(filenames):
             if klass not in classes:
                 classes[klass] = []
 
-            if aid.startswith('dude'):
+            if skip is not None and aid.startswith(skip):
                 print 'SKIPPING', aid
                 continue  # skipping dude
 
@@ -80,18 +80,7 @@ def get_classes(filenames):
     return classes
 
 
-def main(classes_filenames, scores_filename, output_filename):
-    """
-
-    Notes:
-        * Count 'nuclear receptor' as 'transcription factor'.
-        * Subdivide enzymes into
-            - protein kinases
-            - proteases
-            - other enzymes
-    """
-    classes = get_classes(classes_filenames)  # class -> name
-    scores, datasets = get_scores(scores_filename, False)  # name -> score
+def match(classes, scores):
     data = []
     x_labels = []
     for klass in classes.keys():
@@ -109,6 +98,22 @@ def main(classes_filenames, scores_filename, output_filename):
         data.append(class_data)
     data = np.asarray(data)
     x_labels = np.asarray(x_labels)
+    return data, x_labels
+
+
+def main(classes_filenames, scores_filename, output_filename):
+    """
+
+    Notes:
+        * Count 'nuclear receptor' as 'transcription factor'.
+        * Subdivide enzymes into
+            - protein kinases
+            - proteases
+            - other enzymes
+    """
+    classes = get_classes(classes_filenames)  # class -> name
+    scores, datasets = get_scores(scores_filename, False)  # name -> score
+    data, x_labels = match(classes, scores)
 
     # sort by mass
     masses = np.asarray([len(a) for a in data], dtype=int)
@@ -146,13 +151,55 @@ def main(classes_filenames, scores_filename, output_filename):
     m, b, r, p, s = linregress(x, y)
     print r, r ** 2
 
+    '''
     # pie chart showing target distribution
     masses = np.asarray([len(a) for a in data], dtype=int)
+
+    def my_autopct(pct):
+        """
+        See http://stackoverflow.com/questions/6170246.
+        """
+        total = np.sum(masses)
+        val = int(pct * total / 100.)
+        return '{p:.2f}% ({v:d})'.format(p=pct, v=val)
+
     sort = np.argsort(masses)[::-1]
     fig = pp.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)
-    ax.pie(masses[sort], labels=x_labels[sort], autopct='%d')
+    ax.pie(masses[sort], labels=x_labels[sort], autopct=my_autopct)
     fig.savefig('target_pie.png', dpi=300, bbox_inches='tight',
+                transparent=True)
+    '''
+    classes = get_classes(classes_filenames, skip=None)  # class -> name
+    data, x_labels = match(classes, scores)
+    assert len(classes) == len(x_labels)
+    masses = np.asarray([len(a) for a in data], dtype=int)
+    sort = np.argsort(masses)[::-1]
+    grouped_classes = np.zeros((4, len(classes)), dtype=int)
+    index = ['pcba', 'muv', 'tox', 'dude']
+    for j, klass in enumerate(x_labels[sort]):
+        for dataset in classes[klass]:
+            start = dataset.split('-')[0]
+            i = index.index(start)
+            grouped_classes[i, j] += 1
+    print grouped_classes
+
+    # stack everything on top of the total plot
+    fig = pp.figure()
+    ax = fig.add_subplot(111)
+    x = np.arange(len(masses))
+    colors = sns.color_palette(n_colors=len(index))
+    legend_keys = ['PCBA', 'MUV', 'Tox21', 'DUD-E'][::-1]
+    for i in xrange(len(grouped_classes)):
+        ax.bar(x, np.sum(grouped_classes[:4-i], axis=0), color=colors[i],
+               label=legend_keys[i])
+    ax.set_ylabel('Count')
+    ax.set_xlabel('Target Class')
+    ax.set_xticks(x+0.4)
+    ax.set_xticklabels(x_labels[sort], rotation=90)
+    ax.grid(axis='x')
+    pp.legend(loc=0)
+    fig.savefig('target_bar.png', dpi=300, bbox_inches='tight',
                 transparent=True)
 
 if __name__ == '__main__':
