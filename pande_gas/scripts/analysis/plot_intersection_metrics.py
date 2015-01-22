@@ -197,8 +197,9 @@ def main(inter_filenames, scores_filename, output_filename,
         for j, b in enumerate(names):
             m[i, j] = np.true_divide(inter_pairwise[a][b], sizes[a])
     assert np.count_nonzero(m.mask) == 0
-    #cmap = sns.cubehelix_palette(8, start=0.5, rot=-0.75, as_cmap=True)
+    cmap = sns.cubehelix_palette(8, start=0.5, rot=-0.75, as_cmap=True)
     cmap = None
+    cmap = 'RdBu_r'
     '''
     from scipy.spatial.distance import squareform
     from scipy.cluster.hierarchy import linkage
@@ -218,9 +219,9 @@ def main(inter_filenames, scores_filename, output_filename,
     sns.heatmap(m, square=True, xticklabels=False, yticklabels=False,
                 linewidths=0, cmap=cmap)
     ax.vlines([128, 145, 157], 0, 259, linestyles='solid', linewidth=0.1,
-              color='red')
+              color='black')
     ax.hlines([259-128, 259-145, 259-157], 0, 259, linestyles='solid',
-              linewidth=0.1, color='red')
+              linewidth=0.1, color='black')
 
     ax.text(50, 261, 'PCBA', fontdict={'fontsize': 6})
     ax.text(131, 261, 'MUV', fontdict={'fontsize': 6})
