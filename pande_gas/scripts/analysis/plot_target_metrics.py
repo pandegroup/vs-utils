@@ -118,8 +118,8 @@ def main(classes_filenames, scores_filename, output_filename):
     # sort by mass
     masses = np.asarray([len(a) for a in data], dtype=int)
     assert np.sum(masses) == 157, np.sum(masses)
-    means = np.asarray([np.mean(a) for a in data], dtype=float)
-    masses = means
+    #means = np.asarray([np.mean(a) for a in data], dtype=float)
+    #masses = means
     sort = np.argsort(masses)[::-1]
     for klass, mass in zip(x_labels[sort], masses[sort]):
         print klass, mass
