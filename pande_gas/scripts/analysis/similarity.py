@@ -71,8 +71,14 @@ def main(ref_filename, fit_filename, output_filename, chunk_size=100,
     print 'Ref intersection: {}/{}'.format(
         np.count_nonzero(ref_inter), ref_inter.size)
 
+    a = np.where(ref_data['y'][:])[0]
+    b = np.where(fit_data['y'][:])[0]
+    ref_active_inter = np.in1d(ref_data['smiles'][:][a],
+                               fit_data['smiles'][:][b])
+
     if identity:
-        write_pickle({'inter': ref_inter}, output_filename)
+        write_pickle({'inter': ref_inter, 'active_inter': ref_active_inter},
+                     output_filename)
         return
 
     sel = ~ref_inter
