@@ -61,57 +61,7 @@ def get_targets(filenames):
     return targets, sizes, active_sizes
 
 
-def main(inter_filenames, scores_filename, output_filename,
-         target_filenames=None):
-    """
-    Plot intersection metrics.
-
-    Parameters
-    ----------
-    inter_filenames : list
-        Intersections.
-    scores_filename : str
-        Scores.
-    output_filename : str
-        Output filename.
-    sim : bool, optional (default False)
-        Calculate similarity metrics.
-    actives : bool, optional (default False)
-        Only use actives in metrics (reqires datasets).
-    datasets : list, optional
-        Datasets containing labels.
-    """
-    targets, sizes, active_sizes = get_targets(target_filenames)
-    scores, datasets = get_scores(scores_filename)
-
-    if len(inter_filenames) == 1:
-        inter, inter_pairwise = read_pickle(inter_filenames[0])
-    else:
-        inter = {}
-        inter_pairwise = {}
-        for inter_filename in inter_filenames:
-            m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
-            a, b = m.groups()
-            data = read_pickle(inter_filename)
-
-            # sanity checks
-            assert active_sizes[a] == np.count_nonzero(targets[a])
-            assert sizes[a] == data['inter'].size
-
-            # get metric
-            if a != b:  # don't count self-intersections
-                if a not in inter:
-                    inter[a] = np.zeros_like(data['inter'], dtype=int)
-                inter[a] += np.asarray(data['inter'], dtype=int)
-
-            # get pairwise metric
-            if a not in inter_pairwise:
-                inter_pairwise[a] = {}
-            assert b not in inter_pairwise[a]
-            inter_pairwise[a][b] = np.count_nonzero(
-                np.asarray(data['inter'], dtype=int))
-        write_pickle([inter, inter_pairwise], 'data.pkl.gz')
-
+def plot_cor(inter, sizes, scores, datasets, output_filename):
     # sanity checks
     for key in inter:
         #print key, len(inter[key])
@@ -181,6 +131,13 @@ def main(inter_filenames, scores_filename, output_filename,
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',
                 transparent=True)
 
+
+def plot_heatmap(inter_pairwise, datasets, output_filename):
+    groups = OrderedDict()
+    groups['PCBA'] = 'PCBA'
+    groups['MUV'] = 'MUV'
+    groups['Tox21'] = 'TOX'
+    groups['DUD-E'] = 'DUDE'
     # plot full pairwise heatmap
     # the color bar will show the fraction of dataset A in dataset B
     fig = pp.figure()
@@ -195,7 +152,7 @@ def main(inter_filenames, scores_filename, output_filename,
     print names
     for i, a in enumerate(names):
         for j, b in enumerate(names):
-            m[i, j] = np.true_divide(inter_pairwise[a][b], sizes[a])
+            m[i, j] = inter_pairwise[a][b]
     assert np.count_nonzero(m.mask) == 0
     cmap = sns.cubehelix_palette(8, start=0.5, rot=-0.75, as_cmap=True)
     cmap = None
@@ -233,9 +190,88 @@ def main(inter_filenames, scores_filename, output_filename,
     ax.text(-5, 110, 'Tox21', fontdict={'fontsize': 6, 'rotation': 90})
     ax.text(-5, 60, 'DUD-E', fontdict={'fontsize': 6, 'rotation': 90})
 
-    fig.savefig('heatmap.png', dpi=300, bbox_inches='tight', transparent=True)
+    fig.savefig(output_filename, dpi=300, bbox_inches='tight',
+                transparent=True)
     #import IPython
     #IPython.embed()
+
+
+def main(inter_filenames, scores_filename, output_filename,
+         target_filenames=None):
+    """
+    Plot intersection metrics.
+
+    Parameters
+    ----------
+    inter_filenames : list
+        Intersections.
+    scores_filename : str
+        Scores.
+    output_filename : str
+        Output filename.
+    sim : bool, optional (default False)
+        Calculate similarity metrics.
+    actives : bool, optional (default False)
+        Only use actives in metrics (reqires datasets).
+    datasets : list, optional
+        Datasets containing labels.
+    """
+    targets, sizes, active_sizes = get_targets(target_filenames)
+    scores, datasets = get_scores(scores_filename)
+
+    if len(inter_filenames) == 1:
+        (inter, inter_pairwise, active_inter,
+            active_inter_pairwise) = read_pickle(inter_filenames[0])
+    else:
+        inter = {}
+        inter_pairwise = {}
+        active_inter = {}
+        active_inter_pairwise = {}
+        for inter_filename in inter_filenames:
+            m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
+            a, b = m.groups()
+            data = read_pickle(inter_filename)
+
+            # sanity checks
+            assert active_sizes[a] == np.count_nonzero(targets[a])
+            assert sizes[a] == data['inter'].size
+
+            w = np.where(targets[a])[0]  # get active indices
+
+            # get metric
+            if a != b:  # don't count self-intersections
+                if a not in inter:
+                    inter[a] = np.zeros_like(data['inter'], dtype=int)
+                inter[a] += np.asarray(data['inter'], dtype=int)
+
+                if a not in active_inter:
+                    active_inter[a] = np.zeros(active_sizes[a], dtype=int)
+                active_inter[a] += np.asarray(data['inter'], dtype=int)[w]
+
+            # get pairwise metric
+            if a not in inter_pairwise:
+                inter_pairwise[a] = {}
+            assert b not in inter_pairwise[a]
+            inter_pairwise[a][b] = np.true_divide(
+                np.count_nonzero(np.asarray(data['inter'], dtype=int)),
+                sizes[a])
+
+            if a not in active_inter_pairwise:
+                active_inter_pairwise[a] = {}
+            assert b not in active_inter_pairwise[a]
+            active_inter_pairwise[a][b] = np.true_divide(
+                np.count_nonzero(np.asarray(data['inter'], dtype=int)[w]),
+                active_sizes[a])
+
+        write_pickle(
+            [inter, inter_pairwise, active_inter, active_inter_pairwise],
+            'data.pkl.gz')
+
+    plot_cor(inter, sizes, scores, datasets, 'cor.png')
+    plot_cor(active_inter, active_sizes, scores, datasets, 'cor-actives.png')
+
+    plot_heatmap(inter_pairwise, datasets, 'heatmap.png')
+    plot_heatmap(active_inter_pairwise, datasets, 'heatmap-actives.png')
 
 if __name__ == '__main__':
     args = get_args()
