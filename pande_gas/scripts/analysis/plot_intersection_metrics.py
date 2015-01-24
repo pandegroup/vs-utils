@@ -123,7 +123,9 @@ def plot_cor(inter, sizes, scores, datasets, output_filename):
             #    color = 'red'
             ax.errorbar(x[sel], y[sel], xerr=x_err[sel], linestyle='None',
                         color=color, elinewidth=0.5)
-    #ax.plot([-20, 140], [-20*m + b, 140*m + b])
+    #ax.plot([-5, 25], [-5*m + b, 25*m + b])
+    from sklearn.metrics import r2_score
+    print 'R2:', r2_score(x, m*x+b)
     ax.set_xlim(0, None)
     ax.set_xlabel(r'Compound Occurrence Rate (COR$_{i, \alpha}$)')
     ax.set_ylabel(r'$\Delta$ Mean AUC')
