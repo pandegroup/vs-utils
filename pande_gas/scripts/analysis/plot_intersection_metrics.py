@@ -231,37 +231,40 @@ def main(inter_filenames, scores_filename, output_filename,
             m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
             a, b = m.groups()
             data = read_pickle(inter_filename)
+            a_inter = np.asarray(data['inter'], dtype=int)
+            a_active_inter = np.asarray(data['active_inter'], dtype=int)
 
             # sanity checks
             assert active_sizes[a] == np.count_nonzero(targets[a])
-            assert sizes[a] == data['inter'].size
-
-            w = np.where(targets[a])[0]  # get active indices
+            assert active_sizes[a] == a_active_inter.size
+            assert sizes[a] == a_inter.size
 
             # get metric
             if a != b:  # don't count self-intersections
                 if a not in inter:
-                    inter[a] = np.zeros_like(data['inter'], dtype=int)
-                inter[a] += np.asarray(data['inter'], dtype=int)
+                    inter[a] = np.zeros_like(a_inter)
+                inter[a] += a_inter
 
+                # "active" COR needs to measure the actives that are *active*
+                # in other datasets
+                # this requires new intersections, I think
                 if a not in active_inter:
-                    active_inter[a] = np.zeros(active_sizes[a], dtype=int)
-                active_inter[a] += np.asarray(data['inter'], dtype=int)[w]
+                    active_inter[a] = np.zeros_like(a_active_inter)
+                active_inter[a] += a_active_inter
 
             # get pairwise metric
+            # fraction of dataset A in dataset B
             if a not in inter_pairwise:
                 inter_pairwise[a] = {}
             assert b not in inter_pairwise[a]
             inter_pairwise[a][b] = np.true_divide(
-                np.count_nonzero(np.asarray(data['inter'], dtype=int)),
-                sizes[a])
+                np.count_nonzero(a_inter), a_inter.size)
 
             if a not in active_inter_pairwise:
                 active_inter_pairwise[a] = {}
             assert b not in active_inter_pairwise[a]
             active_inter_pairwise[a][b] = np.true_divide(
-                np.count_nonzero(np.asarray(data['inter'], dtype=int)[w]),
-                active_sizes[a])
+                np.count_nonzero(a_active_inter), a_active_inter.size)
 
         write_pickle(
             [inter, inter_pairwise, active_inter, active_inter_pairwise],
