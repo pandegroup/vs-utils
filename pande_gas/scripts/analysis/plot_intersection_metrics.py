@@ -245,12 +245,15 @@ def main(inter_filenames, scores_filename, output_filename,
         inter_pairwise = {}
         active_inter = {}
         active_inter_pairwise = {}
+        active_sim = {}
+        active_sim_pairwise = {}
         for inter_filename in inter_filenames:
             m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
             a, b = m.groups()
             data = read_pickle(inter_filename)
             a_inter = np.asarray(data['inter'], dtype=int)
             a_active_inter = np.asarray(data['active_inter'], dtype=int)
+            a_active_sim = np.asarray(data['active_tanimoto'], dtype=float)
 
             # sanity checks
             assert active_sizes[a] == np.count_nonzero(targets[a])
@@ -270,6 +273,10 @@ def main(inter_filenames, scores_filename, output_filename,
                     active_inter[a] = np.zeros_like(a_active_inter)
                 active_inter[a] += a_active_inter
 
+                if a not in active_sim:
+                    active_sim[a] = []
+                active_sim[a].append(np.amax(a_active_sim, axis=1))
+
             # get pairwise metric
             # fraction of dataset A in dataset B
             if a not in inter_pairwise:
@@ -284,15 +291,26 @@ def main(inter_filenames, scores_filename, output_filename,
             active_inter_pairwise[a][b] = np.true_divide(
                 np.count_nonzero(a_active_inter), a_active_inter.size)
 
+            if a not in active_sim_pairwise:
+                active_sim_pairwise[a] = {}
+            assert b not in active_sim_pairwise[a]
+            active_sim_pairwise[a][b] = np.mean(np.amax(a_active_sim, axis=1))
+
+        # correct active_sim to be n_compounds x n_assays
+        for key in active_sim.iterkeys():
+            active_sim[key] = np.asarray(active_sim[key], dtype=float).T
+
         write_pickle(
             [inter, inter_pairwise, active_inter, active_inter_pairwise],
             'data.pkl.gz')
 
     plot_cor(inter, sizes, scores, datasets, 'cor.png', no_dude)
     plot_cor(active_inter, active_sizes, scores, datasets, 'cor-actives.png', no_dude)
+    plot_cor(active_sim, active_sizes, scores, datasets, 'cor-sim.png', no_dude)
 
     plot_heatmap(inter_pairwise, datasets, 'heatmap.png')
     plot_heatmap(active_inter_pairwise, datasets, 'heatmap-actives.png')
+    plot_heatmap(active_sim_pairwise, datasets, 'heatmap-sim.png')
 
 if __name__ == '__main__':
     args = get_args()
