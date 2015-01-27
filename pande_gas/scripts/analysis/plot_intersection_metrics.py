@@ -9,6 +9,8 @@ __license__ = "BSD 3-clause"
 
 import argparse
 from collections import OrderedDict
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as pp
 import numpy as np
 import os
@@ -16,6 +18,7 @@ import re
 from scipy.stats import linregress
 import seaborn as sns
 sns.set(style='whitegrid')
+sns.set_palette('colorblind')
 #sns.set(context='paper')
 
 from pande_gas.scripts.analysis import get_scores
@@ -41,6 +44,7 @@ def get_args(input_args=None):
                         help='Datasets containing targets.')
     parser.add_argument('-o', '--output', required=1,
                         help='Output filename.')
+    parser.add_argument('--no-dude', action='store_true')
     return parser.parse_args(input_args)
 
 
@@ -61,7 +65,7 @@ def get_targets(filenames):
     return targets, sizes, active_sizes
 
 
-def plot_cor(inter, sizes, scores, datasets, output_filename):
+def plot_cor(inter, sizes, scores, datasets, output_filename, no_dude=False):
     # sanity checks
     for key in inter:
         #print key, len(inter[key])
@@ -71,18 +75,30 @@ def plot_cor(inter, sizes, scores, datasets, output_filename):
     # get x and y
     x, y, x_err = [], [], []
     names = []
+    all_cor = []
     for key in inter.keys():
-        #if key in datasets['DUDE']:
-        #    continue
+        if no_dude and key in datasets['DUDE']:
+            continue
         names.append(key)
         x.append(np.mean(inter[key]))
         x_err.append(np.std(inter[key]))
         y.append(scores[key])
+        if key in datasets['MUV']:
+          all_cor.append(inter[key])
     x = np.asarray(x)
     x_err = np.asarray(x_err)
     y = np.asarray(y)
     names = np.asarray(names)
     print "DATASETS:", len(x)
+    all_cor = np.concatenate(all_cor)
+    fig = pp.figure()
+    ax= fig.add_subplot(111)
+    ax.hist(all_cor, bins=np.arange(30), normed=1)
+    fig.savefig(output_filename + 'hist.png', dpi=300)
+
+    with open('results.txt', 'wb') as f:
+      for i, name in enumerate(names):
+        f.write('{}\t{}\t{}\n'.format(names[i], x[i], y[i]))
 
     # statistics
     m, b, r, p, err = linregress(x, y)
@@ -98,9 +114,9 @@ def plot_cor(inter, sizes, scores, datasets, output_filename):
     groups['Tox21'] = 'TOX'
     groups['DUD-E'] = 'DUDE'
     for group, key in groups.iteritems():
-        #if key == 'DUDE':
-        #    print 'NOT PLOTTING DUDE'
-        #    continue
+        if no_dude and key == 'DUDE':
+            print 'NOT PLOTTING DUDE'
+            continue
         sel = []
         for name in datasets[key]:
             try:
@@ -125,7 +141,7 @@ def plot_cor(inter, sizes, scores, datasets, output_filename):
                         color=color, elinewidth=0.5)
     #ax.plot([-5, 25], [-5*m + b, 25*m + b])
     from sklearn.metrics import r2_score
-    print 'R2:', r2_score(x, m*x+b)
+    #print 'R2:', r2_score(x, m*x+b)
     ax.set_xlim(0, None)
     ax.set_xlabel(r'Compound Occurrence Rate (COR$_{i, \alpha}$)')
     ax.set_ylabel(r'$\Delta$ Mean AUC')
@@ -199,7 +215,7 @@ def plot_heatmap(inter_pairwise, datasets, output_filename):
 
 
 def main(inter_filenames, scores_filename, output_filename,
-         target_filenames=None):
+         target_filenames=None, no_dude=False):
     """
     Plot intersection metrics.
 
@@ -272,8 +288,8 @@ def main(inter_filenames, scores_filename, output_filename,
             [inter, inter_pairwise, active_inter, active_inter_pairwise],
             'data.pkl.gz')
 
-    plot_cor(inter, sizes, scores, datasets, 'cor.png')
-    plot_cor(active_inter, active_sizes, scores, datasets, 'cor-actives.png')
+    plot_cor(inter, sizes, scores, datasets, 'cor.png', no_dude)
+    plot_cor(active_inter, active_sizes, scores, datasets, 'cor-actives.png', no_dude)
 
     plot_heatmap(inter_pairwise, datasets, 'heatmap.png')
     plot_heatmap(active_inter_pairwise, datasets, 'heatmap-actives.png')
@@ -287,4 +303,4 @@ if __name__ == '__main__':
         with open(args.file) as f:
             for line in f:
                 inter.append(line.strip())
-    main(inter, args.scores, args.output, args.targets)
+    main(inter, args.scores, args.output, args.targets, args.no_dude)
