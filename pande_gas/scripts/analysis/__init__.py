@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-def get_scores(filename, modify=True):
+def get_scores(filename, modify=True, log_odds=False):
     """
     Get scores and dataset divisions.
     """
@@ -14,8 +14,12 @@ def get_scores(filename, modify=True):
     print df.values[ref_idx][0], 'VS.', df.values[new_idx][0]  # print scores
     for name, ref_score, new_score in zip(
             df.columns[1:], df.values[ref_idx][1:], df.values[new_idx][1:]):
-        #score = new_score - ref_score
-        score = np.log(np.true_divide(new_score, 1-new_score)) - np.log(np.true_divide(ref_score, 1-ref_score))
+        if log_odds:
+            score = np.log(np.true_divide(
+                np.true_divide(new_score, 1-new_score)),
+                np.true_divide(ref_score, 1-ref_score))
+        else:
+            score = new_score - ref_score
         original = name
         dataset = None
         if name.startswith('PCBA'):

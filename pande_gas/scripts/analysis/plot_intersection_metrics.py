@@ -45,6 +45,7 @@ def get_args(input_args=None):
     parser.add_argument('-o', '--output', required=1,
                         help='Output filename.')
     parser.add_argument('--no-dude', action='store_true')
+    parser.add_argument('--log-odds', action='store_true')
     return parser.parse_args(input_args)
 
 
@@ -215,7 +216,7 @@ def plot_heatmap(inter_pairwise, datasets, output_filename):
 
 
 def main(inter_filenames, scores_filename, output_filename,
-         target_filenames=None, no_dude=False):
+         target_filenames=None, no_dude=False, log_odds=False):
     """
     Plot intersection metrics.
 
@@ -235,7 +236,7 @@ def main(inter_filenames, scores_filename, output_filename,
         Datasets containing labels.
     """
     targets, sizes, active_sizes = get_targets(target_filenames)
-    scores, datasets = get_scores(scores_filename)
+    scores, datasets = get_scores(scores_filename, log_odds)
 
     if len(inter_filenames) == 1:
         (inter, inter_pairwise, active_inter,
@@ -321,4 +322,4 @@ if __name__ == '__main__':
         with open(args.file) as f:
             for line in f:
                 inter.append(line.strip())
-    main(inter, args.scores, args.output, args.targets, args.no_dude)
+    main(inter, args.scores, args.output, args.targets, args.no_dude, args.log_odds)
