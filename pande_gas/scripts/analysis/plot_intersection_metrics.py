@@ -144,6 +144,8 @@ def plot_cor(inter, sizes, scores, datasets, output_filename, metric, no_dude=Fa
     from sklearn.metrics import r2_score
     #print 'R2:', r2_score(x, m*x+b)
     ax.set_xlim(0, None)
+    if metric == 'aor':
+      ax.set_xlim(0, 20)
     if metric == 'cor':
         ax.set_xlabel(r'Compound Occurrence Rate (COR$_{i, \alpha}$)')
     elif metric == 'aor':
@@ -153,9 +155,9 @@ def plot_cor(inter, sizes, scores, datasets, output_filename, metric, no_dude=Fa
     else:
         raise NotImplementedError(metric)
     if log_odds:
-        ax.set_ylabel(r'$\Delta$ Log-Odds Mean AUC')
+        ax.set_ylabel(r'$\Delta$ Log-Odds-Mean-AUC')
     else:
-        ax.set_ylabel(r'$\Delta$ Mean AUC')
+        ax.set_ylabel(r'$\Delta$ Mean-AUC')
     pp.legend(loc=0)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',
                 transparent=True)
@@ -246,7 +248,7 @@ def main(inter_filenames, scores_filename, output_filename,
         Datasets containing labels.
     """
     targets, sizes, active_sizes = get_targets(target_filenames)
-    scores, datasets = get_scores(scores_filename, log_odds)
+    scores, datasets = get_scores(scores_filename, log_odds=log_odds)
 
     if len(inter_filenames) == 1:
         (inter, inter_pairwise, active_inter,
@@ -317,11 +319,11 @@ def main(inter_filenames, scores_filename, output_filename,
 
     plot_cor(inter, sizes, scores, datasets, 'cor.png', 'cor', no_dude, log_odds)
     plot_cor(active_inter, active_sizes, scores, datasets, 'cor-actives.png', 'aor', no_dude, log_odds)
-    plot_cor(active_sim, active_sizes, scores, datasets, 'cor-sim.png', 'sim', no_dude, log_odds)
+    #plot_cor(active_sim, active_sizes, scores, datasets, 'cor-sim.png', 'sim', no_dude, log_odds)
 
     plot_heatmap(inter_pairwise, datasets, 'heatmap.png')
     plot_heatmap(active_inter_pairwise, datasets, 'heatmap-actives.png')
-    plot_heatmap(active_sim_pairwise, datasets, 'heatmap-sim.png')
+    #plot_heatmap(active_sim_pairwise, datasets, 'heatmap-sim.png')
 
 if __name__ == '__main__':
     args = get_args()

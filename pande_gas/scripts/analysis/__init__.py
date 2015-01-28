@@ -16,8 +16,8 @@ def get_scores(filename, modify=True, log_odds=False):
             df.columns[1:], df.values[ref_idx][1:], df.values[new_idx][1:]):
         if log_odds:
             score = np.log(np.true_divide(
-                np.true_divide(new_score, 1-new_score)),
-                np.true_divide(ref_score, 1-ref_score))
+                np.true_divide(new_score, 1-new_score),
+                np.true_divide(ref_score, 1-ref_score)))
         else:
             score = new_score - ref_score
         original = name

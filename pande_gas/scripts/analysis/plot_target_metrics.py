@@ -2,6 +2,8 @@
 Plot target metrics.
 """
 import argparse
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as pp
 import numpy as np
 import pandas as pd
@@ -38,6 +40,8 @@ def get_classes(filenames, skip='dude'):
         df = pd.read_table(filename)
         for aid, klass, subklass in zip(df['Dataset'], df['Target Class'],
                                         df['Target Subclass']):
+            if aid.endswith('*'):
+              aid = aid[:-1]
             if 'Bad' in df.columns:
                 marks = df['Bad'][df['Dataset'] == aid].values
                 assert len(marks) == 1
@@ -112,7 +116,7 @@ def main(classes_filenames, scores_filename, output_filename):
             - other enzymes
     """
     classes = get_classes(classes_filenames)  # class -> name
-    scores, datasets = get_scores(scores_filename, False)  # name -> score
+    scores, datasets = get_scores(scores_filename, False, True)  # name -> score
     data, x_labels = match(classes, scores)
 
     # sort by mass
@@ -136,8 +140,9 @@ def main(classes_filenames, scores_filename, output_filename):
     ax = fig.add_subplot(111)
     sns.violinplot(data[sort], inner='points', ax=ax)
     ax.set_xlabel('Target Class')
-    ax.set_xticklabels(x_labels[sort], rotation=90)
-    ax.set_ylabel(r'$\Delta$ Mean AUC')
+    ax.set_xticklabels(x_labels[sort], rotation=45, ha='right')
+    #ax.set_ylabel(r'$\Delta$ Mean AUC')
+    ax.set_ylabel(r'$\Delta$ Log-Odds Mean AUC')
     ax.plot(x, y, '.', color='k')
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',
                 transparent=True)
