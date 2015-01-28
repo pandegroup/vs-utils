@@ -286,7 +286,7 @@ def main(inter_filenames, scores_filename, output_filename,
 
                 if a not in active_sim:
                     active_sim[a] = []
-                active_sim[a].append(np.amax(a_active_sim, axis=1))
+                active_sim[a].append(a_active_sim)
 
             # get pairwise metric
             # fraction of dataset A in dataset B
@@ -305,7 +305,7 @@ def main(inter_filenames, scores_filename, output_filename,
             if a not in active_sim_pairwise:
                 active_sim_pairwise[a] = {}
             assert b not in active_sim_pairwise[a]
-            active_sim_pairwise[a][b] = np.mean(np.amax(a_active_sim, axis=1))
+            active_sim_pairwise[a][b] = np.mean(a_active_sim)
 
         # correct active_sim to be n_compounds x n_assays
         for key in active_sim.iterkeys():
