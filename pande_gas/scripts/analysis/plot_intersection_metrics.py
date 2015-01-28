@@ -66,7 +66,7 @@ def get_targets(filenames):
     return targets, sizes, active_sizes
 
 
-def plot_cor(inter, sizes, scores, datasets, output_filename, no_dude=False):
+def plot_cor(inter, sizes, scores, datasets, output_filename, metric, no_dude=False, log_odds=False):
     # sanity checks
     for key in inter:
         #print key, len(inter[key])
@@ -144,8 +144,18 @@ def plot_cor(inter, sizes, scores, datasets, output_filename, no_dude=False):
     from sklearn.metrics import r2_score
     #print 'R2:', r2_score(x, m*x+b)
     ax.set_xlim(0, None)
-    ax.set_xlabel(r'Compound Occurrence Rate (COR$_{i, \alpha}$)')
-    ax.set_ylabel(r'$\Delta$ Mean AUC')
+    if metric == 'cor':
+        ax.set_xlabel(r'Compound Occurrence Rate (COR$_{i, \alpha}$)')
+    elif metric == 'aor':
+        ax.set_xlabel(r'Active Occurrence Rate (AOR$_{i, \alpha}$)')
+    elif metric == 'sim':
+        ax.set_xlabel('Mean-Max Tanimoto Similarity')
+    else:
+        raise NotImplementedError(metric)
+    if log_odds:
+        ax.set_ylabel(r'$\Delta$ Log-Odds Mean AUC')
+    else:
+        ax.set_ylabel(r'$\Delta$ Mean AUC')
     pp.legend(loc=0)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',
                 transparent=True)
@@ -305,9 +315,9 @@ def main(inter_filenames, scores_filename, output_filename,
             [inter, inter_pairwise, active_inter, active_inter_pairwise],
             'data.pkl.gz')
 
-    plot_cor(inter, sizes, scores, datasets, 'cor.png', no_dude)
-    plot_cor(active_inter, active_sizes, scores, datasets, 'cor-actives.png', no_dude)
-    plot_cor(active_sim, active_sizes, scores, datasets, 'cor-sim.png', no_dude)
+    plot_cor(inter, sizes, scores, datasets, 'cor.png', 'cor', no_dude, log_odds)
+    plot_cor(active_inter, active_sizes, scores, datasets, 'cor-actives.png', 'aor', no_dude, log_odds)
+    plot_cor(active_sim, active_sizes, scores, datasets, 'cor-sim.png', 'sim', no_dude, log_odds)
 
     plot_heatmap(inter_pairwise, datasets, 'heatmap.png')
     plot_heatmap(active_inter_pairwise, datasets, 'heatmap-actives.png')
