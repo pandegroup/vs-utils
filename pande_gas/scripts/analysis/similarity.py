@@ -79,13 +79,13 @@ def main(ref_filename, fit_filename, output_filename, chunk_size=100,
     # compute active--active similarity
     a_fp = ref_data['X'][:][a]
     b_fp = fit_data['X'][:][b]
-    active_tan = vector_tanimoto(a_fp, b_fp)
+    active_tan = np.amax(vector_tanimoto(a_fp, b_fp), axis=1)
     #a_so = np.sum(np.multiply(a_fp, a_fp), axis=1)
     #b_so = np.sum(np.multiply(b_fp, b_fp), axis=1)
     #tan = vector_tanimoto(a_fp, b_fp, a_so, b_so)
 
     if identity:
-        write_pickle({'inter': ref_inter, 'active_inter': ref_active_inter, 
+        write_pickle({'inter': ref_inter, 'active_inter': ref_active_inter,
                       'active_tanimoto': active_tan}, output_filename)
         return
 
