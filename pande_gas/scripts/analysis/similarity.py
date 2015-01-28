@@ -77,13 +77,21 @@ def main(ref_filename, fit_filename, output_filename, chunk_size=100,
                                fit_data['smiles'][:][b])
 
     # compute active--active similarity
-    if np.all(ref_active_inter):
-        print "All actives are intersected."
-        active_tan = np.ones(a.shape[0], dtype=float)
-    else:
-        a_fp = ref_data['X'][:][a]
-        b_fp = fit_data['X'][:][b]
+    a_fp = ref_data['X'][:][a]
+    b_fp = fit_data['X'][:][b]
+    try:
         active_tan = np.amax(vector_tanimoto(a_fp, b_fp), axis=1)
+    except MemoryError:
+        active_tan = np.ma.masked_all(a.size, dtype=float)
+        for i, fp in enumerate(a_fp):
+            if ref_active_inter[i]:
+                active_tan[i] = 1.
+            else:
+                this_tan = vector_tanimoto(np.atleast_2d(fp), b_fp)
+                assert this_tan.shape == (1, b_fp.shape[0])
+                active_tan[i] = np.amax(this_tan, axis=1)
+        assert not np.any(active_tan.mask)
+        active_tan = active_tan.compressed()
 
     if identity:
         write_pickle({'inter': ref_inter, 'active_inter': ref_active_inter,
