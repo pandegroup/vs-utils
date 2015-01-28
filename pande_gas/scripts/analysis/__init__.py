@@ -8,7 +8,7 @@ def get_scores(filename, modify=True, log_odds=False):
     """
     df = pd.read_table(filename)
     scores = {}
-    ref_idx = 2
+    ref_idx = 54
     new_idx = 34
     datasets = {'PCBA': [], 'MUV': [], 'TOX': [], 'DUDE': []}
     print df.values[ref_idx][0], 'VS.', df.values[new_idx][0]  # print scores
