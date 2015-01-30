@@ -93,13 +93,21 @@ def plot_cor(inter, sizes, scores, datasets, output_filename, metric, no_dude=Fa
     print "DATASETS:", len(x)
     all_cor = np.concatenate(all_cor)
     fig = pp.figure()
-    ax= fig.add_subplot(111)
+    ax = fig.add_subplot(111)
     ax.hist(all_cor, bins=np.arange(30), normed=1)
     fig.savefig(output_filename + 'hist.png', dpi=300)
 
     with open('results.txt', 'wb') as f:
       for i, name in enumerate(names):
-        f.write('{}\t{}\t{}\n'.format(names[i], x[i], y[i]))
+        if name.startswith('aid'):
+            name = 'muv-' + name
+        elif name.startswith('SR') or name.startswith('NR'):
+            name = 'tox-' + name.replace('_', '-')
+        elif name.startswith(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')):
+            name = 'pcba-aid' + name
+        else:
+            name = 'dude-' + name
+        f.write('{}\t{}\t{}\t{}\n'.format(name, x[i], x_err[i], y[i]))
 
     # statistics
     m, b, r, p, err = linregress(x, y)

@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 sns.set(style='whitegrid')
+sns.set_palette('colorblind')
 
 
 def get_args(input_args=None):
@@ -29,6 +30,11 @@ def get_args(input_args=None):
 
 
 def main(input_filename, output_filename):
+    rows = np.asarray([3, 2, 5, 4, 56, 52, 55], dtype=int) - 2
+    labels = [
+        'LR', 'RF', 'STNN', 'PSTNN, .25 Dropout', 'Max{LR, RF, STNN, PSTNN}',
+        '1-Hidden (1000) Layer MTNN', 'PMTNN, .25 Dropout'
+    ]
     df = pd.read_table(input_filename)
     idx = {'MUV': [], 'TOX': [], 'PCBA': [], 'DUDE': []}
     for i, c in enumerate(df.columns):
@@ -41,7 +47,7 @@ def main(input_filename, output_filename):
 
     data = {}
     names = []
-    for model in df.values:
+    for model in df.values[rows]:
         name = model[0]
         names.append(name)
         for key, i in idx.iteritems():
@@ -51,10 +57,13 @@ def main(input_filename, output_filename):
     for key in data.iterkeys():
         data[key] = np.asarray(data[key], dtype=float).T
 
+    for i, row in enumerate(names):
+        print '{} => {}'.format(row, labels[i])
+
     fig = pp.figure(figsize=(4, 8))
     grid = ImageGrid(fig, 111, nrows_ncols=(3, 1), label_mode='L', aspect=0,
                      share_all=1, axes_pad=0.3)
-    colors = sns.color_palette('hls', 8)
+    colors = sns.color_palette('hls', len(names))
     pos = np.arange(len(names))
     for key, ax in zip(['PCBA', 'MUV', 'TOX'], grid):
         for i, this in enumerate(data[key].T):
@@ -70,10 +79,10 @@ def main(input_filename, output_filename):
         else:
             ax.set_title(key)
         ax.set_xticks(pos)
-        ax.set_xticklabels(names, rotation=45, ha='right')
+        ax.set_xticklabels(labels, rotation=45, ha='right')
         if key == 'MUV':
             ax.set_ylabel('Median 5-Fold Average AUC')
-        ax.set_xlim(-0.55, 7.55)
+        ax.set_xlim(-0.55, len(names) - 1 + .55)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',
                 transparent=True)
 
