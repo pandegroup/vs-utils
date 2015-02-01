@@ -157,16 +157,16 @@ def plot_cor(inter, sizes, scores, datasets, output_filename, metric, no_dude=Fa
     if metric == 'cor':
         ax.set_xlabel(r'Compound Occurrence Rate (COR$_{i, \alpha}$)')
     elif metric == 'aor':
-        ax.set_xlabel(r'Active Occurrence Rate (AOR$_{i, \alpha}$)')
+        ax.set_xlabel(r'Active Occurrence Rate (AOR$_{i, \alpha}$)', fontsize=14)
     elif metric == 'sim':
         ax.set_xlabel('Mean-Max Tanimoto Similarity')
     else:
         raise NotImplementedError(metric)
     if log_odds:
-        ax.set_ylabel(r'$\Delta$ Log-Odds-Mean-AUC')
+        ax.set_ylabel(r'$\Delta$ Log-Odds-Mean-AUC', fontsize=14)
     else:
         ax.set_ylabel(r'$\Delta$ Mean-AUC')
-    pp.legend(loc=0)
+    pp.legend(loc=0, fontsize=14)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',
                 transparent=True)
 

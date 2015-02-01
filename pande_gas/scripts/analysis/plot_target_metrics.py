@@ -139,11 +139,12 @@ def main(classes_filenames, scores_filename, output_filename):
     fig = pp.figure()
     ax = fig.add_subplot(111)
     sns.violinplot(data[sort], inner='points', ax=ax)
-    ax.set_xlabel('Target Class')
-    ax.set_xticklabels(x_labels[sort], rotation=45, ha='right')
+    ax.set_xlabel('Target Class', fontsize=14)
+    ax.set_xticklabels(x_labels[sort], rotation=30, ha='right', fontsize=14)
     #ax.set_ylabel(r'$\Delta$ Mean AUC')
-    ax.set_ylabel(r'$\Delta$ Log-Odds Mean AUC')
+    ax.set_ylabel(r'$\Delta$ Log-Odds Mean AUC', fontsize=14)
     ax.plot(x, y, '.', color='k')
+    ax.set_ylim(-1, 2.5)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',
                 transparent=True)
 

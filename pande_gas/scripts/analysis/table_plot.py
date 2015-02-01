@@ -2,6 +2,8 @@
 Plot the data presented in Table 1.
 """
 import argparse
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import artist
 from matplotlib import pyplot as pp
 from mpl_toolkits.axes_grid1 import ImageGrid
@@ -33,7 +35,7 @@ def main(input_filename, output_filename):
     rows = np.asarray([3, 2, 5, 4, 56, 52, 55], dtype=int) - 2
     labels = [
         'LR', 'RF', 'STNN', 'PSTNN, .25 Dropout', 'Max{LR, RF, STNN, PSTNN}',
-        '1-Hidden (1000) Layer MTNN', 'PMTNN, .25 Dropout'
+        '1-Hidden (1200) Layer MTNN', 'PMTNN, .25 Dropout'
     ]
     df = pd.read_table(input_filename)
     idx = {'MUV': [], 'TOX': [], 'PCBA': [], 'DUDE': []}
@@ -79,7 +81,7 @@ def main(input_filename, output_filename):
         else:
             ax.set_title(key)
         ax.set_xticks(pos)
-        ax.set_xticklabels(labels, rotation=45, ha='right')
+        ax.set_xticklabels(labels, rotation=30, ha='right')
         if key == 'MUV':
             ax.set_ylabel('Median 5-Fold Average AUC')
         ax.set_xlim(-0.55, len(names) - 1 + .55)
