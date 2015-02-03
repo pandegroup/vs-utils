@@ -97,7 +97,7 @@ def plot_cor(inter, sizes, scores, datasets, output_filename, metric, no_dude=Fa
     ax.hist(all_cor, bins=np.arange(30), normed=1)
     fig.savefig(output_filename + 'hist.png', dpi=300)
 
-    with open('results.txt', 'wb') as f:
+    with open('results-{}-{}.txt'.format(metric, no_dude), 'wb') as f:
       for i, name in enumerate(names):
         if name.startswith('aid'):
             name = 'muv-' + name
@@ -157,13 +157,13 @@ def plot_cor(inter, sizes, scores, datasets, output_filename, metric, no_dude=Fa
     if metric == 'cor':
         ax.set_xlabel(r'Compound Occurrence Rate (COR$_{i, \alpha}$)')
     elif metric == 'aor':
-        ax.set_xlabel(r'Active Occurrence Rate (AOR$_{i, \alpha}$)', fontsize=14)
+        ax.set_xlabel(r'Active occurrence rate (AOR$_{i, \alpha}$)', fontsize=14)
     elif metric == 'sim':
         ax.set_xlabel('Mean-Max Tanimoto Similarity')
     else:
         raise NotImplementedError(metric)
     if log_odds:
-        ax.set_ylabel(r'$\Delta$ Log-Odds-Mean-AUC', fontsize=14)
+        ax.set_ylabel(r'$\Delta$ Log-odds-mean-AUC', fontsize=14)
     else:
         ax.set_ylabel(r'$\Delta$ Mean-AUC')
     pp.legend(loc=0, fontsize=14)
@@ -260,7 +260,7 @@ def main(inter_filenames, scores_filename, output_filename,
 
     if len(inter_filenames) == 1:
         (inter, inter_pairwise, active_inter,
-            active_inter_pairwise) = read_pickle(inter_filenames[0])
+            active_inter_pairwise, active_sim, active_sim_pairwise) = read_pickle(inter_filenames[0])
     else:
         inter = {}
         inter_pairwise = {}
@@ -322,16 +322,16 @@ def main(inter_filenames, scores_filename, output_filename,
             active_sim[key] = np.asarray(active_sim[key], dtype=float).T
 
         write_pickle(
-            [inter, inter_pairwise, active_inter, active_inter_pairwise],
+            [inter, inter_pairwise, active_inter, active_inter_pairwise, active_sim, active_sim_pairwise],
             'data.pkl.gz')
 
     plot_cor(inter, sizes, scores, datasets, 'cor.png', 'cor', no_dude, log_odds)
     plot_cor(active_inter, active_sizes, scores, datasets, 'cor-actives.png', 'aor', no_dude, log_odds)
-    #plot_cor(active_sim, active_sizes, scores, datasets, 'cor-sim.png', 'sim', no_dude, log_odds)
+    plot_cor(active_sim, active_sizes, scores, datasets, 'cor-sim.png', 'sim', no_dude, log_odds)
 
     plot_heatmap(inter_pairwise, datasets, 'heatmap.png')
     plot_heatmap(active_inter_pairwise, datasets, 'heatmap-actives.png')
-    #plot_heatmap(active_sim_pairwise, datasets, 'heatmap-sim.png')
+    plot_heatmap(active_sim_pairwise, datasets, 'heatmap-sim.png')
 
 if __name__ == '__main__':
     args = get_args()

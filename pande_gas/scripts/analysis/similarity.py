@@ -77,6 +77,7 @@ def main(ref_filename, fit_filename, output_filename, chunk_size=100,
                                fit_data['smiles'][:][b])
 
     # compute active--active similarity
+    '''
     a_fp = ref_data['X'][:][a]
     b_fp = fit_data['X'][:][b]
     try:
@@ -92,10 +93,11 @@ def main(ref_filename, fit_filename, output_filename, chunk_size=100,
                 active_tan[i] = np.amax(this_tan, axis=1)
         assert not np.any(active_tan.mask)
         active_tan = active_tan.compressed()
-
+    '''
     if identity:
         write_pickle({'inter': ref_inter, 'active_inter': ref_active_inter,
-                      'active_tanimoto': active_tan}, output_filename)
+                      #'active_tanimoto': active_tan}, output_filename)
+                     }, output_filename)
         return
 
     sel = ~ref_inter
