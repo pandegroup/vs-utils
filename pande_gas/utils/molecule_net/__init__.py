@@ -22,7 +22,7 @@ class AssayXMLParser(object):
 
     def find(self, tag):
         """
-        Return an iterator over elements with a given tag.
+        Return a list of the elements with a given tag.
 
         Parameters
         ----------
@@ -35,6 +35,28 @@ class AssayXMLParser(object):
         """
         Get assay name.
         """
-        elem = list(self.find('PC-AssayDescription_name'))
+        elem = self.find('PC-AssayDescription_name')
         assert len(elem) == 1
         return elem[0].text
+
+    def get_description(self):
+        """
+        Get assay description.
+        """
+        elem = self.find('PC-AssayDescription_description')
+        assert len(elem) == 1
+        description = ''
+        for child in elem[0].getchildren():
+            if child.text is not None:
+                description += child.text + child.tail
+        return description
+
+    def get_protocol(self):
+        """
+        Get assay protocol.
+        """
+
+    def get_target(self):
+        """
+        Get assay target.
+        """
