@@ -140,9 +140,12 @@ def main(classes_filenames, scores_filename, output_filename):
     ax = fig.add_subplot(111)
     sns.violinplot(data[sort], inner='points', ax=ax)
     ax.set_xlabel('Target Class', fontsize=14)
-    ax.set_xticklabels(x_labels[sort], rotation=30, ha='right', fontsize=14)
+    mass_labels = []
+    for i in sort:
+        mass_labels.append(r'{} $({})$'.format(x_labels[i], masses[i]))
+    ax.set_xticklabels(mass_labels, rotation=25, ha='right', fontsize=14)
     #ax.set_ylabel(r'$\Delta$ Mean AUC')
-    ax.set_ylabel(r'$\Delta$ Log-Odds Mean AUC', fontsize=14)
+    ax.set_ylabel(r'$\Delta$ Log-odds-mean-AUC', fontsize=14)
     ax.plot(x, y, '.', color='k')
     ax.set_ylim(-1, 2.5)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',
@@ -202,7 +205,7 @@ def main(classes_filenames, scores_filename, output_filename):
     ax.set_ylabel('Count')
     ax.set_xlabel('Target Class')
     ax.set_xticks(x+0.4)
-    ax.set_xticklabels(x_labels[sort], rotation=90)
+    ax.set_xticklabels(x_labels[sort], rotation=30, ha='right')
     ax.grid(axis='x')
     pp.legend(loc=0)
     fig.savefig('target_bar.png', dpi=300, bbox_inches='tight',
