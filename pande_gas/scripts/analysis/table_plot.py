@@ -83,7 +83,7 @@ def main(input_filename, output_filename):
         ax.set_xticks(pos)
         ax.set_xticklabels(labels, rotation=30, ha='right')
         if key == 'MUV':
-            ax.set_ylabel('Median 5-Fold Average AUC')
+            ax.set_ylabel('Median 5-fold-average-AUC')
         ax.set_xlim(-0.55, len(names) - 1 + .55)
     fig.savefig(output_filename, dpi=300, bbox_inches='tight',
                 transparent=True)
