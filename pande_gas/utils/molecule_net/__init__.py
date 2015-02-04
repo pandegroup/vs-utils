@@ -1,8 +1,61 @@
 """
 Utilities for MoleculeNet.
 """
+import json
 import re
 import xml.etree.cElementTree as et
+
+
+class PcbaJsonParser(object):
+    """
+    Parser for PubChemBioAssay JSON.
+
+    Parameters
+    ----------
+    filename : str
+        Filename.
+    """
+    def __init__(self, filename):
+        self.tree = json.load(filename)
+
+        # should just be one record per file
+        assert len(self.tree['PC_AssayContainer']) == 1
+
+        # move in to the assay description
+        self.root = self.tree['PC_AssayContainer'][0]['assay']['descr']
+
+    def get_name(self):
+        """
+        Get assay name.
+        """
+        return self.root['name']
+
+    def get_description(self):
+        """
+        Get assay description.
+        """
+        return '\n'.join(self.root['description'])
+
+    def get_protocol(self):
+        """
+        Get assay protocol.
+        """
+        return '\n'.join(self.root['protocol'])
+
+    def get_target(self):
+        """
+        Get assay target.
+
+        TODO: Decide which fields are important. We may be able to match
+            targets by mol-id.
+
+        Returns
+        -------
+        target : dict
+            A dictionary containing keys for target information types, such
+            as 'name', 'mol-id', and 'molecule-type'.
+        """
+        return self.root['target']
 
 
 class PcbaXmlParser(object):
