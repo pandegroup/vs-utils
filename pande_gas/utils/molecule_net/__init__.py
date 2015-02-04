@@ -23,7 +23,8 @@ class PcbaXmlParser(object):
 
     def find(self, tag, root=None):
         """
-        Return a list of the elements with a given tag.
+        Return a list of the elements with a given tag. Note that this only
+        searches the direct children of root.
 
         Parameters
         ----------
