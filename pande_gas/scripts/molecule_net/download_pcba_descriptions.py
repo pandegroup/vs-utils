@@ -19,11 +19,12 @@ def parse_args(input_args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('input',
                         help='Input file containing AIDs.')
-    parser.add_argument('-f', '--format', choices=['json', 'xml'])
+    parser.add_argument('-f', '--format', choices=['json', 'xml'],
+                        required=True)
     return parser.parse_args(input_args)
 
 
-def main(filename, output_format='json'):
+def main(filename, output_format):
     """
     Download PCBA JSON descriptions.
 
