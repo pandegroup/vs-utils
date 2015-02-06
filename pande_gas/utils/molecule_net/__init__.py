@@ -3,6 +3,7 @@ Utilities for MoleculeNet.
 """
 import json
 import re
+import warnings
 import xml.etree.cElementTree as et
 
 
@@ -161,6 +162,8 @@ class PcbaXmlParser(object):
             A dictionary containing keys for target information types, such
             as 'name', 'mol-id', and 'molecule-type'.
         """
+        # organism information requires more complicated parsing (use JSON)
+        warnings.warn('Does not return organism information.')
         elem = self.find('PC-AssayDescription_target')
         if len(elem) == 0:
             return None  # no target
