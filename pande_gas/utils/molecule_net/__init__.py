@@ -16,7 +16,8 @@ class PcbaJsonParser(object):
         Filename.
     """
     def __init__(self, filename):
-        self.tree = json.load(filename)
+        with open(filename) as f:
+            self.tree = json.load(f)
 
         # should just be one record per file
         assert len(self.tree['PC_AssayContainer']) == 1
@@ -34,13 +35,20 @@ class PcbaJsonParser(object):
         """
         Get assay description.
         """
-        return '\n'.join(self.root['description'])
+        if isinstance(self.root['description'], list):
+            return '\n'.join(
+                [line.strip() for line in self.root['description']])
+        else:
+            return self.root['description']
 
     def get_protocol(self):
         """
         Get assay protocol.
         """
-        return '\n'.join(self.root['protocol'])
+        if isinstance(self.root['protocol'], list):
+            return '\n'.join([line.strip() for line in self.root['protocol']])
+        else:
+            return self.root['protocol']
 
     def get_target(self):
         """
@@ -55,7 +63,10 @@ class PcbaJsonParser(object):
             A dictionary containing keys for target information types, such
             as 'name', 'mol-id', and 'molecule-type'.
         """
-        return self.root['target']
+        if 'target' in self.root:
+            return self.root['target']
+        else:
+            return None
 
 
 class PcbaXmlParser(object):
@@ -69,10 +80,16 @@ class PcbaXmlParser(object):
     """
     def __init__(self, filename):
         self.tree = et.parse(filename)
-        self.root = self.tree.getroot()
 
         # default prefix for all tags
         self.prefix = '{http://www.ncbi.nlm.nih.gov}'
+
+        # move into tree to description level
+        descriptions = self.tree.getroot().iter(
+            self.prefix + 'PC-AssayDescription')
+        descriptions = list(descriptions)
+        assert len(descriptions) == 1
+        self.root = descriptions[0]
 
     def find(self, tag, root=None):
         """
@@ -99,11 +116,13 @@ class PcbaXmlParser(object):
         elem : Element
             Element.
         """
-        text = ''
+        text = []
         for child in elem.getchildren():
             if child.text is not None:
-                text += child.text + child.tail
-        return text
+                text.append(child.text.strip())
+            else:
+                text.append('')
+        return '\n'.join(text)
 
     def get_name(self):
         """
@@ -133,6 +152,9 @@ class PcbaXmlParser(object):
         """
         Get assay target.
 
+        NOTE: Does not return organism information (requires more complicated
+            parsing).
+
         Returns
         -------
         target : dict
@@ -140,14 +162,20 @@ class PcbaXmlParser(object):
             as 'name', 'mol-id', and 'molecule-type'.
         """
         elem = self.find('PC-AssayDescription_target')
+        if len(elem) == 0:
+            return None  # no target
         assert len(elem) == 1
+        targets = []
         info = self.find('PC-AssayTargetInfo', elem[0])
-        assert len(info) == 1
-        target = {}
-        for e in info[0].getchildren():
-            if not e.text.strip():
-                continue  # skip blank entries
-            m = re.search('PC-AssayTargetInfo_(.*)', e.tag)
-            key = m.groups()[0]
-            target[key] = e.text
-        return target
+        for this_info in info:
+            target = {}
+            for e in this_info.getchildren():
+                if not e.text.strip():
+                    continue  # skip blank entries
+                m = re.search('PC-AssayTargetInfo_(.*)', e.tag)
+                key = m.groups()[0]
+                key = key.replace('-', '_')  # match json
+                target[key] = e.text
+            targets.append(target)
+        assert len(targets)
+        return targets

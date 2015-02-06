@@ -1,0 +1,171 @@
+{
+  "PC_AssayContainer": [
+    {
+      "assay": {
+        "descr": {
+          "aid": {
+            "id": 490,
+            "version": 2
+          },
+          "aid_source": {
+            "db": {
+              "name": "BindingDB",
+              "source_id": {
+                "str": "BindingDB_Influenza_A_virus_(A_Tokyo_3_67(H2N2))"
+              }
+            }
+          },
+          "name": "Literature data for small-molecule inhibitors of Influenza_A_virus_(A_Tokyo_3_67(H2N2))",
+          "description": [
+            "This assay contains in vitro affinity data extracted from the literature for compounds tested against Influenza A virus (strain A/Tokyo/3/67 H2N2)."
+          ],
+          "protocol": [
+            "Various protocols were used; consult BindingDB and/or cited papers for details. ",
+            "",
+            "A compound is listed as \"Active\" if IC50<100,000 nanomolar or Ki<100,000 nanomolar. ",
+            "",
+            "If multiple measurements are available for a given compound, the compound is listed as \"Active\" if any of the measurements meet the criterion."
+          ],
+          "comment": [
+            "Publications sometimes list an IC50, say, as greater than or less than some cutoff value; e.g., \"IC50 >5000 nanomolar\".  ",
+            "",
+            "IC50 is concentration of compound that yields 50% inhibition of the Src enzyme under the assay conditions.",
+            "",
+            "Ki is the enzymologic inhibition constant."
+          ],
+          "xref": [
+            {
+              "xref": {
+                "taxonomy": 380960
+              },
+              "comment": "Influenza A virus (strain A/Tokyo/3/67 H2N2)."
+            },
+            {
+              "xref": {
+                "dburl": "http://www.bindingdb.org/bind/index.jsp"
+              },
+              "comment": "The Binding Database."
+            },
+            {
+              "xref": {
+                "pmid": 15943472
+              }
+            }
+          ],
+          "results": [
+            {
+              "tid": 1,
+              "name": "Ki_max",
+              "description": [
+                "This field is used if either or both of two situations occur:",
+                "",
+                "1) If a publication gives Ki as \"<x\"",
+                "",
+                "2) If multiple Ki measurements are available for a compound, in which case Ki_max is the largest Ki of the set."
+              ],
+              "type": "float",
+              "unit": "nm"
+            },
+            {
+              "tid": 2,
+              "name": "Ki",
+              "description": [
+                "This field is used when a single Ki measurement is available for a compound and it is listed without a \">\" or \"<\" symbol."
+              ],
+              "type": "float",
+              "unit": "nm"
+            },
+            {
+              "tid": 3,
+              "name": "Ki_min",
+              "description": [
+                "This field is used if either or both of two situations occur:",
+                "",
+                "1) If a publication gives Ki as \">x\"",
+                "",
+                "2) If multiple Ki measurements are available for a compound, in which case Ki_min is the smallest Ki of the set."
+              ],
+              "type": "float",
+              "unit": "nm"
+            },
+            {
+              "tid": 4,
+              "name": "IC50_max",
+              "description": [
+                "This field is used if either or both of two situations occur:",
+                "",
+                "1) If a publication gives IC50 as \"<x\"",
+                "",
+                "2) If multiple IC50 measurements are available for a compound, in which case IC50_max is the largest IC50 of the set."
+              ],
+              "type": "float",
+              "unit": "nm"
+            },
+            {
+              "tid": 5,
+              "name": "IC50",
+              "description": [
+                "This field is used when a single IC50 measurement is available for a compound and it is listed without a \">\" or \"<\" symbol."
+              ],
+              "type": "float",
+              "unit": "nm"
+            },
+            {
+              "tid": 6,
+              "name": "IC50_min",
+              "description": [
+                "This field is used if either or both of two situations occur:",
+                "",
+                "1) If a publication gives IC50 as \">x\"",
+                "",
+                "2) If multiple IC50 measurements are available for a compound, in which case IC50_min is the smallest IC50 of the set."
+              ],
+              "type": "float",
+              "unit": "nm"
+            },
+            {
+              "tid": 7,
+              "name": "PubMed Citation (PMID)",
+              "description": [
+                "PubMed ID for reference literature."
+              ],
+              "type": "string",
+              "annot": "pmid"
+            },
+            {
+              "tid": 8,
+              "name": "WILD TYPE sequence",
+              "description": [
+                "The target sequence for wild type."
+              ],
+              "type": "string"
+            }
+          ],
+          "revision": 2,
+          "target": [
+            {
+              "name": "Neuraminidase",
+              "mol_id": 1709344,
+              "molecule_type": "protein",
+              "organism": {
+                "org": {
+                  "taxname": "Influenza A virus (A/Tokyo/3/1967(H2N2))",
+                  "db": [
+                    {
+                      "db": "taxon",
+                      "tag": {
+                        "id": 380960
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "activity_outcome_method": "other",
+          "project_category": "literature-extracted"
+        }
+      }
+    }
+  ]
+}

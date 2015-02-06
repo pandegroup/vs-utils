@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+<PC-AssayContainer
+    xmlns="http://www.ncbi.nlm.nih.gov"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema-instance"
+    xs:schemaLocation="http://www.ncbi.nlm.nih.gov ftp://ftp.ncbi.nlm.nih.gov/pubchem/specifications/pubchem.xsd"
+>
+  <PC-AssaySubmit>
+    <PC-AssaySubmit_assay>
+      <PC-AssaySubmit_assay_descr>
+        <PC-AssayDescription>
+          <PC-AssayDescription_aid>
+            <PC-ID>
+              <PC-ID_id>490</PC-ID_id>
+              <PC-ID_version>2</PC-ID_version>
+            </PC-ID>
+          </PC-AssayDescription_aid>
+          <PC-AssayDescription_aid-source>
+            <PC-Source>
+              <PC-Source_db>
+                <PC-DBTracking>
+                  <PC-DBTracking_name>BindingDB</PC-DBTracking_name>
+                  <PC-DBTracking_source-id>
+                    <Object-id>
+                      <Object-id_str>BindingDB_Influenza_A_virus_(A_Tokyo_3_67(H2N2))</Object-id_str>
+                    </Object-id>
+                  </PC-DBTracking_source-id>
+                </PC-DBTracking>
+              </PC-Source_db>
+            </PC-Source>
+          </PC-AssayDescription_aid-source>
+          <PC-AssayDescription_name>Literature data for small-molecule inhibitors of Influenza_A_virus_(A_Tokyo_3_67(H2N2))</PC-AssayDescription_name>
+          <PC-AssayDescription_description>
+            <PC-AssayDescription_description_E>This assay contains in vitro affinity data extracted from the literature for compounds tested against Influenza A virus (strain A/Tokyo/3/67 H2N2).</PC-AssayDescription_description_E>
+          </PC-AssayDescription_description>
+          <PC-AssayDescription_protocol>
+            <PC-AssayDescription_protocol_E>Various protocols were used; consult BindingDB and/or cited papers for details. </PC-AssayDescription_protocol_E>
+            <PC-AssayDescription_protocol_E></PC-AssayDescription_protocol_E>
+            <PC-AssayDescription_protocol_E>A compound is listed as &quot;Active&quot; if IC50&lt;100,000 nanomolar or Ki&lt;100,000 nanomolar. </PC-AssayDescription_protocol_E>
+            <PC-AssayDescription_protocol_E></PC-AssayDescription_protocol_E>
+            <PC-AssayDescription_protocol_E>If multiple measurements are available for a given compound, the compound is listed as &quot;Active&quot; if any of the measurements meet the criterion.</PC-AssayDescription_protocol_E>
+          </PC-AssayDescription_protocol>
+          <PC-AssayDescription_comment>
+            <PC-AssayDescription_comment_E>Publications sometimes list an IC50, say, as greater than or less than some cutoff value; e.g., &quot;IC50 &gt;5000 nanomolar&quot;.  </PC-AssayDescription_comment_E>
+            <PC-AssayDescription_comment_E></PC-AssayDescription_comment_E>
+            <PC-AssayDescription_comment_E>IC50 is concentration of compound that yields 50% inhibition of the Src enzyme under the assay conditions.</PC-AssayDescription_comment_E>
+            <PC-AssayDescription_comment_E></PC-AssayDescription_comment_E>
+            <PC-AssayDescription_comment_E>Ki is the enzymologic inhibition constant.</PC-AssayDescription_comment_E>
+          </PC-AssayDescription_comment>
+          <PC-AssayDescription_xref>
+            <PC-AnnotatedXRef>
+              <PC-AnnotatedXRef_xref>
+                <PC-XRefData>
+                  <PC-XRefData_taxonomy>380960</PC-XRefData_taxonomy>
+                </PC-XRefData>
+              </PC-AnnotatedXRef_xref>
+              <PC-AnnotatedXRef_comment>Influenza A virus (strain A/Tokyo/3/67 H2N2).</PC-AnnotatedXRef_comment>
+            </PC-AnnotatedXRef>
+            <PC-AnnotatedXRef>
+              <PC-AnnotatedXRef_xref>
+                <PC-XRefData>
+                  <PC-XRefData_dburl>http://www.bindingdb.org/bind/index.jsp</PC-XRefData_dburl>
+                </PC-XRefData>
+              </PC-AnnotatedXRef_xref>
+              <PC-AnnotatedXRef_comment>The Binding Database.</PC-AnnotatedXRef_comment>
+            </PC-AnnotatedXRef>
+            <PC-AnnotatedXRef>
+              <PC-AnnotatedXRef_xref>
+                <PC-XRefData>
+                  <PC-XRefData_pmid>15943472</PC-XRefData_pmid>
+                </PC-XRefData>
+              </PC-AnnotatedXRef_xref>
+            </PC-AnnotatedXRef>
+          </PC-AssayDescription_xref>
+          <PC-AssayDescription_results>
+            <PC-ResultType>
+              <PC-ResultType_tid>1</PC-ResultType_tid>
+              <PC-ResultType_name>Ki_max</PC-ResultType_name>
+              <PC-ResultType_description>
+                <PC-ResultType_description_E>This field is used if either or both of two situations occur:</PC-ResultType_description_E>
+                <PC-ResultType_description_E></PC-ResultType_description_E>
+                <PC-ResultType_description_E>1) If a publication gives Ki as &quot;&lt;x&quot;</PC-ResultType_description_E>
+                <PC-ResultType_description_E></PC-ResultType_description_E>
+                <PC-ResultType_description_E>2) If multiple Ki measurements are available for a compound, in which case Ki_max is the largest Ki of the set.</PC-ResultType_description_E>
+              </PC-ResultType_description>
+              <PC-ResultType_type value="float">1</PC-ResultType_type>
+              <PC-ResultType_unit value="nm">6</PC-ResultType_unit>
+            </PC-ResultType>
+            <PC-ResultType>
+              <PC-ResultType_tid>2</PC-ResultType_tid>
+              <PC-ResultType_name>Ki</PC-ResultType_name>
+              <PC-ResultType_description>
+                <PC-ResultType_description_E>This field is used when a single Ki measurement is available for a compound and it is listed without a &quot;&gt;&quot; or &quot;&lt;&quot; symbol.</PC-ResultType_description_E>
+              </PC-ResultType_description>
+              <PC-ResultType_type value="float">1</PC-ResultType_type>
+              <PC-ResultType_unit value="nm">6</PC-ResultType_unit>
+            </PC-ResultType>
+            <PC-ResultType>
+              <PC-ResultType_tid>3</PC-ResultType_tid>
+              <PC-ResultType_name>Ki_min</PC-ResultType_name>
+              <PC-ResultType_description>
+                <PC-ResultType_description_E>This field is used if either or both of two situations occur:</PC-ResultType_description_E>
+                <PC-ResultType_description_E></PC-ResultType_description_E>
+                <PC-ResultType_description_E>1) If a publication gives Ki as &quot;&gt;x&quot;</PC-ResultType_description_E>
+                <PC-ResultType_description_E></PC-ResultType_description_E>
+                <PC-ResultType_description_E>2) If multiple Ki measurements are available for a compound, in which case Ki_min is the smallest Ki of the set.</PC-ResultType_description_E>
+              </PC-ResultType_description>
+              <PC-ResultType_type value="float">1</PC-ResultType_type>
+              <PC-ResultType_unit value="nm">6</PC-ResultType_unit>
+            </PC-ResultType>
+            <PC-ResultType>
+              <PC-ResultType_tid>4</PC-ResultType_tid>
+              <PC-ResultType_name>IC50_max</PC-ResultType_name>
+              <PC-ResultType_description>
+                <PC-ResultType_description_E>This field is used if either or both of two situations occur:</PC-ResultType_description_E>
+                <PC-ResultType_description_E></PC-ResultType_description_E>
+                <PC-ResultType_description_E>1) If a publication gives IC50 as &quot;&lt;x&quot;</PC-ResultType_description_E>
+                <PC-ResultType_description_E></PC-ResultType_description_E>
+                <PC-ResultType_description_E>2) If multiple IC50 measurements are available for a compound, in which case IC50_max is the largest IC50 of the set.</PC-ResultType_description_E>
+              </PC-ResultType_description>
+              <PC-ResultType_type value="float">1</PC-ResultType_type>
+              <PC-ResultType_unit value="nm">6</PC-ResultType_unit>
+            </PC-ResultType>
+            <PC-ResultType>
+              <PC-ResultType_tid>5</PC-ResultType_tid>
+              <PC-ResultType_name>IC50</PC-ResultType_name>
+              <PC-ResultType_description>
+                <PC-ResultType_description_E>This field is used when a single IC50 measurement is available for a compound and it is listed without a &quot;&gt;&quot; or &quot;&lt;&quot; symbol.</PC-ResultType_description_E>
+              </PC-ResultType_description>
+              <PC-ResultType_type value="float">1</PC-ResultType_type>
+              <PC-ResultType_unit value="nm">6</PC-ResultType_unit>
+            </PC-ResultType>
+            <PC-ResultType>
+              <PC-ResultType_tid>6</PC-ResultType_tid>
+              <PC-ResultType_name>IC50_min</PC-ResultType_name>
+              <PC-ResultType_description>
+                <PC-ResultType_description_E>This field is used if either or both of two situations occur:</PC-ResultType_description_E>
+                <PC-ResultType_description_E></PC-ResultType_description_E>
+                <PC-ResultType_description_E>1) If a publication gives IC50 as &quot;&gt;x&quot;</PC-ResultType_description_E>
+                <PC-ResultType_description_E></PC-ResultType_description_E>
+                <PC-ResultType_description_E>2) If multiple IC50 measurements are available for a compound, in which case IC50_min is the smallest IC50 of the set.</PC-ResultType_description_E>
+              </PC-ResultType_description>
+              <PC-ResultType_type value="float">1</PC-ResultType_type>
+              <PC-ResultType_unit value="nm">6</PC-ResultType_unit>
+            </PC-ResultType>
+            <PC-ResultType>
+              <PC-ResultType_tid>7</PC-ResultType_tid>
+              <PC-ResultType_name>PubMed Citation (PMID)</PC-ResultType_name>
+              <PC-ResultType_description>
+                <PC-ResultType_description_E>PubMed ID for reference literature.</PC-ResultType_description_E>
+              </PC-ResultType_description>
+              <PC-ResultType_type value="string">4</PC-ResultType_type>
+              <PC-ResultType_annot value="pmid">1</PC-ResultType_annot>
+            </PC-ResultType>
+            <PC-ResultType>
+              <PC-ResultType_tid>8</PC-ResultType_tid>
+              <PC-ResultType_name>WILD TYPE sequence</PC-ResultType_name>
+              <PC-ResultType_description>
+                <PC-ResultType_description_E>The target sequence for wild type.</PC-ResultType_description_E>
+              </PC-ResultType_description>
+              <PC-ResultType_type value="string">4</PC-ResultType_type>
+            </PC-ResultType>
+          </PC-AssayDescription_results>
+          <PC-AssayDescription_revision>2</PC-AssayDescription_revision>
+          <PC-AssayDescription_target>
+            <PC-AssayTargetInfo>
+              <PC-AssayTargetInfo_name>Neuraminidase</PC-AssayTargetInfo_name>
+              <PC-AssayTargetInfo_mol-id>1709344</PC-AssayTargetInfo_mol-id>
+              <PC-AssayTargetInfo_molecule-type value="protein">1</PC-AssayTargetInfo_molecule-type>
+              <PC-AssayTargetInfo_organism>
+                <BioSource>
+                  <BioSource_org>
+                    <Org-ref>
+                      <Org-ref_taxname>Influenza A virus (A/Tokyo/3/1967(H2N2))</Org-ref_taxname>
+                      <Org-ref_db>
+                        <Dbtag>
+                          <Dbtag_db>taxon</Dbtag_db>
+                          <Dbtag_tag>
+                            <Object-id>
+                              <Object-id_id>380960</Object-id_id>
+                            </Object-id>
+                          </Dbtag_tag>
+                        </Dbtag>
+                      </Org-ref_db>
+                    </Org-ref>
+                  </BioSource_org>
+                </BioSource>
+              </PC-AssayTargetInfo_organism>
+            </PC-AssayTargetInfo>
+          </PC-AssayDescription_target>
+          <PC-AssayDescription_activity-outcome-method value="other">0</PC-AssayDescription_activity-outcome-method>
+          <PC-AssayDescription_project-category value="literature-extracted">7</PC-AssayDescription_project-category>
+        </PC-AssayDescription>
+      </PC-AssaySubmit_assay_descr>
+    </PC-AssaySubmit_assay>
+  </PC-AssaySubmit>
+</PC-AssayContainer>

@@ -1,0 +1,162 @@
+{
+  "PC_AssayContainer": [
+    {
+      "assay": {
+        "descr": {
+          "aid": {
+            "id": 1,
+            "version": 1
+          },
+          "aid_source": {
+            "db": {
+              "name": "DTP/NCI",
+              "source_id": {
+                "str": "NCI human tumor cell line growth inhibition assay. Data for the NCI-H23 Non-Small Cell Lung cell line"
+              },
+              "date": {
+                "std": {
+                  "year": 2004,
+                  "month": 8,
+                  "day": 15
+                }
+              }
+            }
+          },
+          "name": "NCI human tumor cell line growth inhibition assay. Data for the NCI-H23 Non-Small Cell Lung cell line",
+          "description": [
+            "Growth inhibition of the NCI-H23 human Non-Small Cell Lung tumor cell line is measured as a screen for anti-cancer activity. Cells are grown in 96 well plates and exposed to the test compound for 48 hours. Compounds are tested at 5 different concentrations and three endpoints are estimated from this dose response curve: GI50, concentration required for 50% inhibition of growth, TGI, the concentration requires for complete inhibition of growth, and LC50, the concentration required for 50% reduction in cell number. These estimates are done by simple linear interpolation between the concentrations that surround the approriate level. If a compound doesn't cause inhibition to the appropriate level, the endpoint is set to the highest concentration tested. "
+          ],
+          "comment": [
+            "These data are a subset of the data from the NCI human tumor cell line screen. Compounds are identified by the NCI NSC number. In the NCI numbering system, NCI-H23 is panel number 1, cell number 1",
+            "Basically compounds  with LogGI50 (unit M) less than -6 were considered as active. Activity score was based on increasing values of -LogGI50."
+          ],
+          "xref": [
+            {
+              "xref": {
+                "dburl": "http://dtp.nci.nih.gov/"
+              }
+            },
+            {
+              "xref": {
+                "asurl": "http://dtp.nci.nih.gov/branches/btb/ivclsp.html"
+              }
+            },
+            {
+              "xref": {
+                "pmid": 3335022
+              }
+            },
+            {
+              "xref": {
+                "pmid": 1462164
+              }
+            },
+            {
+              "xref": {
+                "pmid": 3051021
+              }
+            }
+          ],
+          "results": [
+            {
+              "tid": 1,
+              "name": "loggi50",
+              "description": [
+                "Log of the GI50 result, unit: M."
+              ],
+              "type": "float",
+              "unit": "m",
+              "transform": "log"
+            },
+            {
+              "tid": 2,
+              "name": "loggi50",
+              "description": [
+                "Log of the GI50 result, unit: ug/mL."
+              ],
+              "type": "float",
+              "unit": "ugml",
+              "transform": "log"
+            },
+            {
+              "tid": 3,
+              "name": "loggi50",
+              "description": [
+                "Log of the GI50 result, unit: Volumetric."
+              ],
+              "type": "float",
+              "sunit": "v",
+              "transform": "log"
+            },
+            {
+              "tid": 4,
+              "name": "indngi50",
+              "description": [
+                "Number of tests averaged for the GI50 value for this NSC and cell line."
+              ],
+              "type": "int"
+            },
+            {
+              "tid": 5,
+              "name": "stddevgi50",
+              "description": [
+                "Standard Deviation of the Log10 of the GI50 result averaged across all tests for this NSC and cell line."
+              ],
+              "type": "float",
+              "transform": "log"
+            },
+            {
+              "tid": 6,
+              "name": "logtgi",
+              "description": [
+                "Log of the TGI result, unit: M."
+              ],
+              "type": "float",
+              "unit": "m",
+              "transform": "log"
+            },
+            {
+              "tid": 7,
+              "name": "logtgi",
+              "description": [
+                "Log of the TGI result, unit: ug/mL."
+              ],
+              "type": "float",
+              "unit": "ugml",
+              "transform": "log"
+            },
+            {
+              "tid": 8,
+              "name": "logtgi",
+              "description": [
+                "Log of the TGI result, unit: Volumetric."
+              ],
+              "type": "float",
+              "sunit": "v",
+              "transform": "log"
+            },
+            {
+              "tid": 9,
+              "name": "indntgi",
+              "description": [
+                "Number of tests averaged for the TGI value for this NSC and cell line."
+              ],
+              "type": "int"
+            },
+            {
+              "tid": 10,
+              "name": "stddevtgi",
+              "description": [
+                "Standard Deviation of the Log10 of the TGI result averaged across all tests for this NSC and cell line."
+              ],
+              "type": "float",
+              "transform": "log"
+            }
+          ],
+          "revision": 1,
+          "activity_outcome_method": "confirmatory"
+        }
+      }
+    }
+  ]
+}

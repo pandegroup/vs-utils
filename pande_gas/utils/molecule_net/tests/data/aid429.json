@@ -1,0 +1,127 @@
+{
+  "PC_AssayContainer": [
+    {
+      "assay": {
+        "descr": {
+          "aid": {
+            "id": 429,
+            "version": 1
+          },
+          "aid_source": {
+            "db": {
+              "name": "Emory University Molecular Libraries Screening Center",
+              "source_id": {
+                "str": "HTS for Tumor Hsp90 Inhibitors"
+              }
+            }
+          },
+          "name": "HTS for Tumor Hsp90 Inhibitors",
+          "description": [
+            "Emory Chemistry-Biology Discovery Center Assay Overview:",
+            "",
+            "Hsp90 is a chaperon with important roles in maintaining transformation and in elevating the survival and growth  potential of cancer cells.  Recent evidence suggests additional applications of Hsp90 inhibitors in  neurodegenerative diseases, nerve injuries, inflammation and infection.  Several natural products that inactivate  Hsp90 function have anti-tumor effects in in vitro and in vivo models of cancer. However, due to the role of Hsp90  in normal cellular homeostasis, it remained unclear whether Hsp90 inhibitors will be sufficiently specific for use  as therapeutic agents.  Early clinical results with 17AAG, the first Hsp90 inhibitor to enter clinical trials,  confirm that Hsp90 is a promising target for novel cancer therapeutics and pave the road for the introduction of  Hsp90 inhibitors in the clinic. The potential of Hsp90 inhibitors as therapeutics in other diseases has been less  explored. Currently there is thus, increasing interest in developing novel inhibitors of this protein.",
+            "",
+            "We have developed and optimized a fluorescence polarization based HTS assay for the identification of Hsp90  inhibitors by using tumor cell lysate Hsp90. Geldanamycin (GM) is a natural product that inhibits Hsp90 by binding  to its ATP pocket. The FP assay for the Hsp90 in cell lysate is based on the competitive binding of fluorescently  (Cy3B) labeled geldanamycin (cy3B-GM) to average Hsp90 population found in cancer cell lysate (Y. Du, K. Moulick,  J. Aguirre, H. Fu, G. Chiosis. Development of a high-throughput screening fluorescence polarization assay for  thetumor Hsp90. Manuscript in preparation)."
+          ],
+          "protocol": [
+            "Reagents:",
+            "1. Binding buffer: 20 mM HEPES, 50 mM KCl, 5 mM MgCl2, 20 mM Na2MoO4, 0.01% NP40. Before use, 0.1 mg/ml of BGG, 2mM of DTT are added.",
+            "2. NCI-N417 cell lysate preparation: The human cancer cell line NCI-N417 is obtained from the American Type Culture  Collection (Manassas, VA). Cells are cultured routinely in RPMI supplemented with 10 mM HEPES, 1 mM  sodium  pyruvate, 1.5g/L sodium bicarbonate, 4.5g/L glucose, 10% fetal bovine serum, 1% L-glutamine, 1% penicillin  and  streptomycin. Cells are frozen to rapture the membrane and then dissolved in binding buffer (20mM HEPES, 50mM   KCl,5mM MgCl2, 20mM Na2MoO4, 0.01% NP40, freshly add 0.1 mg/ml BGG, 2 mM DTT) to form the lysate. Lysate is stored at -20 degrees C before use.",
+            "3. GM-cy3B stock in DMSO.",
+            "4. PU-H71 as positive control: 10 mM stock in DMSO",
+            "",
+            "Procedures:",
+            "1.Make assay reaction buffer for HTS (1ug/well N417 cell lysate and 5 nM of GM-Cy3B in binding buffer).",
+            "2. Dispense 49.5uL of assay reaction buffer to 384-well black assay plate.",
+            "3. Add 0.75uL of 2mM compounds in DMSO (1.5% DMSO final) and incubate plates at room temperature for overnight (15 hr). Final compound concentration is 30uM.",
+            "4. Fluorescence polarization in mP is measured at room temperature with an Analyst HT reader. An excitation filter  at 545nm and an emission filter at 610 to 675nm are used with a dichroic mirror of 565nm.",
+            "",
+            "Data analysis:",
+            "Assay data are analyzed using CambridgeSoft. Templates have been written that will automatically calculate % of  inhibition. Percentage of inhibition is calculated by the equation based on per plate:",
+            "",
+            "% of Inhibition = 100 - ((mPc - mPf)/(mPb - mPf)) * 100",
+            "",
+            "Where mPc is the recorded mP from compound wells; mPf is average recorded mP from cy3B-GM only wells; mPb is average recorded mP from wells containing cy3B-GM and NCI-N417 lysate.",
+            "",
+            "An activity cutoff was set as a percent inhibition greater than 50%."
+          ],
+          "comment": [
+            "Possible interference in this assay, but are not limited to, compounds with auto-fluorescence, compounds quenching  fluorescence, or precipitate."
+          ],
+          "xref": [
+            {
+              "xref": {
+                "pmid": 15296636
+              }
+            }
+          ],
+          "results": [
+            {
+              "tid": 1,
+              "name": "FP Value",
+              "description": [
+                "Fluorescence polarization (FP) value in millipolarization (mP) units was measured with an Analyst HT reader"
+              ],
+              "type": "int",
+              "sunit": "mP"
+            },
+            {
+              "tid": 2,
+              "name": "% Inhibition",
+              "description": [
+                "% of inhibition is calculated by the equation based on per plate:",
+                "% of Inhibition = 100 - ((mPc - mPf)/(mPb - mPf)) * 100",
+                "Where mPc is the recorded mP from compound wells; mPf is average recorded mP from cy3B-GM only wells; mPb is average recorded mP from wells containing cy3B-GM and NCI-N417 lysate."
+              ],
+              "type": "float",
+              "unit": "percent"
+            }
+          ],
+          "revision": 5,
+          "target": [
+            {
+              "name": "heat shock protein 90kDa alpha (cytosolic), class A member 1 isoform 2 [Homo sapiens]",
+              "mol_id": 154146191,
+              "molecule_type": "protein",
+              "organism": {
+                "org": {
+                  "taxname": "Homo sapiens",
+                  "common": "human",
+                  "db": [
+                    {
+                      "db": "taxon",
+                      "tag": {
+                        "id": 9606
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "90-kda heat shock protein beta HSP90 beta [Homo sapiens]",
+              "mol_id": 4261762,
+              "molecule_type": "protein",
+              "organism": {
+                "org": {
+                  "taxname": "Homo sapiens",
+                  "common": "human",
+                  "db": [
+                    {
+                      "db": "taxon",
+                      "tag": {
+                        "id": 9606
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "activity_outcome_method": "screening",
+          "project_category": "mlscn"
+        }
+      }
+    }
+  ]
+}
