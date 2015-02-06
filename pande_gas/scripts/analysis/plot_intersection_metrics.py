@@ -73,6 +73,9 @@ def plot_cor(inter, sizes, scores, datasets, output_filename, metric, no_dude=Fa
         assert len(inter[key]) == sizes[key]
     assert np.all(np.in1d(inter.keys(), scores.keys()))
 
+    for key, value in sizes.iteritems():
+       print key, value
+
     # get x and y
     x, y, x_err = [], [], []
     names = []
@@ -268,6 +271,7 @@ def main(inter_filenames, scores_filename, output_filename,
         active_inter_pairwise = {}
         active_sim = {}
         active_sim_pairwise = {}
+        counts = {}
         for inter_filename in inter_filenames:
             m = re.search('^(.*?)-(.*?)-', os.path.basename(inter_filename))
             a, b = m.groups()
@@ -283,6 +287,9 @@ def main(inter_filenames, scores_filename, output_filename,
 
             # get metric
             if a != b:  # don't count self-intersections
+                if a not in counts:
+                    counts[a] = 0
+                counts[a] += 1
                 if a not in inter:
                     inter[a] = np.zeros_like(a_inter)
                 inter[a] += a_inter
@@ -316,6 +323,10 @@ def main(inter_filenames, scores_filename, output_filename,
                 active_sim_pairwise[a] = {}
             assert b not in active_sim_pairwise[a]
             active_sim_pairwise[a][b] = np.mean(a_active_sim)
+
+        # check counts
+        for key, value in counts.iteritems():
+            assert value == 258
 
         # correct active_sim to be n_compounds x n_assays
         for key in active_sim.iterkeys():
