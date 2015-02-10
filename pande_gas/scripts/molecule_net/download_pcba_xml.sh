@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Download PCBA XML files for all AIDs
-# usage: download_pcba_xml.sh [n_jobs=100]
+# usage: download_pcba_xml.sh [n_jobs=8]
 if [ -z $1 ]
 then
   n_jobs=8
