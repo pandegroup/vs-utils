@@ -117,7 +117,8 @@ class PcbaXmlParser(object):
     Parameters
     ----------
     path : list
-        XML path.
+        XML path. Each element of the list is an XML node to which self.prefix
+        will be prepended.
     root : bool, optional (default False)
         Root of XML tree.
     """
