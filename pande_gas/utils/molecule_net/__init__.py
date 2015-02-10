@@ -1,6 +1,7 @@
 """
 Utilities for MoleculeNet.
 """
+import gzip
 import json
 import re
 import warnings
@@ -17,8 +18,12 @@ class PcbaJsonParser(object):
         Filename.
     """
     def __init__(self, filename):
-        with open(filename) as f:
-            self.tree = json.load(f)
+        if filename.endswith('.gz'):
+            f = gzip.open(filename)
+        else:
+            f = open(filename)
+        self.tree = json.load(f)
+        f.close()
 
         # should just be one record per file
         assert len(self.tree['PC_AssayContainer']) == 1
@@ -80,7 +85,12 @@ class PcbaXmlParser(object):
         Filename.
     """
     def __init__(self, filename):
-        self.tree = et.parse(filename)
+        if filename.endswith('.gz'):
+            f = gzip.open(filename)
+        else:
+            f = open(filename)
+        self.tree = et.parse(f)
+        f.close()
 
         # default prefix for all tags
         self.prefix = '{http://www.ncbi.nlm.nih.gov}'
