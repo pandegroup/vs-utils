@@ -19,13 +19,11 @@ class PcbaJsonParser(object):
   """
   def __init__(self, filename):
     if filename.endswith('.gz'):
-      f = gzip.open(filename)
+      with gzip.open(filename) as f:
+        self.tree = json.load(f)
     else:
-      f = open(filename)
-    try:
-      self.tree = json.load(f)
-    finally:
-      f.close()
+      with open(filename) as f:
+        self.tree = json.load(f)
 
     # should just be one record per file
     assert len(self.tree['PC_AssayContainer']) == 1
@@ -88,13 +86,11 @@ class PcbaXmlParser(object):
   """
   def __init__(self, filename):
     if filename.endswith('.gz'):
-      f = gzip.open(filename)
+      with gzip.open(filename) as f:
+        self.tree = et.parse(f)
     else:
-      f = open(filename)
-    try:
-      self.tree = et.parse(f)
-    finally:
-      f.close()
+      with open(filename) as f:
+        self.tree = et.parse(f)
 
     # default prefix for all tags
     self.prefix = '{http://www.ncbi.nlm.nih.gov}'
