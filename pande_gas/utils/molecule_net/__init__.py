@@ -182,3 +182,13 @@ class PcbaXmlParser(object):
             targets.append(target)
         assert len(targets)
         return targets
+
+class PcbaPandasWriter(object):
+    """
+    Writes data from PCBA into pandas dataframes.
+
+    Parameters
+    ----------
+    """
+    def __init__(self):
+      pass
