@@ -54,7 +54,7 @@ def main(filenames, input_format='json'):
           print "xref: " + str(data["comment"])
           print
         if "name" in data:
-          print "name: " + str(data["name"])
+          print "name: " + str(parser.get_name())
           print
         if "aid_source" in data:
           print "aid_source: " + str(data["aid_source"])
@@ -65,7 +65,7 @@ def main(filenames, input_format='json'):
           for entry in data["results"]:
             print "  results -- " + entry["name"]
         if "aid" in data:
-          print "aid: " + str(data["aid"])
+          print "aid: " + str(parser.get_aid())
           print
         if "revision" in data:
           print "revision: " + str(data["revision"])
@@ -74,7 +74,7 @@ def main(filenames, input_format='json'):
           print "activity_outcome_method: " + str(data["activity_outcome_method"])
           print
         if "description" in data:
-          print "description: " + str(data["description"])
+          print "description: " + str(parser.get_description())
           print
         print "###########################################################"
         print
