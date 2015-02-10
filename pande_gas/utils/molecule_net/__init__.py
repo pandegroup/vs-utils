@@ -3,6 +3,7 @@ Utilities for MoleculeNet.
 """
 import gzip
 import json
+import os
 import re
 import warnings
 import xml.etree.cElementTree as et
@@ -30,6 +31,12 @@ class PcbaJsonParser(object):
 
     # move in to the assay description
     self.root = self.tree['PC_AssayContainer'][0]['assay']['descr']
+
+  def get_aid(self):
+    """
+    Get assay ID.
+    """
+    return int(self.root['aid']['id'])
 
   def get_name(self):
     """
@@ -95,28 +102,29 @@ class PcbaXmlParser(object):
     # default prefix for all tags
     self.prefix = '{http://www.ncbi.nlm.nih.gov}'
 
-    # move into tree to description level
+    # get pointers to description and data
     descriptions = self.tree.getroot().iter(
       self.prefix + 'PC-AssayDescription')
     descriptions = list(descriptions)
-    assert len(descriptions) == 1
-    self.root = descriptions[0]
+    assert len(descriptions) == 1  # check for only one assay
+    self.desc_root = descriptions[0]
+    self.data_root = self.tree.getroot().iter(self.prefix + 'PC-AssayResults')
 
-  def find(self, tag, root=None):
+  def find(self, path, root=None):
     """
-    Return a list of the elements with a given tag. Note that this only
-    searches the direct children of root.
+    Return a list of the elements with a given tag.
 
     Parameters
     ----------
-    tag : str
-        XML tag.
+    path : list
+        XML path.
     root : bool, optional (default False)
         Root of XML tree.
     """
     if root is None:
-      root = self.root
-    return root.findall(self.prefix + tag)
+      root = self.desc_root
+    path = os.path.join(*[self.prefix + tag for tag in path])
+    return root.findall(path)
 
   def join_children(self, elem):
     """
@@ -135,11 +143,19 @@ class PcbaXmlParser(object):
         text.append('')
     return '\n'.join(text)
 
+  def get_aid(self):
+    """
+    Get assay ID.
+    """
+    elem = self.find(['PC-AssayDescription_aid', 'PC-ID', 'PC-ID_id'])
+    assert len(elem) == 1
+    return int(elem[0].text)
+
   def get_name(self):
     """
     Get assay name.
     """
-    elem = self.find('PC-AssayDescription_name')
+    elem = self.find(['PC-AssayDescription_name'])
     assert len(elem) == 1
     return elem[0].text
 
@@ -147,7 +163,7 @@ class PcbaXmlParser(object):
     """
     Get assay description.
     """
-    elem = self.find('PC-AssayDescription_description')
+    elem = self.find(['PC-AssayDescription_description'])
     assert len(elem) == 1
     return self.join_children(elem[0])
 
@@ -155,7 +171,7 @@ class PcbaXmlParser(object):
     """
     Get assay protocol.
     """
-    elem = self.find('PC-AssayDescription_protocol')
+    elem = self.find(['PC-AssayDescription_protocol'])
     assert len(elem) == 1
     return self.join_children(elem[0])
 
@@ -174,15 +190,13 @@ class PcbaXmlParser(object):
     """
     # organism information requires more complicated parsing (use JSON)
     warnings.warn('Does not return organism information.')
-    elem = self.find('PC-AssayDescription_target')
-    if len(elem) == 0:
+    elems = self.find(['PC-AssayDescription_target', 'PC-AssayTargetInfo'])
+    if len(elems) == 0:
       return None  # no target
-    assert len(elem) == 1
     targets = []
-    info = self.find('PC-AssayTargetInfo', elem[0])
-    for this_info in info:
+    for elem in elems:
       target = {}
-      for e in this_info.getchildren():
+      for e in elem.getchildren():
         if not e.text.strip():
           continue  # skip blank entries
         m = re.search('PC-AssayTargetInfo_(.*)', e.tag)
