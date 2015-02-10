@@ -3,48 +3,96 @@
 Parse PCBA assay descriptions.
 """
 import argparse
+import glob
 
 from pande_gas.utils.molecule_net import PcbaJsonParser, PcbaXmlParser
 
 
 def parse_args(input_args=None):
-    """
-    Parse command-line arguments.
+  """
+  Parse command-line arguments.
 
-    Parameters
-    ----------
-    input_args : list, optional
-        Input arguments. If not provided, defaults to sys.argv[1:].
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', required=1, nargs='+',
-                        help='Input file(s) containing assay description(s).')
-    parser.add_argument('-f', '--format', choices=['json', 'xml'],
-                        default='json',
-                        help='Input file format.')
-    return parser.parse_args(input_args)
+  Parameters
+  ----------
+  input_args : list, optional
+      Input arguments. If not provided, defaults to sys.argv[1:].
+  """
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-i', '--input', required=1, nargs='+',
+                      help='Input file(s) containing assay description(s). '
+                           'Can be in glob format.')
+  parser.add_argument('-f', '--format', choices=['json', 'xml'],
+                      default='json',
+                      help='Input file format.')
+  return parser.parse_args(input_args)
 
 
 def main(filenames, input_format='json'):
-    """
-    Parse PCBA assay descriptions.
+  """
+  Parse PCBA assay descriptions.
 
-    Parameters
-    ----------
-    filenames : list
-        Filenames containing assay descriptions.
-    input_format : str, optional (default 'json')
-        Input file format.
-    """
-    for filename in filenames:
-        if input_format == 'json':
-            parser = PcbaJsonParser(filename)
-        elif input_format == 'xml':
-            parser = PcbaXmlParser(filename)
-        else:
-            raise NotImplementedError(
-                'Unrecognized input format "{}"'.format(input_format))
+  Parameters
+  ----------
+  filenames : list
+      Filenames containing assay descriptions.
+  input_format : str, optional (default 'json')
+      Input file format.
+  """
+  for filename in filenames:
+    if input_format == 'json':
+      parser = PcbaJsonParser(filename)
+      data = parser.tree["PC_AssayContainer"][0]["assay"]["descr"]
+      try:
+        print
+        print "###########################################################"
+        print
+        if "comment" in data:
+          print "comment: " + str(data["comment"])
+          print
+        if "xref" in data:
+          print "xref: " + str(data["comment"])
+          print
+        if "name" in data:
+          print "name: " + str(data["name"])
+          print
+        if "aid_source" in data:
+          print "aid_source: " + str(data["aid_source"])
+          print
+        if "results" in data:
+          print "results: " + str(data["results"])
+          print
+          for entry in data["results"]:
+            print "  results -- " + entry["name"]
+        if "aid" in data:
+          print "aid: " + str(data["aid"])
+          print
+        if "revision" in data:
+          print "revision: " + str(data["revision"])
+          print
+        if "activity_outcome_method" in data:
+          print "activity_outcome_method: " + str(data["activity_outcome_method"])
+          print
+        if "description" in data:
+          print "description: " + str(data["description"])
+          print
+        print "###########################################################"
+        print
+      except:
+        print "Exception in parsing..."
+        print "###########################################################"
+    elif input_format == 'xml':
+      parser = PcbaXmlParser(filename)
+    else:
+      raise NotImplementedError(
+          'Unrecognized input format "{}"'.format(input_format))
 
 if __name__ == '__main__':
-    args = parse_args()
-    main(args.input, args.format)
+  args = parse_args()
+  print args.input
+  if type(args.input) is str:
+    filenames = glob.glob(args.input)
+  elif type(args.input) is list:
+    filenames = args.input
+  else:
+    raise ValueError("--input must be list or string!")
+  main(filenames, args.format)
