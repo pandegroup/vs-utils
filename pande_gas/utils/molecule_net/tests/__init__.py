@@ -66,6 +66,14 @@ class PcbaParserBase(object):
             for key in self.target_keys:
                 assert key in target, key
 
+    def test_parse_gzip(self):
+        """
+        Test parsing gzipped files.
+        """
+        name = ('Literature data for small-molecule inhibitors of ' +
+                'Influenza_A_virus_(A_Tokyo_3_67(H2N2))')
+        assert self.gzip_parser.get_name() == name
+
 
 class TestPcbaJsonParser(unittest.TestCase, PcbaParserBase):
     """
@@ -82,6 +90,8 @@ class TestPcbaJsonParser(unittest.TestCase, PcbaParserBase):
             os.path.join(self.data_dir, 'data/aid1.json'))
         self.multiple_target = PcbaJsonParser(
             os.path.join(self.data_dir, 'data/aid429.json'))
+        self.gzip_parser = PcbaJsonParser(
+            os.path.join(self.data_dir, 'data/aid490.json.gz'))
         self.target_keys = ['name', 'mol_id', 'molecule_type', 'organism']
 
 
@@ -101,3 +111,5 @@ class TestPcbaXmlParser(unittest.TestCase, PcbaParserBase):
             os.path.join(self.data_dir, 'data/aid1.xml'))
         self.multiple_target = PcbaXmlParser(
             os.path.join(self.data_dir, 'data/aid429.xml'))
+        self.gzip_parser = PcbaXmlParser(
+            os.path.join(self.data_dir, 'data/aid490.xml.gz'))
