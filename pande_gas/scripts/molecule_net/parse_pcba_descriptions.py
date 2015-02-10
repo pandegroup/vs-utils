@@ -41,7 +41,8 @@ def main(filenames, input_format='json'):
   for filename in filenames:
     if input_format == 'json':
       parser = PcbaJsonParser(filename)
-      data = parser.tree["PC_AssayContainer"][0]["assay"]["descr"]
+      data = parser.root
+      # TODO(rbharath): Swap these out for parser method calls.
       try:
         print
         print "###########################################################"

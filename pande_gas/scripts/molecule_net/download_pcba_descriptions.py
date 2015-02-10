@@ -28,7 +28,7 @@ def parse_args(input_args=None):
                       help="Output directory for generated files.",
                       required=True)
   parser.add_argument("-n", "--num_files",
-                      default=10,
+                      default=10, type=int,
                       help="Max number of files to download.")
   return parser.parse_args(input_args)
 
@@ -79,4 +79,4 @@ def main(filename, output_format, output_dir, max_num_files):
 
 if __name__ == '__main__':
   args = parse_args()
-  main(args.input, args.format, args.out, int(args.num_files))
+  main(args.input, args.format, args.out, args.num_files)
