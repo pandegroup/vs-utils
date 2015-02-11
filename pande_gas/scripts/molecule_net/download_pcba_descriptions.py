@@ -3,7 +3,6 @@
 Download PCBA assay descriptions.
 """
 import argparse
-import cPickle
 import gzip
 
 from pubchem_utils import PubChem
