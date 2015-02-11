@@ -67,20 +67,28 @@ def main(filename, output_dir, n_jobs=1):
   n_jobs : int (default 1)
     Number of parallel jobs.
   """
-  try:
-    os.mkdir(output_dir)  # create output directory
-  except OSError:
-    pass
   aids = read_aids(filename)
   print 'Downloading JSON descriptions for {} assays...'.format(len(aids))
   engine = PubChem()
   descriptions = engine.get_assay_descriptions(aids, n_jobs=n_jobs)
+  
+  # create output directory if it doesn't exist
+  try:
+    os.mkdir(output_dir)
+  except OSError:
+    pass
+
+  # write descriptions to individual files
   for description in descriptions:
     aid = description['aid']['id']
     assert aid
+    
+    # nest description so it looks like PUG REST output
+    nested = {'PC_AssayContainer': [{'assay': {'descr': description}}]}
+
     with gzip.open(os.path.join(output_dir, 
                    'aid{}.json.gz'.format(aid)), 'wb') as f:
-      json.dump(description, f)
+      json.dump(nested, f)
 
 if __name__ == '__main__':
   args = parse_args()
