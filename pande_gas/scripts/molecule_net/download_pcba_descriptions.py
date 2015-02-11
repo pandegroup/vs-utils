@@ -4,6 +4,8 @@ Download PCBA assay descriptions.
 """
 import argparse
 import gzip
+import json
+import os
 
 from pubchem_utils import PubChem
 
@@ -23,7 +25,7 @@ def parse_args(input_args=None):
   parser.add_argument("input",
                       help="Input file containing AIDs.")
   parser.add_argument("out",
-                      help="Output filename for descriptions.")
+                      help="Output directory for descriptions.")
   parser.add_argument('-np', '--n_jobs', type=int, default=1,
                       help='Number of parallel jobs.')
   return parser.parse_args(input_args)
@@ -52,7 +54,7 @@ def read_aids(filename):
   return aids
 
 
-def main(filename, output_filename, n_jobs=1):
+def main(filename, output_dir, n_jobs=1):
   """
   Download PCBA JSON descriptions.
 
@@ -60,16 +62,25 @@ def main(filename, output_filename, n_jobs=1):
   ----------
   filename : str
     Filename containing AIDs.
-  output_filename : str
-    Output filename for assay descriptions.
+  output_dir : str
+    Output directory for assay descriptions.
   n_jobs : int (default 1)
     Number of parallel jobs.
   """
+  try:
+    os.mkdir(output_dir)  # create output directory
+  except OSError:
+    pass
   aids = read_aids(filename)
   print 'Downloading JSON descriptions for {} assays...'.format(len(aids))
   engine = PubChem()
   descriptions = engine.get_assay_descriptions(aids, n_jobs=n_jobs)
-  write_pickle(descriptions, output_filename)
+  for description in descriptions:
+    aid = description['aid']['id']
+    assert aid
+    with gzip.open(os.path.join(output_dir, 
+                   'aid{}.json.gz'.format(aid)), 'wb') as f:
+      json.dump(description, f)
 
 if __name__ == '__main__':
   args = parse_args()
