@@ -2,12 +2,13 @@
 """
 Download PCBA assay descriptions.
 """
-import os
 import argparse
+import cPickle
 import gzip
-import time
 
 from pubchem_utils import PubChem
+
+from pande_gas.utils import write_pickle
 
 
 def parse_args(input_args=None):
@@ -22,18 +23,37 @@ def parse_args(input_args=None):
   parser = argparse.ArgumentParser()
   parser.add_argument("input",
                       help="Input file containing AIDs.")
-  parser.add_argument("-f", "--format", choices=['json', 'xml'],
-                      required=True)
-  parser.add_argument("--out",
-                      help="Output directory for generated files.",
-                      required=True)
-  parser.add_argument("-n", "--num_files",
-                      default=10, type=int,
-                      help="Max number of files to download.")
+  parser.add_argument("out",
+                      help="Output filename for descriptions.")
+  parser.add_argument('-np', '--n_jobs', type=int, default=1,
+                      help='Number of parallel jobs.')
   return parser.parse_args(input_args)
 
 
-def main(filename, output_format, output_dir, max_num_files):
+def read_aids(filename):
+  """
+  Read AIDs from file.
+
+  Parameters
+  ----------
+  filename : str
+    Filename containing AIDs.
+  """
+  if filename.endswith('.gz'):
+    f = gzip.open(filename)
+  else:
+    f = open(filename)
+  try:
+    aids = []
+    for line in f:
+      if line.strip():
+        aids.append(int(line))
+  finally:
+    f.close()
+  return aids
+
+
+def main(filename, output_filename, n_jobs=1):
   """
   Download PCBA JSON descriptions.
 
@@ -41,42 +61,17 @@ def main(filename, output_format, output_dir, max_num_files):
   ----------
   filename : str
     Filename containing AIDs.
-  output_format : str (default 'json')
-    Output file format.
-  output_dir : str
-    Output directory where downloaded files will be written.
-  max_num_files: int
-    Maximum Number of file
+  output_filename : str
+    Output filename for assay descriptions.
+  n_jobs : int (default 1)
+    Number of parallel jobs.
   """
-  if not os.path.isdir(output_dir):
-    raise ValueError("%s is not a valid output directory!" % output_dir)
-  if filename.endswith(".gz"):
-    f = gzip.open(filename)
-  elif filename.endswith(".txt"):
-    f = open(filename)
-  try:
-    engine = PubChem()
-    count = 0
-    start = time.time()
-    for line in f:
-      if "AID" not in line:
-        continue
-      # The line is of form 'AID: XXXX' where XXXX is the AID id.
-      print line
-      aid = int(line.split(":")[1])
-      out_file = os.path.join(
-          output_dir, 'aid{}.{}'.format(aid, output_format))
-      data = engine.get_assay_description(aid, output_format)
-      with open(out_file, 'wb') as f:
-          f.write(data)
-      count += 1
-      if count >= max_num_files:
-        break
-  finally:
-    f.close()
-    end = time.time()
-    print "Elapsed Time: " + str(end-start)
+  aids = read_aids(filename)
+  print 'Downloading JSON descriptions for {} assays...'.format(len(aids))
+  engine = PubChem()
+  descriptions = engine.get_assay_descriptions(aids, n_jobs=n_jobs)
+  write_pickle(descriptions, output_filename)
 
 if __name__ == '__main__':
   args = parse_args()
-  main(args.input, args.format, args.out, args.num_files)
+  main(args.input, args.out, args.n_jobs)
