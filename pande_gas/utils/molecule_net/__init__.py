@@ -137,8 +137,8 @@ class PcbaPandasHandler(object):
     def __init__(self):
       self.index = 0
       self.df = pd.DataFrame(
-          {}, columns=["name", "aid", "activity_outcome_method",
-                       "description", "comment", "results", "revision"])
+          columns=["name", "aid", "activity_outcome_method",
+                   "description", "comment", "results", "revision"])
 
     def add_dataset(self, filename):
       """

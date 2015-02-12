@@ -143,13 +143,18 @@ class TestPcbaPandasHandler(unittest.TestCase):
     self.data_dir = os.path.split(os.path.realpath(__file__))[0]
 
   def test_add_dataset(self):
+    """
+    Test for adding datasets.
+    """
     self.handler.add_dataset(
         os.path.join(self.data_dir, "data/aid1.json"))
-
+    num_rows = len(self.handler.df.index)
+    assert num_rows == 1
 
   def test_to_csv(self):
+    """
+    Test for witing to csv
+    """
     self.handler.add_dataset(
         os.path.join(self.data_dir, "data/aid1.json"))
-    print self.handler.df
     self.handler.to_csv("/usr/local/google/home/bramsundar/pande-gas/pande_gas/out.csv")
-    assert False
