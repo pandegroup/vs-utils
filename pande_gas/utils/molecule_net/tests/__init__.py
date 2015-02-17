@@ -213,10 +213,11 @@ class TestPcbaPandasHandler(unittest.TestCase):
       self.handler.to_csv(f.name)
       with open(f.name, "rb") as csvfile:
         reader = csv.DictReader(csvfile)
-        for row in reader:
-          assert "comment" in row
-          assert "name" in row
-          assert "aid" in row
+        #for row in reader:
+        row = reader.next()
+        assert row["comment"] == self.parser.get_comment()
+        assert row["name"] == self.parser.get_name()
+        assert int(row["aid"]) == self.parser.get_aid()
     finally:
       # Delete tempfile
       os.remove(f.name)
