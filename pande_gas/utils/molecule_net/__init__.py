@@ -26,11 +26,8 @@ class PcbaJsonParser(object):
       with open(filename) as f:
         self.tree = json.load(f)
 
-    # should just be one record per file
-    assert len(self.tree['PC_AssayContainer']) == 1
-
     # move in to the assay description
-    self.root = self.tree['PC_AssayContainer'][0]['assay']['descr']
+    self.root = self.tree['PC_AssaySubmit']['assay']['descr']
 
   def get_aid(self):
     """
