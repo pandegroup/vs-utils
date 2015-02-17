@@ -2,7 +2,9 @@
 Tests for molecule_net.
 """
 import os
+import tempfile
 import unittest
+import csv
 
 from pande_gas.utils.molecule_net import PcbaJsonParser, PcbaPandasHandler
 
@@ -101,9 +103,48 @@ class PcbaParserBase(object):
                + "values of -LogGI50.")
     assert self.no_target.get_comment() == comment
 
-  # TODO(rbharath): add a test for get_results. The problem is that get_results
-  # is a dict with many fields. Which if any of these do we want to recognize
-  # explicitly?
+
+  def test_get_results(self):
+    """
+    Test parsing of results.
+
+    TODO(rbharath): get_results returns a dict with many fields. Which if
+    any of these do we want to recognize explicitly?
+    """
+    results = [
+      {u'name': u'loggi50', u'transform': u'log', u'tid': 1, u'type':
+      u'float', u'unit': u'm', u'description': [u'Log of the GI50 result, '
+                                                u'unit: M.']},
+     {u'name': u'loggi50', u'transform': u'log', u'tid': 2, u'type':
+      u'float', u'unit': u'ugml', u'description': [u'Log of the GI50 '
+                                                   u'result, unit: ug/mL.']},
+     {u'name': u'loggi50', u'transform': u'log', u'sunit': u'v', u'tid': 3,
+      u'type': u'float', u'description': [u'Log of the GI50 result, unit: '
+                                          u'Volumetric.']},
+     {u'tid': 4, u'type': u'int', u'name': u'indngi50', u'description':
+      [u'Number of tests averaged for the GI50 value for this NSC and cell '
+       u'line.']},
+     {u'tid': 5, u'transform': u'log', u'type': u'float', u'name':
+      u'stddevgi50', u'description': [u'Standard Deviation of the Log10 of '
+                                      u'the GI50 result averaged across all '
+                                      u'tests for this NSC and cell line.']},
+     {u'name': u'logtgi', u'transform': u'log', u'tid': 6, u'type':
+      u'float', u'unit': u'm', u'description': [u'Log of the TGI result, '
+                                                u'unit: M.']},
+     {u'name': u'logtgi', u'transform': u'log', u'tid': 7, u'type':
+      u'float', u'unit': u'ugml', u'description': [u'Log of the TGI result, '
+                                                   u'unit: ug/mL.']},
+     {u'name': u'logtgi', u'transform': u'log', u'sunit': u'v', u'tid': 8,
+      u'type': u'float', u'description': [u'Log of the TGI result, unit: '
+                                          u'Volumetric.']},
+     {u'tid': 9, u'type': u'int', u'name': u'indntgi', u'description':
+      [u'Number of tests averaged for the TGI value for this NSC and cell '
+       u'line.']},
+     {u'tid': 10, u'transform': u'log', u'type': u'float', u'name':
+      u'stddevtgi', u'description': [u'Standard Deviation of the Log10 of '
+                                     u'the TGI result averaged across all '
+                                     u'tests for this NSC and cell line.']}]
+    assert self.no_target.get_results() == results
 
   def test_get_revision(self):
     """
@@ -141,6 +182,8 @@ class TestPcbaPandasHandler(unittest.TestCase):
   def setUp(self):
     self.handler = PcbaPandasHandler()
     self.data_dir = os.path.split(os.path.realpath(__file__))[0]
+    self.parser = PcbaJsonParser(
+      os.path.join(self.data_dir, 'data/aid1.json'))
 
   def test_add_dataset(self):
     """
@@ -148,13 +191,32 @@ class TestPcbaPandasHandler(unittest.TestCase):
     """
     self.handler.add_dataset(
         os.path.join(self.data_dir, "data/aid1.json"))
+    row = self.handler.get_dataset(1)
     num_rows = len(self.handler.df.index)
     assert num_rows == 1
+    assert row.get("comment") == self.parser.get_comment()
+    assert row.get("name") == self.parser.get_name()
+    assert row.get("aid") == self.parser.get_aid()
 
   def test_to_csv(self):
     """
     Test for witing to csv
     """
-    self.handler.add_dataset(
-        os.path.join(self.data_dir, "data/aid1.json"))
-    self.handler.to_csv("/usr/local/google/home/bramsundar/pande-gas/pande_gas/out.csv")
+    # Open and close a tempfile without deleting it. (On some systems
+    # cannot open tempfiles if they are already open, so need to close
+    # to use elsewhere in test)
+    f = tempfile.NamedTemporaryFile(delete=False)
+    f.close()
+    try:
+      self.handler.add_dataset(
+          os.path.join(self.data_dir, "data/aid1.json"))
+      self.handler.to_csv(f.name)
+      with open(f.name, "rb") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+          assert "comment" in row
+          assert "name" in row
+          assert "aid" in row
+    finally:
+      # Delete tempfile
+      os.remove(f.name)

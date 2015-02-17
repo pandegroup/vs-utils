@@ -52,8 +52,7 @@ class PcbaJsonParser(object):
     #
     if "activity_outcome_method" in self.root:
       method = self.root["activity_outcome_method"]
-      if (method == "confirmatory"
-          and "counterscreen" in self.get_name().lower()):
+      if "counter" in self.get_name().lower():
         method = "counterscreen"
       return method
     else:
@@ -155,6 +154,12 @@ class PcbaPandasHandler(object):
       row["results"] = parser.get_results()
       row["revision"] = parser.get_revision()
       self.df.loc[self.index] = pd.Series(row)
+
+    def get_dataset(self, index):
+      """
+      Fetches information for a particular dataset by index.
+      """
+      return self.df.loc[self.index]
 
     def to_csv(self, out):
       """

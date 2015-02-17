@@ -40,7 +40,6 @@ def main(filenames, input_format='json', outfile="~/out.txt"):
   input_format : str, optional (default 'json')
       Input file format.
   """
-  writer = PcbaPandasWriter
   for filename in filenames:
     if input_format == 'json':
       handler = PcbaPandasHandler()
