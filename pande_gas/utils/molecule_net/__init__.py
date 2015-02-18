@@ -28,7 +28,14 @@ class PcbaJsonParser(object):
       raise ValueError("filename must be of type .json or .json.gz!")
 
     # move in to the assay description
-    self.root = self.tree['PC_AssaySubmit']['assay']['descr']
+    try:
+        # FTP format
+        self.root = self.tree['PC_AssaySubmit']['assay']['descr']
+    except KeyError:
+        # REST format
+        # should just be one record per file
+        assert len(self.tree['PC_AssayContainer']) == 1
+        self.root = self.tree['PC_AssayContainer'][0]['assay']['descr']
 
   def get_name(self):
     """

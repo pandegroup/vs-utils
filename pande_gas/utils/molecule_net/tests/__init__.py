@@ -153,6 +153,12 @@ class PcbaParserBase(object):
     revision = 1
     assert self.no_target.get_revision() == revision
 
+  def test_read_rest_json(self):
+    """
+    Test parsing of REST-formatted JSON.
+    """
+    assert self.rest_parser.get_aid() == 1
+
 
 class TestPcbaJsonParser(unittest.TestCase, PcbaParserBase):
   """
@@ -172,6 +178,8 @@ class TestPcbaJsonParser(unittest.TestCase, PcbaParserBase):
       os.path.join(self.data_dir, 'data/aid429.json'))
     self.gzip_parser = PcbaJsonParser(
       os.path.join(self.data_dir, 'data/aid490.json.gz'))
+    self.rest_parser = PcbaJsonParser(
+      os.path.join(self.data_dir, 'data/aid1-rest.json'))
     self.target_keys = ['name', 'mol_id', 'molecule_type', 'organism']
 
 
