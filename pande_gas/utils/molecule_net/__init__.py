@@ -27,11 +27,15 @@ class PcbaJsonParser(object):
     else:
       raise ValueError("filename must be of type .json or .json.gz!")
 
-    # should just be one record per file
-    assert len(self.tree['PC_AssayContainer']) == 1
-
     # move in to the assay description
-    self.root = self.tree['PC_AssayContainer'][0]['assay']['descr']
+    try:
+        # FTP format
+        self.root = self.tree['PC_AssaySubmit']['assay']['descr']
+    except KeyError:
+        # REST format
+        # should just be one record per file
+        assert len(self.tree['PC_AssayContainer']) == 1
+        self.root = self.tree['PC_AssayContainer'][0]['assay']['descr']
 
   def get_name(self):
     """
@@ -138,13 +142,13 @@ class PcbaPandasHandler(object):
       self.df = pd.DataFrame(
           columns=["name", "aid", "activity_outcome_method",
                    "description", "comment", "results", "revision"])
+      self.df['aid'] = self.df['aid'].astype(int)  # force AID to int
 
     def add_dataset(self, filename):
       """
       Adds dataset to internal dataframe.
       """
       parser = PcbaJsonParser(filename)
-      data = parser.root
       row = {}
       row["name"] = parser.get_name()
       row["aid"] = parser.get_aid()
@@ -154,12 +158,13 @@ class PcbaPandasHandler(object):
       row["results"] = parser.get_results()
       row["revision"] = parser.get_revision()
       self.df.loc[self.index] = pd.Series(row)
+      self.index += 1  # increment index
 
     def get_dataset(self, index):
       """
       Fetches information for a particular dataset by index.
       """
-      return self.df.loc[self.index]
+      return self.df.loc[index]
 
     def to_csv(self, out):
       """
