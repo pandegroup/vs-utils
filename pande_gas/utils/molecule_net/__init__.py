@@ -3,10 +3,9 @@ Utilities for MoleculeNet.
 """
 import gzip
 import json
-import os
 import re
 import warnings
-import xml.etree.cElementTree as et
+import pandas as pd
 
 
 class PcbaJsonParser(object):
@@ -19,12 +18,14 @@ class PcbaJsonParser(object):
       Filename.
   """
   def __init__(self, filename):
-    if filename.endswith('.gz'):
+    if filename.endswith(".gz"):
       with gzip.open(filename) as f:
         self.tree = json.load(f)
-    else:
+    elif filename.endswith(".json"):
       with open(filename) as f:
         self.tree = json.load(f)
+    else:
+      raise ValueError("filename must be of type .json or .json.gz!")
 
     # should just be one record per file
     assert len(self.tree['PC_AssayContainer']) == 1
@@ -32,17 +33,30 @@ class PcbaJsonParser(object):
     # move in to the assay description
     self.root = self.tree['PC_AssayContainer'][0]['assay']['descr']
 
-  def get_aid(self):
-    """
-    Get assay ID.
-    """
-    return int(self.root['aid']['id'])
-
   def get_name(self):
     """
     Get assay name.
     """
     return self.root['name']
+
+  def get_aid(self):
+    """
+    Get assay AID.
+    """
+    return self.root["aid"]["id"]
+
+  def get_activity_outcome_method(self):
+    """
+    Get activity outcome method.
+    """
+    #
+    if "activity_outcome_method" in self.root:
+      method = self.root["activity_outcome_method"]
+      if "counter" in self.get_name().lower():
+        method = "counterscreen"
+      return method
+    else:
+      return None
 
   def get_description(self):
     """
@@ -81,129 +95,74 @@ class PcbaJsonParser(object):
     else:
       return None
 
-
-class PcbaXmlParser(object):
-  """
-  Parser for PubChem BioAssay XML.
-
-  Parameters
-  ----------
-  filename : str
-      Filename.
-  """
-  def __init__(self, filename):
-    if filename.endswith('.gz'):
-      with gzip.open(filename) as f:
-        self.tree = et.parse(f)
-    else:
-      with open(filename) as f:
-        self.tree = et.parse(f)
-
-    # default prefix for all tags
-    self.prefix = '{http://www.ncbi.nlm.nih.gov}'
-
-    # get pointers to description and data
-    descriptions = self.tree.getroot().iter(
-      self.prefix + 'PC-AssayDescription')
-    descriptions = list(descriptions)
-    assert len(descriptions) == 1  # check for only one assay
-    self.desc_root = descriptions[0]
-    self.data_root = self.tree.getroot().iter(self.prefix + 'PC-AssayResults')
-
-  def find(self, path, root=None):
+  def get_comment(self):
     """
-    Return a list of the elements with a given tag.
-
-    Parameters
-    ----------
-    path : list
-        XML path. Each element of the list is an XML node to which self.prefix
-        will be prepended.
-    root : bool, optional (default False)
-        Root of XML tree.
+    Get assay comment.
     """
-    if root is None:
-      root = self.desc_root
-    path = os.path.join(*[self.prefix + tag for tag in path])
-    return root.findall(path)
-
-  def join_children(self, elem):
-    """
-    Join the text for the children of an element.
-
-    Parameters
-    ----------
-    elem : Element
-        Element.
-    """
-    text = []
-    for child in elem.getchildren():
-      if child.text is not None:
-        text.append(child.text.strip())
+    if "comment" in self.root:
+      if isinstance(self.root["comment"], list):
+        return "\n".join([line.strip() for line in self.root["comment"]])
       else:
-        text.append('')
-    return '\n'.join(text)
+        return self.root["comment"]
+    else:
+      return None
 
-  def get_aid(self):
+  def get_results(self):
     """
-    Get assay ID.
+    Get Assay result fields.
     """
-    elem = self.find(['PC-AssayDescription_aid', 'PC-ID', 'PC-ID_id'])
-    assert len(elem) == 1
-    return int(elem[0].text)
+    if "results" in self.root:
+      return self.root["results"]
+    else:
+      return None
 
-  def get_name(self):
+  def get_revision(self):
     """
-    Get assay name.
+    Get assay revision.
     """
-    elem = self.find(['PC-AssayDescription_name'])
-    assert len(elem) == 1
-    return elem[0].text
+    if "revision" in self.root:
+      return self.root["revision"]
+    else:
+      return None
 
-  def get_description(self):
-    """
-    Get assay description.
-    """
-    elem = self.find(['PC-AssayDescription_description'])
-    assert len(elem) == 1
-    return self.join_children(elem[0])
 
-  def get_protocol(self):
+class PcbaPandasHandler(object):
     """
-    Get assay protocol.
-    """
-    elem = self.find(['PC-AssayDescription_protocol'])
-    assert len(elem) == 1
-    return self.join_children(elem[0])
+    Writes data from PCBA into pandas dataframes.
 
-  def get_target(self):
+    Parameters
+    ----------
     """
-    Get assay target.
+    def __init__(self):
+      self.index = 0
+      self.df = pd.DataFrame(
+          columns=["name", "aid", "activity_outcome_method",
+                   "description", "comment", "results", "revision"])
 
-    NOTE: Does not return organism information (requires more complicated
-        parsing).
+    def add_dataset(self, filename):
+      """
+      Adds dataset to internal dataframe.
+      """
+      parser = PcbaJsonParser(filename)
+      data = parser.root
+      row = {}
+      row["name"] = parser.get_name()
+      row["aid"] = parser.get_aid()
+      row["activity_outcome_method"] = parser.get_activity_outcome_method()
+      row["description"] = parser.get_description()
+      row["comment"] = parser.get_comment()
+      row["results"] = parser.get_results()
+      row["revision"] = parser.get_revision()
+      self.df.loc[self.index] = pd.Series(row)
 
-    Returns
-    -------
-    target : dict
-        A dictionary containing keys for target information types, such
-        as 'name', 'mol-id', and 'molecule-type'.
-    """
-    # organism information requires more complicated parsing (use JSON)
-    warnings.warn('Does not return organism information.')
-    elems = self.find(['PC-AssayDescription_target', 'PC-AssayTargetInfo'])
-    if len(elems) == 0:
-      return None  # no target
-    targets = []
-    for elem in elems:
-      target = {}
-      for e in elem.getchildren():
-        if not e.text.strip():
-          continue  # skip blank entries
-        m = re.search('PC-AssayTargetInfo_(.*)', e.tag)
-        key = m.groups()[0]
-        key = key.replace('-', '_')  # match json
-        target[key] = e.text
-      targets.append(target)
-    assert len(targets)
-    return targets
+    def get_dataset(self, index):
+      """
+      Fetches information for a particular dataset by index.
+      """
+      return self.df.loc[self.index]
+
+    def to_csv(self, out):
+      """
+      Writes internal dataframe to provided location as csv.
+      """
+      self.df.to_csv(out)
