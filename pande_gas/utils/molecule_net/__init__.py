@@ -142,13 +142,13 @@ class PcbaPandasHandler(object):
       self.df = pd.DataFrame(
           columns=["name", "aid", "activity_outcome_method",
                    "description", "comment", "results", "revision"])
+      self.df['aid'] = self.df['aid'].astype(int)  # force AID to int
 
     def add_dataset(self, filename):
       """
       Adds dataset to internal dataframe.
       """
       parser = PcbaJsonParser(filename)
-      data = parser.root
       row = {}
       row["name"] = parser.get_name()
       row["aid"] = parser.get_aid()
@@ -158,12 +158,13 @@ class PcbaPandasHandler(object):
       row["results"] = parser.get_results()
       row["revision"] = parser.get_revision()
       self.df.loc[self.index] = pd.Series(row)
+      self.index += 1  # increment index
 
     def get_dataset(self, index):
       """
       Fetches information for a particular dataset by index.
       """
-      return self.df.loc[self.index]
+      return self.df.loc[index]
 
     def to_csv(self, out):
       """

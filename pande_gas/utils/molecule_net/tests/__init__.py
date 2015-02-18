@@ -199,8 +199,8 @@ class TestPcbaPandasHandler(unittest.TestCase):
     """
     self.handler.add_dataset(
         os.path.join(self.data_dir, "data/aid1.json"))
-    row = self.handler.get_dataset(1)
-    num_rows = len(self.handler.df.index)
+    row = self.handler.get_dataset(0)
+    num_rows = len(self.handler.df)
     assert num_rows == 1
     assert row.get("comment") == self.parser.get_comment()
     assert row.get("name") == self.parser.get_name()
@@ -225,7 +225,7 @@ class TestPcbaPandasHandler(unittest.TestCase):
         row = reader.next()
         assert row["comment"] == self.parser.get_comment()
         assert row["name"] == self.parser.get_name()
-        assert int(float(row["aid"])) == self.parser.get_aid()
+        assert int(row["aid"]) == self.parser.get_aid()
     finally:
       # Delete tempfile
       os.remove(f.name)
