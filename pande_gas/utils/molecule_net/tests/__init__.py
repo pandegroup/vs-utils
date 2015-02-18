@@ -217,7 +217,7 @@ class TestPcbaPandasHandler(unittest.TestCase):
         row = reader.next()
         assert row["comment"] == self.parser.get_comment()
         assert row["name"] == self.parser.get_name()
-        assert int(row["aid"]) == self.parser.get_aid()
+        assert int(float(row["aid"])) == self.parser.get_aid()
     finally:
       # Delete tempfile
       os.remove(f.name)
