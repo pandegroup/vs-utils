@@ -3,8 +3,7 @@ Utilities for MoleculeNet.
 """
 import gzip
 import json
-import re
-import warnings
+import numpy as np
 import pandas as pd
 
 
@@ -128,6 +127,55 @@ class PcbaJsonParser(object):
       return self.root["revision"]
     else:
       return None
+
+  def get_data(self):
+    """
+    Get assay data in a Pandas dataframe.
+    """
+    try:
+      data = self.tree['PC_AssaySubmit']['data']
+    except KeyError:
+      return None
+
+    # construct a dataframe containing each data point
+    columns = []
+
+    # add generic fields from PubChem
+    for key in data[0].iterkeys():
+      if key == 'data':
+        continue
+      columns.append(key)
+
+    # add fields specific to this assay
+    tids = {}
+    for field in self.get_results():
+      name = field['name']
+      assert name not in columns  # no duplicate field names allowed
+      columns.append(name)
+      tids[field['tid']] = name
+    assert columns is not None
+
+    # populate dataframe
+    # note that we use df.append at the end because appending
+    # incrementally is much slower
+    df = pd.DataFrame(columns=columns)
+    series = []
+    for dp in data:
+      point = {}
+      for key, value in dp.iteritems():
+        if key == 'data':  # assay-specific fields
+          for col in value:
+            col_name = tids[col['tid']]
+            assert len(col['value']) == 1
+            for col_value in col['value'].itervalues():
+              point[col_name] = col_value
+        else:  # generic fields
+          point[key] = value
+      series.append(point)
+    df = df.append(series)  # does not modify original object
+    assert len(df) == len(data)
+    assert np.array_equal(df.columns.values, columns)
+    return df
 
 
 class PcbaPandasHandler(object):

@@ -159,6 +159,16 @@ class PcbaParserBase(object):
     """
     assert self.rest_parser.get_aid() == 1
 
+  def test_get_data(self):
+    """
+    Test get_data.
+    """
+    df = self.data_parser.get_data()
+    assert df.shape == (156, 6)
+    value = df[df['sid'] == 46487926]['Viability'].values
+    assert len(value) == 1
+    assert value[0] == 3.3
+
 
 class TestPcbaJsonParser(unittest.TestCase, PcbaParserBase):
   """
@@ -180,6 +190,8 @@ class TestPcbaJsonParser(unittest.TestCase, PcbaParserBase):
       os.path.join(self.data_dir, 'data/aid490.json.gz'))
     self.rest_parser = PcbaJsonParser(
       os.path.join(self.data_dir, 'data/aid1-rest.json'))
+    self.data_parser = PcbaJsonParser(
+      os.path.join(self.data_dir, 'data/999.json.gz'))
     self.target_keys = ['name', 'mol_id', 'molecule_type', 'organism']
 
 
