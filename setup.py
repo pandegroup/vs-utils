@@ -7,8 +7,8 @@ def main():
         raise NotImplementedError("Use python setup.py develop.")
     setup(
         name="pande_gas",
-        url='https://github.com/DeepMol/pande-gas',
-        description='Pande Lab/GAS collaboration.',
+        url='https://github.com/pandegroup/vs-utils',
+        description='Virtual screening and cheminformatics utilities',
         packages=find_packages(),
     )
 
