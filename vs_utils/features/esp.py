@@ -12,9 +12,9 @@ import warnings
 
 from rdkit import Chem
 
-from . import Featurizer, MolPreparator
-from ..utils import amber_utils
-from ..utils.ob_utils import IonizerError
+from vs_utils.features import Featurizer, MolPreparator
+from vs_utils.utils import amber_utils
+from vs_utils.utils.ob_utils import IonizerError
 
 
 class ESP(Featurizer):

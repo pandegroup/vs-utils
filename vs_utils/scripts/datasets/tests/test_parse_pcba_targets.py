@@ -8,7 +8,7 @@ import shutil
 import tempfile
 import unittest
 
-from pande_gas.scripts.datasets.parse_pcba_targets import main, parse_args
+from vs_utils.scripts.datasets.parse_pcba_targets import main, parse_args
 
 
 class TestParsePcbaTargets(unittest.TestCase):

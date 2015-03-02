@@ -4,9 +4,9 @@ Tests for electrostatic potential features.
 import unittest
 
 from rdkit import Chem
-from rdkit_utils import conformers
 
-from pande_gas.features.esp import ESP
+from vs_utils.features.esp import ESP
+from vs_utils.utils.rdkit_utils import conformers
 
 
 class TestESP(unittest.TestCase):

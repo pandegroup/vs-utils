@@ -12,8 +12,8 @@ import numpy as np
 
 from rdkit import Chem
 
-from pande_gas.features import Featurizer
-from pande_gas.utils import pad_array
+from vs_utils.features import Featurizer
+from vs_utils.utils import pad_array
 
 
 class CoulombMatrix(Featurizer):

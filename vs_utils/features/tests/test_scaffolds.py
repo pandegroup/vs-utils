@@ -5,7 +5,7 @@ import unittest
 
 from rdkit import Chem
 
-from ..scaffolds import Scaffold
+from vs_utils.features.scaffolds import Scaffold
 
 
 class TestScaffold(unittest.TestCase):

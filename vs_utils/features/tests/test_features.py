@@ -5,11 +5,11 @@ import numpy as np
 import unittest
 
 from rdkit import Chem
-from rdkit_utils import conformers
 
-from .. import MolPreparator
-from ..basic import MolecularWeight
-from ...utils.parallel_utils import LocalCluster
+from vs_utils.features import MolPreparator
+from vs_utils.features.basic import MolecularWeight
+from vs_utils.utils.parallel_utils import LocalCluster
+from vs_utils.utils.rdkit_utils import conformers
 
 
 class TestFeaturizer(unittest.TestCase):

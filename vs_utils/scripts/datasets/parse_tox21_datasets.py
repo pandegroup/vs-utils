@@ -18,7 +18,7 @@ import numpy as np
 import os
 import warnings
 
-from pande_gas.utils.target_utils import Tox21Parser
+from vs_utils.utils.target_utils import Tox21Parser
 
 
 def get_args(input_args=None):

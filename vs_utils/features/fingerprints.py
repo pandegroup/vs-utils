@@ -9,7 +9,7 @@ __license__ = "BSD 3-clause"
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 
-from pande_gas.features import Featurizer
+from vs_utils.features import Featurizer
 
 
 class CircularFingerprint(Featurizer):
