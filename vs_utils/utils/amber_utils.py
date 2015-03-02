@@ -16,7 +16,7 @@ import tempfile
 
 from rdkit import Chem
 
-from pande_gas.utils.pdb_utils import PdbReader
+from vs_utils.utils.pdb_utils import PdbReader
 
 
 class Antechamber(object):

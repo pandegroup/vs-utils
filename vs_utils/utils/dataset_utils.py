@@ -10,7 +10,7 @@ import gzip
 
 from rdkit import Chem
 
-from . import SmilesGenerator
+from vs_utils.utils import SmilesGenerator
 
 
 class MoleculeDatabase(object):

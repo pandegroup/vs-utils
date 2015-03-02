@@ -13,7 +13,7 @@ import pandas as pd
 import subprocess
 import tempfile
 
-from pande_gas.utils import SmilesGenerator
+from vs_utils.utils import SmilesGenerator
 
 
 class Dragon(object):

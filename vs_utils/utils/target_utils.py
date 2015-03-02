@@ -13,9 +13,8 @@ import numpy as np
 import pandas as pd
 import warnings
 
-from rdkit_utils import serial
-
-from pande_gas.utils import read_pickle, SmilesGenerator
+from vs_utils.utils import read_pickle, SmilesGenerator
+from vs_utils.utils.rdkit_utils import serial
 
 
 class AssayDataParser(object):

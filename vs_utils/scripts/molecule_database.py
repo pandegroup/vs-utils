@@ -10,9 +10,8 @@ import argparse
 
 from rdkit import Chem
 
-from rdkit_utils import serial
-
-from pande_gas.utils.dataset_utils import MoleculeDatabase
+from vs_utils.utils.dataset_utils import MoleculeDatabase
+from vs_utils.utils.rdkit_utils import serial
 
 
 def parse_args(input_args=None):

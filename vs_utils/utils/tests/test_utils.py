@@ -13,8 +13,9 @@ from rdkit.Chem import AllChem
 
 from rdkit_utils import conformers, serial
 
-from .. import (DatasetSharder, pad_array, read_pickle, ScaffoldGenerator,
-                SmilesGenerator, SmilesMap, write_pickle)
+from vs_utils.utils import (DatasetSharder, pad_array, read_pickle,
+                            ScaffoldGenerator, SmilesGenerator, SmilesMap,
+                            write_pickle)
 
 
 class TestDatasetSharder(unittest.TestCase):

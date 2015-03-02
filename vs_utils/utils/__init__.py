@@ -14,7 +14,7 @@ import os
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 
-from rdkit_utils import PicklableMol, serial
+from vs_utils.utils.rdkit_utils import PicklableMol, serial
 
 
 def read_pickle(filename):

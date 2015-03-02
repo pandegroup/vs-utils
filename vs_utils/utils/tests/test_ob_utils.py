@@ -5,9 +5,9 @@ import numpy as np
 import unittest
 
 from rdkit import Chem
-from rdkit_utils import conformers
 
-from pande_gas.utils import ob_utils
+from vs_utils.utils import ob_utils
+from vs_utils.utils.rdkit_utils import conformers
 
 
 class TestIonizer(unittest.TestCase):
