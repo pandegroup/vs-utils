@@ -6,7 +6,7 @@ import tempfile
 import unittest
 import csv
 
-from pande_gas.utils.molecule_net import PcbaJsonParser, PcbaPandasHandler
+from vs_utils.utils.molecule_net import PcbaJsonParser, PcbaPandasHandler
 
 
 class PcbaParserBase(object):
