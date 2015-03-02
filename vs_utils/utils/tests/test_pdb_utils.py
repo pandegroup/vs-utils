@@ -4,7 +4,7 @@ Tests for pdb_utils.
 from cStringIO import StringIO
 import unittest
 
-from pande_gas.utils import pdb_utils
+from vs_utils.utils import pdb_utils
 
 
 class TestPDBUtils(unittest.TestCase):

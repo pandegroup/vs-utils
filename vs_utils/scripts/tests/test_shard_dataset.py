@@ -10,7 +10,7 @@ from rdkit.Chem import AllChem
 
 from rdkit_utils import serial
 
-from pande_gas.scripts.shard_dataset import main
+from vs_utils.scripts.shard_dataset import main
 
 
 class TestShardDataset(unittest.TestCase):

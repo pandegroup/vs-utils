@@ -12,7 +12,7 @@ import subprocess
 from rdkit import Chem
 from rdkit_utils import serial
 
-from pande_gas.utils import image_utils
+from vs_utils.utils import image_utils
 
 
 class Ionizer(object):

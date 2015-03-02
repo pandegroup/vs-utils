@@ -9,8 +9,8 @@ from rdkit import Chem
 
 from rdkit_utils import conformers, serial
 
-from pande_gas.scripts.datasets.classification_targets import main, parse_args
-from pande_gas.utils import read_pickle, SmilesGenerator
+from vs_utils.scripts.datasets.classification_targets import main, parse_args
+from vs_utils.utils import read_pickle, SmilesGenerator
 
 
 class TestClassificationTargets(unittest.TestCase):

@@ -16,10 +16,10 @@ import numpy as np
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from rdkit_utils import serial
 
-from pande_gas.features import get_featurizers
-from pande_gas.utils import (read_pickle, ScaffoldGenerator, SmilesGenerator,
+from vs_utils.features import get_featurizers
+from vs_utils.utils import (read_pickle, ScaffoldGenerator, SmilesGenerator,
                              write_pickle)
-from pande_gas.utils.parallel_utils import LocalCluster
+from vs_utils.utils.parallel_utils import LocalCluster
 
 
 def parse_args(input_args=None):

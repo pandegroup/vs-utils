@@ -12,8 +12,8 @@ import argparse
 import numpy as np
 import os
 
-from pande_gas.utils import write_pickle
-from pande_gas.utils.target_utils import Nci60Parser
+from vs_utils.utils import write_pickle
+from vs_utils.utils.target_utils import Nci60Parser
 
 
 def parse_args(input_args=None):

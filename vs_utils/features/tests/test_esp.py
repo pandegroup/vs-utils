@@ -6,7 +6,7 @@ import unittest
 from rdkit import Chem
 from rdkit_utils import conformers
 
-from pande_gas.features.esp import ESP
+from vs_utils.features.esp import ESP
 
 
 class TestESP(unittest.TestCase):

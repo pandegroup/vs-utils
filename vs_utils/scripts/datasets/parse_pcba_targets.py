@@ -10,8 +10,8 @@ __license__ = "BSD 3-clause"
 import argparse
 import numpy as np
 
-from pande_gas.utils import write_pickle
-from pande_gas.utils.target_utils import PcbaParser
+from vs_utils.utils import write_pickle
+from vs_utils.utils.target_utils import PcbaParser
 
 
 def parse_args(input_args=None):

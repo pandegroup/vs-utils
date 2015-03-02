@@ -6,7 +6,7 @@ from PIL import Image
 import tempfile
 import unittest
 
-from pande_gas.utils import image_utils
+from vs_utils.utils import image_utils
 
 
 class TestImageUtils(unittest.TestCase):

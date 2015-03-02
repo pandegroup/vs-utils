@@ -13,7 +13,7 @@ from rdkit import Chem
 
 from rdkit_utils import serial
 
-from pande_gas.utils import read_pickle, SmilesMap, write_pickle
+from vs_utils.utils import read_pickle, SmilesMap, write_pickle
 
 
 def parse_args(input_args=None):

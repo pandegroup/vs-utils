@@ -9,7 +9,7 @@ import os
 
 from pubchem_utils import PubChem
 
-from pande_gas.utils import write_pickle
+from vs_utils.utils import write_pickle
 
 
 def parse_args(input_args=None):

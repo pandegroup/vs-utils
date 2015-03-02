@@ -8,7 +8,7 @@ __license__ = "BSD 3-clause"
 
 from rdkit.Chem import Descriptors
 
-from pande_gas.features import Featurizer
+from vs_utils.features import Featurizer
 
 
 class MolecularWeight(Featurizer):

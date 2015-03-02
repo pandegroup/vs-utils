@@ -5,7 +5,7 @@ Parse PCBA assay descriptions.
 import argparse
 import glob
 
-from pande_gas.utils.public_data import PcbaJsonParser, PcbaPandasHandler
+from vs_utils.utils.public_data import PcbaJsonParser, PcbaPandasHandler
 
 
 def parse_args(input_args=None):

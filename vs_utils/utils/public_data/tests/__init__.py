@@ -6,7 +6,7 @@ import tempfile
 import unittest
 import csv
 
-from pande_gas.utils.public_data import PcbaJsonParser, PcbaPandasHandler
+from vs_utils.utils.public_data import PcbaJsonParser, PcbaPandasHandler
 
 
 class PcbaParserBase(object):

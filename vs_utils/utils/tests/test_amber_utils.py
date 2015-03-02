@@ -8,7 +8,7 @@ import unittest
 from rdkit import Chem
 from rdkit_utils import conformers
 
-from pande_gas.utils import amber_utils, pdb_utils
+from vs_utils.utils import amber_utils, pdb_utils
 
 
 class TestAmberUtils(unittest.TestCase):

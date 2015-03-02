@@ -15,7 +15,7 @@ import warnings
 
 from rdkit_utils import serial
 
-from pande_gas.utils import read_pickle, SmilesGenerator
+from vs_utils.utils import read_pickle, SmilesGenerator
 
 
 class AssayDataParser(object):

@@ -7,7 +7,7 @@ import unittest
 from rdkit import Chem
 from rdkit_utils import conformers
 
-from pande_gas.features import coulomb_matrices as cm
+from vs_utils.features import coulomb_matrices as cm
 
 
 class TestCoulombMatrix(unittest.TestCase):
