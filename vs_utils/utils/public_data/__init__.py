@@ -1,5 +1,5 @@
 """
-Utilities for MoleculeNet.
+Utilities for public_data.
 """
 import gzip
 import json

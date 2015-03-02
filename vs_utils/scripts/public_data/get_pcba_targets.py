@@ -5,7 +5,7 @@ import argparse
 import glob
 import os
 
-from pande_gas.utils.molecule_net import PcbaJsonParser
+from pande_gas.utils.public_data import PcbaJsonParser
 
 
 def parse_args(input_args=None):
