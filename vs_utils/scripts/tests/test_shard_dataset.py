@@ -1,6 +1,7 @@
 """
 Test shard_dataset.py.
 """
+import os
 import shutil
 import tempfile
 import unittest
@@ -71,5 +72,5 @@ class TestShardDataset(unittest.TestCase):
         """
         Test main.
         """
-        main(self.filename, 1000, 'foo', 'pkl.gz')
-        self.compare_mols('foo-0.pkl.gz')
+        main(self.filename, 1000, os.path.join(self.temp_dir, 'foo'), 'pkl.gz')
+        self.compare_mols(os.path.join(self.temp_dir, 'foo-0.pkl.gz'))
