@@ -11,11 +11,10 @@ import unittest
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from rdkit_utils import conformers, serial
-
 from vs_utils.utils import (DatasetSharder, pad_array, read_pickle,
                             ScaffoldGenerator, SmilesGenerator, SmilesMap,
                             write_pickle)
+from vs_utils.utils.rdkit_utils import conformers, serial
 
 
 class TestDatasetSharder(unittest.TestCase):
