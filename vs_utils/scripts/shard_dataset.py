@@ -9,7 +9,7 @@ __license__ = "BSD 3-clause"
 
 import argparse
 
-from pande_gas.utils import DatasetSharder
+from vs_utils.utils import DatasetSharder
 
 
 def parse_args(input_args=None):

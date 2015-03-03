@@ -7,7 +7,7 @@ import os
 import tempfile
 import unittest
 
-from pande_gas.utils import h5_utils
+from vs_utils.utils import h5_utils
 
 
 class TestH5Utils(unittest.TestCase):

@@ -8,8 +8,8 @@ __license__ = "BSD 3-clause"
 
 from rdkit.Chem import Draw
 
-from pande_gas.features import Featurizer
-from pande_gas.utils import image_utils, ob_utils
+from vs_utils.features import Featurizer
+from vs_utils.utils import image_utils, ob_utils
 
 
 class MolImage(Featurizer):

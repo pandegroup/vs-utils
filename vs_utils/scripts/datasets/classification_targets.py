@@ -11,8 +11,8 @@ import numpy as np
 
 from rdkit_utils import serial
 
-from pande_gas.utils import write_pickle
-from pande_gas.utils.dataset_utils import MoleculeDatabase
+from vs_utils.utils import write_pickle
+from vs_utils.utils.dataset_utils import MoleculeDatabase
 
 
 def parse_args(input_args=None):

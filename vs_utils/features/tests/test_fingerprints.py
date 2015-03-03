@@ -5,7 +5,7 @@ import unittest
 
 from rdkit import Chem
 
-from pande_gas.features import fingerprints as fp
+from vs_utils.features import fingerprints as fp
 
 
 class TestCircularFingerprint(unittest.TestCase):

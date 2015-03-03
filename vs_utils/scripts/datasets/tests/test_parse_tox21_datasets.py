@@ -6,9 +6,9 @@ import os
 
 from rdkit import Chem
 
-from pande_gas.scripts.datasets.parse_tox21_datasets import main, get_args
-from pande_gas.utils import read_pickle
-from pande_gas.utils.tests.test_target_utils import TestTox21Parser
+from vs_utils.scripts.datasets.parse_tox21_datasets import main, get_args
+from vs_utils.utils import read_pickle
+from vs_utils.utils.tests.test_target_utils import TestTox21Parser
 
 
 class TestParseTox21Datasets(TestTox21Parser):

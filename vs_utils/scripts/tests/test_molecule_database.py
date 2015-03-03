@@ -9,8 +9,8 @@ from rdkit import Chem
 
 from rdkit_utils import conformers, serial
 
-from pande_gas.scripts.molecule_database import main, parse_args
-from pande_gas.utils.dataset_utils import MoleculeDatabase
+from vs_utils.scripts.molecule_database import main, parse_args
+from vs_utils.utils.dataset_utils import MoleculeDatabase
 
 
 class TestMoleculeDatabase(unittest.TestCase):

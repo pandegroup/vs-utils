@@ -8,8 +8,8 @@ __license__ = "BSD 3-clause"
 
 import numpy as np
 
-from pande_gas.features import Featurizer
-from pande_gas.utils.dragon_utils import Dragon
+from vs_utils.features import Featurizer
+from vs_utils.utils.dragon_utils import Dragon
 
 
 class DragonDescriptors(Featurizer):

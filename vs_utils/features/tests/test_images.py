@@ -5,7 +5,7 @@ import unittest
 
 from rdkit import Chem
 
-from pande_gas.features import images
+from vs_utils.features import images
 
 
 class TestOBabelMolImage(unittest.TestCase):

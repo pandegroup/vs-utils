@@ -7,8 +7,8 @@ import unittest
 
 from rdkit import Chem
 
-from pande_gas.scripts.get_smiles_map import main, parse_args
-from pande_gas.utils import read_pickle
+from vs_utils.scripts.get_smiles_map import main, parse_args
+from vs_utils.utils import read_pickle
 
 
 class TestGetSmilesMap(unittest.TestCase):

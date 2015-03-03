@@ -9,7 +9,7 @@ import shutil
 import tempfile
 import unittest
 
-from pande_gas.scripts.datasets.parse_nci60_targets import main, parse_args
+from vs_utils.scripts.datasets.parse_nci60_targets import main, parse_args
 
 
 class TestParseNci60Targets(unittest.TestCase):
