@@ -6,7 +6,7 @@ import unittest
 
 from rdkit import Chem
 
-from ..basic import MolecularWeight, SimpleDescriptors
+from vs_utils.features.basic import MolecularWeight, SimpleDescriptors
 
 
 class TestMolecularWeight(unittest.TestCase):

@@ -7,10 +7,9 @@ import unittest
 
 from rdkit import Chem
 
-from rdkit_utils import conformers, serial
-
 from vs_utils.scripts.molecule_database import main, parse_args
 from vs_utils.utils.dataset_utils import MoleculeDatabase
+from vs_utils.utils.rdkit_utils import conformers, serial
 
 
 class TestMoleculeDatabase(unittest.TestCase):

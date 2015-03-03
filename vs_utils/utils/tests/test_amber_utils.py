@@ -6,9 +6,9 @@ import numpy as np
 import unittest
 
 from rdkit import Chem
-from rdkit_utils import conformers
 
 from vs_utils.utils import amber_utils, pdb_utils
+from vs_utils.utils.rdkit_utils import conformers
 
 
 class TestAmberUtils(unittest.TestCase):

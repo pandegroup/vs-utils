@@ -6,8 +6,8 @@ __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
-from . import Featurizer
-from ..utils import ScaffoldGenerator
+from vs_utils.features import Featurizer
+from vs_utils.utils import ScaffoldGenerator
 
 
 class Scaffold(Featurizer):

@@ -5,9 +5,9 @@ import numpy as np
 import unittest
 
 from rdkit import Chem
-from rdkit_utils import conformers
 
 from vs_utils.features import coulomb_matrices as cm
+from vs_utils.utils.rdkit_utils import conformers
 
 
 class TestCoulombMatrix(unittest.TestCase):

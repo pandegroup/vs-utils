@@ -13,13 +13,11 @@ import inspect
 import joblib
 import numpy as np
 
-from rdkit.Chem.Scaffolds import MurckoScaffold
-from rdkit_utils import serial
-
 from vs_utils.features import get_featurizers
 from vs_utils.utils import (read_pickle, ScaffoldGenerator, SmilesGenerator,
                              write_pickle)
 from vs_utils.utils.parallel_utils import LocalCluster
+from vs_utils.utils.rdkit_utils import serial
 
 
 def parse_args(input_args=None):

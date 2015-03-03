@@ -10,10 +10,9 @@ from StringIO import StringIO
 import subprocess
 
 from rdkit import Chem
-from rdkit_utils import serial
 
 from vs_utils.utils import image_utils
-
+from vs_utils.utils.rdkit_utils import serial
 
 class Ionizer(object):
     """

@@ -8,8 +8,8 @@ __license__ = "BSD 3-clause"
 
 import numpy as np
 
-from . import Featurizer, MolPreparator
-from .gridmol.molecule import GridAtom, GridMol
+from vs_utils.features import Featurizer, MolPreparator
+from vs_utils.features.gridmol.molecule import GridAtom, GridMol
 
 
 class ShapeGrid(Featurizer):

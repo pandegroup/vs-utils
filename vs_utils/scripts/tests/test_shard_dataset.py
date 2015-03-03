@@ -8,9 +8,8 @@ import unittest
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from rdkit_utils import serial
-
 from vs_utils.scripts.shard_dataset import main
+from vs_utils.utils.rdkit_utils import serial
 
 
 class TestShardDataset(unittest.TestCase):

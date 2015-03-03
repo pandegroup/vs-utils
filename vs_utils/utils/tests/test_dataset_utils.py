@@ -8,7 +8,7 @@ import unittest
 
 from rdkit import Chem
 
-from ..dataset_utils import MoleculeDatabase
+from vs_utils.utils.dataset_utils import MoleculeDatabase
 
 
 class TestMoleculeDatabase(unittest.TestCase):

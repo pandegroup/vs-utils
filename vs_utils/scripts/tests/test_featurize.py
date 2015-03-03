@@ -3,7 +3,6 @@ Test featurize.py.
 """
 import joblib
 import numpy as np
-from rdkit_utils import conformers, serial
 import shutil
 import tempfile
 import unittest
@@ -13,6 +12,7 @@ from rdkit.Chem import AllChem
 
 from vs_utils.scripts.featurize import main, parse_args
 from vs_utils.utils import read_pickle, write_pickle
+from vs_utils.utils.rdkit_utils import conformers, serial
 
 
 class TestFeaturize(unittest.TestCase):

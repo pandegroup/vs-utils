@@ -9,11 +9,10 @@ import unittest
 
 from rdkit import Chem
 
-from rdkit_utils import serial
-
-from .. import read_pickle, write_pickle
-from ..target_utils import (AssayDataParser, Nci60Parser, PcbaParser,
-                            Tox21Parser)
+from vs_utils.utils import read_pickle, write_pickle
+from vs_utils.utils.target_utils import (AssayDataParser, Nci60Parser,
+                                         PcbaParser, Tox21Parser)
+from vs_utils.utils.rdkit_utils import serial
 
 
 class TestAssayDataParser(unittest.TestCase):

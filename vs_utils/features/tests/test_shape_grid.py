@@ -4,9 +4,9 @@ Tests for grid-based shape features.
 import unittest
 
 from rdkit import Chem
-from rdkit_utils import conformers
 
-from ..shape_grid import ShapeGrid
+from vs_utils.features.shape_grid import ShapeGrid
+from vs_utils.utils.rdkit_utils import conformers
 
 
 class TestShapeGrid(unittest.TestCase):

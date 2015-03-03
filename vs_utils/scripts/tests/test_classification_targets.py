@@ -7,10 +7,9 @@ import unittest
 
 from rdkit import Chem
 
-from rdkit_utils import conformers, serial
-
 from vs_utils.scripts.datasets.classification_targets import main, parse_args
 from vs_utils.utils import read_pickle, SmilesGenerator
+from vs_utils.utils.rdkit_utils import conformers, serial
 
 
 class TestClassificationTargets(unittest.TestCase):
