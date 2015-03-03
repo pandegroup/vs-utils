@@ -2,9 +2,9 @@
 Molecules on grids.
 
 The ideas expressed in this code take some inspiration from Tom Goddard. See
-http://www.cgl.ucsf.edu/chimera/data/surface-oct2013/surface.html and some of
-the UCSF Chimera code (libs/_gaussian/gaussian.cpp and
-libs/Surface/gridsurf.py were suggested specifically).
+http://www.cgl.ucsf.edu/chimera/data/surface-oct2013/surface.html. I was also
+referred to some of the UCSF Chimera code, specifically
+libs/_gaussian/gaussian.cpp and libs/Surface/gridsurf.py.
 """
 
 __author__ = "Steven Kearnes"
