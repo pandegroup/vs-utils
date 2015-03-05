@@ -3,8 +3,8 @@ Utilities for public_data.
 """
 import gzip
 import json
-import numpy as np
 import pandas as pd
+import warnings
 
 
 class PcbaJsonParser(object):
@@ -128,6 +128,30 @@ class PcbaJsonParser(object):
     else:
       return None
 
+  def get_result_names(self, from_tid=False):
+    """
+    Get column names for assay-specific result fields.
+
+    Parameters
+    ----------
+    from_tid : bool, optional (default False)
+      Return a dict mapping TIDs to field names. If False, returns a list of
+      field names.
+    """
+    tids = {}
+    names = []
+    for field in self.get_results():
+      name = field['name']
+      if name in names:
+        warnings.warn(
+          'Duplicated field "{}" in AID {}'.format(name, self.get_aid()))
+      tids[field['tid']] = name
+      names.append(name)
+    if from_tid:
+      return tids
+    else:
+      return names
+
   def get_data(self):
     """
     Get assay data in a Pandas dataframe.
@@ -137,28 +161,8 @@ class PcbaJsonParser(object):
     except KeyError:
       return None
 
-    # construct a dataframe containing each data point
-    columns = []
-
-    # add generic fields from PubChem
-    for key in data[0].iterkeys():
-      if key == 'data':
-        continue
-      columns.append(key)
-
-    # add fields specific to this assay
-    tids = {}
-    for field in self.get_results():
-      name = field['name']
-      assert name not in columns  # no duplicate field names allowed
-      columns.append(name)
-      tids[field['tid']] = name
-    assert columns is not None
-
     # populate dataframe
-    # note that we use df.append at the end because appending
-    # incrementally is much slower
-    df = pd.DataFrame(columns=columns)
+    tids = self.get_result_names(from_tid=True)
     series = []
     for dp in data:
       point = {}
@@ -172,9 +176,64 @@ class PcbaJsonParser(object):
         else:  # generic fields
           point[key] = value
       series.append(point)
-    df = df.append(series)  # does not modify original object
+    df = pd.DataFrame(series)
     assert len(df) == len(data)
-    assert np.array_equal(df.columns.values, columns)
+    return df
+
+  def get_selected_data(self, column_mapping, include_aid=False, target=None,
+                        phenotype=None):
+    """
+    Get a subset of the assay data.
+
+    Parameters
+    ----------
+    column_mapping : dict
+      Mapping between output dataframe column names and assay data column names
+      from which to extract data (e.g. 'potency': 'EC50'). Values that are not
+      found in the assay data columns will be treated as constants.
+    include_aid : bool, optional (default False)
+      Annotate each data point with the AID for this assay.
+    target : str, optional
+      Assay target to include for each data point.
+    phenotype : str, optional
+      Default phenotype for non-inactive data points (e.g., 'inhibitor').
+
+    Returns
+    -------
+    A pandas dataframe containing the selected assay data.
+    """
+    # add standard PCBA columns
+    column_mapping['sid'] = 'sid'
+    column_mapping['outcome'] = 'outcome'
+
+    # add optional columns
+    if include_aid:
+      column_mapping['aid'] = self.get_aid()
+    if target is not None:
+      column_mapping['target'] = target
+
+    # get selected columns
+    data = self.get_data()
+    if data is None:
+      return None
+    old_cols, new_cols = [], []
+    constants = {}
+    for new_col, old_col in column_mapping.iteritems():
+      if old_col not in data.columns:
+        constants[new_col] = old_col
+      else:
+        new_cols.append(new_col)
+        old_cols.append(old_col)
+    df = data[old_cols]  # get selected columns from assay data
+    df.columns = new_cols  # rename columns to match column_mapping
+    for new_col, value in constants.iteritems():
+      df.insert(0, new_col, value)  # add constant-valued columns
+
+    # process phenotypes
+    if phenotype is not None and 'phenotype' not in column_mapping:
+      df.insert(len(df.columns), 'phenotype', phenotype)
+      df.loc[df['outcome'] == 'inactive', 'phenotype'] = 'inactive'
+
     return df
 
 

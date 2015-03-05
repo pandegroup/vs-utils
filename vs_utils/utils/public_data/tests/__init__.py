@@ -9,10 +9,30 @@ import csv
 from vs_utils.utils.public_data import PcbaJsonParser, PcbaPandasHandler
 
 
-class PcbaParserBase(object):
+class TestPcbaJsonParser(unittest.TestCase):
   """
-  Base class for PcbaJsonParser tests.
+  Tests for PcbaJsonParser.
   """
+  def setUp(self):
+    """
+    Set up tests.
+    """
+    self.data_dir = os.path.split(os.path.realpath(__file__))[0]
+    self.parser = PcbaJsonParser(
+      os.path.join(self.data_dir, 'data/aid490.json'))
+    self.no_target = PcbaJsonParser(
+      os.path.join(self.data_dir, 'data/aid1.json'))
+    self.confirmatory = self.no_target
+    self.multiple_target = PcbaJsonParser(
+      os.path.join(self.data_dir, 'data/aid429.json'))
+    self.gzip_parser = PcbaJsonParser(
+      os.path.join(self.data_dir, 'data/aid490.json.gz'))
+    self.rest_parser = PcbaJsonParser(
+      os.path.join(self.data_dir, 'data/aid1-rest.json'))
+    self.data_parser = PcbaJsonParser(
+      os.path.join(self.data_dir, 'data/999.json.gz'))
+    self.target_keys = ['name', 'mol_id', 'molecule_type', 'organism']
+
   def test_get_aid(self):
     """
     Test get_aid.
@@ -103,7 +123,6 @@ class PcbaParserBase(object):
                + "values of -LogGI50.")
     assert self.no_target.get_comment() == comment
 
-
   def test_get_results(self):
     """
     Test parsing of results.
@@ -168,31 +187,30 @@ class PcbaParserBase(object):
     value = df[df['sid'] == 46487926]['Viability'].values
     assert len(value) == 1
     assert value[0] == 3.3
+    assert self.parser.get_data() is None  # check for no data
 
+  def test_get_selected_data(self):
+    """
+    Test get_selected_data.
+    """
+    config = {'aid': 999, 'viability': 'Viability', 'blah': 'constant'}
+    data = self.data_parser.get_selected_data(config, include_aid=True)
+    assert len(data) == 156
+    row = data[data['sid'] == 46487926].iloc[0]
+    assert row['aid'] == 999
+    assert row['viability'] == 3.3
+    assert row['blah'] == 'constant'
+    assert self.parser.get_selected_data(config) is None  # check for no data
 
-class TestPcbaJsonParser(unittest.TestCase, PcbaParserBase):
-  """
-  Tests for PcbaJsonParser.
-  """
-  def setUp(self):
+  def test_get_result_names(self):
     """
-    Set up tests.
+    Test get_result_names.
     """
-    self.data_dir = os.path.split(os.path.realpath(__file__))[0]
-    self.parser = PcbaJsonParser(
-      os.path.join(self.data_dir, 'data/aid490.json'))
-    self.no_target = PcbaJsonParser(
-      os.path.join(self.data_dir, 'data/aid1.json'))
-    self.confirmatory = self.no_target
-    self.multiple_target = PcbaJsonParser(
-      os.path.join(self.data_dir, 'data/aid429.json'))
-    self.gzip_parser = PcbaJsonParser(
-      os.path.join(self.data_dir, 'data/aid490.json.gz'))
-    self.rest_parser = PcbaJsonParser(
-      os.path.join(self.data_dir, 'data/aid1-rest.json'))
-    self.data_parser = PcbaJsonParser(
-      os.path.join(self.data_dir, 'data/999.json.gz'))
-    self.target_keys = ['name', 'mol_id', 'molecule_type', 'organism']
+    results = {1: 'Ki_max', 2: 'Ki', 3: 'Ki_min', 4: 'IC50_max', 5: 'IC50',
+               6: 'IC50_min', 7: 'PubMed Citation (PMID)',
+               8: 'WILD TYPE sequence'}
+    assert set(self.parser.get_result_names()) == set(results.values())
+    assert self.parser.get_result_names(from_tid=True) == results
 
 
 class TestPcbaPandasHandler(unittest.TestCase):
