@@ -31,13 +31,12 @@ def parse_args(input_args=None):
   parser = argparse.ArgumentParser()
   parser.add_argument('dirs', nargs='+',
                       help='Directories containing PCBA JSON files.')
-  parser.add_argument('--no-aid', action='store_false', dest='include_aid',
-                      help='Do not include AID with each data point.')
-  parser.add_argument('--no-target', action='store_false',
-                      dest='include_target',
-                      help='Do not include target with each data point.')
-  parser.add_argument('--config', required=1,
+  parser.add_argument('-c', '--config', required=1,
                       help='Configuration file containing assay annotations.')
+  parser.add_argument('--no-aid', action='store_false', dest='with_aid',
+                      help='Do not include AID with each data point.')
+  parser.add_argument('--no-target', action='store_false', dest='with_target',
+                      help='Do not include target with each data point.')
   return parser.parse_args(input_args)
 
 
@@ -87,4 +86,4 @@ def main(dirs, config_filename, with_aid, with_target):
 
 if __name__ == '__main__':
   args = parse_args()
-  main(args.dirs, args.config, args.include_aid, args.include_target)
+  main(args.dirs, args.config, args.with_aid, args.with_target)
