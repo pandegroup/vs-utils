@@ -6,7 +6,8 @@ import tempfile
 import unittest
 import csv
 
-from vs_utils.utils.public_data import PcbaJsonParser, PcbaPandasHandler
+from vs_utils.utils.public_data import (PcbaDataExtractor, PcbaJsonParser,
+                                        PcbaPandasHandler)
 
 
 class TestPcbaJsonParser(unittest.TestCase):
@@ -30,7 +31,7 @@ class TestPcbaJsonParser(unittest.TestCase):
     self.rest_parser = PcbaJsonParser(
       os.path.join(self.data_dir, 'data/aid1-rest.json'))
     self.data_parser = PcbaJsonParser(
-      os.path.join(self.data_dir, 'data/999.json.gz'))
+      os.path.join(self.data_dir, 'data/540325.json.gz'))
     self.target_keys = ['name', 'mol_id', 'molecule_type', 'organism']
 
   def test_get_aid(self):
@@ -132,8 +133,8 @@ class TestPcbaJsonParser(unittest.TestCase):
     """
     results = [
       {u'name': u'loggi50', u'transform': u'log', u'tid': 1, u'type':
-      u'float', u'unit': u'm', u'description': [u'Log of the GI50 result, '
-                                                u'unit: M.']},
+       u'float', u'unit': u'm', u'description': [u'Log of the GI50 result, '
+                                                 u'unit: M.']},
      {u'name': u'loggi50', u'transform': u'log', u'tid': 2, u'type':
       u'float', u'unit': u'ugml', u'description': [u'Log of the GI50 '
                                                    u'result, unit: ug/mL.']},
@@ -183,24 +184,29 @@ class TestPcbaJsonParser(unittest.TestCase):
     Test get_data.
     """
     df = self.data_parser.get_data()
-    assert df.shape == (156, 6)
-    value = df[df['sid'] == 46487926]['Viability'].values
-    assert len(value) == 1
-    assert value[0] == 3.3
-    assert self.parser.get_data() is None  # check for no data
+    assert df.shape == (110, 6)
+    rows = df[df['sid'] == 24831307]
+    assert len(rows) == 1
+    assert rows.iloc[0]['Activity at 10 uM'] == 99.68
+
+    # check for no data
+    assert self.parser.get_data() is None
 
   def test_get_selected_data(self):
     """
     Test get_selected_data.
     """
-    config = {'aid': 999, 'viability': 'Viability', 'blah': 'constant'}
-    data = self.data_parser.get_selected_data(config, include_aid=True)
-    assert len(data) == 156
-    row = data[data['sid'] == 46487926].iloc[0]
-    assert row['aid'] == 999
-    assert row['viability'] == 3.3
+    config = {'activity': 'Activity at 10 uM', 'blah': 'constant'}
+    data = self.data_parser.get_selected_data(config, with_aid=True)
+    assert 'aid' not in config  # check that the method didn't change config
+    assert len(data) == 110
+    row = data[data['sid'] == 24831307].iloc[0]
+    assert row['aid'] == 540325
+    assert row['activity'] == 99.68
     assert row['blah'] == 'constant'
-    assert self.parser.get_selected_data(config) is None  # check for no data
+
+    # check for no data
+    assert self.parser.get_selected_data(config) is None
 
   def test_get_result_names(self):
     """
@@ -259,3 +265,52 @@ class TestPcbaPandasHandler(unittest.TestCase):
     finally:
       # Delete tempfile
       os.remove(f.name)
+
+
+class TestPcbaDataExtractor(unittest.TestCase):
+  """
+  Tests for PcbaDataExtractor.
+  """
+  def setUp(self):
+    """
+    Set up tests.
+    """
+    self.data_dir = os.path.split(os.path.realpath(__file__))[0]
+    self.aid998 = os.path.join(self.data_dir, 'data/998.json.gz')
+    self.aid540325 = os.path.join(self.data_dir, 'data/540325.json.gz')
+
+  def test_get_data(self):
+    """
+    Test get_data.
+    """
+    config = {'target': '1296534', 'r2': 'Fit_R2', 'phenotype': 'in'}
+    engine = PcbaDataExtractor(self.aid998, config, with_aid=True)
+
+    # check lowercase
+    data = engine.get_data(lower=True)
+    assert data[data['sid'] == 11110959].iloc[0]['phenotype'] == 'inhibitor'
+    assert data[data['sid'] == 11110959].iloc[0]['potency'] == 4.4668
+    data = engine.get_data(lower=False)
+    assert data[data['sid'] == 11110959].iloc[0]['phenotype'] == 'Inhibitor'
+    assert data[data['sid'] == 11110959].iloc[0]['potency'] == 4.4668
+
+  def test_check_config(self):
+    """
+    Test _check_config.
+    """
+    config = {'target': '1296534', 'potency': 'Activity at 10 uM',
+              'phenotype': 'in'}
+
+    # without common fields
+    engine = PcbaDataExtractor(self.aid540325, config, with_aid=True)
+    assert engine.config['target'] == 'gi1296534'
+    assert 'phenotype' not in engine.config
+    assert engine.phenotype == 'inhibitor'
+
+    # with common fields
+    engine = PcbaDataExtractor(self.aid998, config, with_aid=True)
+    assert engine.config['target'] == 'gi1296534'
+    assert 'phenotype' in engine.config
+    assert engine.config['phenotype'] == 'Phenotype'
+    assert engine.config['potency'] == 'Potency'
+    assert engine.config['efficacy'] == 'Efficacy'

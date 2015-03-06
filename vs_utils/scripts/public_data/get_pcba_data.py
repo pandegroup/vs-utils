@@ -7,12 +7,12 @@ field.
 """
 import argparse
 import glob
-import numpy as np
 import os
 import pandas as pd
+import warnings
 
 from vs_utils.utils import write_pickle
-from vs_utils.utils.public_data import PcbaJsonParser
+from vs_utils.utils.public_data import PcbaDataExtractor
 
 __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2015, Stanford University"
@@ -41,71 +41,47 @@ def parse_args(input_args=None):
   return parser.parse_args(input_args)
 
 
-def main(dirs, config_filename, include_aid, include_target):
+def main(dirs, config_filename, with_aid, with_target):
   aids = set()
   targets = set()
   total = 0
-  phenotypes = {'in': 'inhibitor', 'ac': 'activator', 'ag': 'activator',
-                'an': 'inhibitor', 'ia': 'inhibitor'}
   config = pd.read_csv(config_filename)
   assert len(config) == len(pd.unique(config['aid']))
   for this_dir in dirs:
     for filename in glob.glob(os.path.join(this_dir, '*.json.gz')):
-      file_aid = int(os.path.basename(filename).split('.')[0])
-      if file_aid not in config['aid'].values:
-        continue  # only load relevant assays
-      parser = PcbaJsonParser(filename)
-      aid = parser.get_aid()
-      aids.add(aid)
+
+      # get AID from filename so we only have to load relevant assays
+      aid = int(os.path.basename(filename).split('.')[0])
+      if aid not in config['aid'].values:
+        continue
+
+      # get configuration for this AID
       this_config = config[config['aid'] == aid].iloc[0]
+      if not with_aid and 'aid' in this_config:
+        del this_config['aid']
+      if not with_target and 'target' in this_config:
+        del this_config['target']
 
-      # check common column names
-      columns = parser.get_result_names()
-      if 'Potency' in columns:
-        this_config['potency'] = 'Potency'
-      if 'Efficacy' in columns:
-        this_config['efficacy'] = 'Efficacy'
-      if 'Phenotype' in columns:
-        this_config['phenotype'] = 'Phenotype'
-
-      # target cleanup
-      target = None
-      if include_target and 'target' in this_config:
-        target = this_config['target']
-        try:
-          int(this_config['target'])  # add gi: prefix to integer targets
-          target = 'gi{}'.format(this_config['target'])
-          this_config['target'] = target
-        except ValueError:
-          pass
+      # get data
+      parser = PcbaDataExtractor(filename, this_config, with_aid=with_aid)
+      assert aid == parser.parser.get_aid()  # sanity check for AID match
+      aids.add(aid)
+      target = parser.config.get('target')
       targets.add(target)
-
-      # phenotype handling
-      # either a column name or a default annotation
-      phenotype = this_config.get('phenotype', None)
-      if phenotype and phenotype not in parser.get_result_names():
-        del this_config['phenotype']  # remove from column mapping
-        if phenotype in phenotypes.iterkeys():
-          phenotype = phenotypes[phenotype]  # map to full name
-        if phenotype not in phenotypes.itervalues():
-          raise NotImplementedError(
-            'Unrecognized phenotype "{}"'.format(phenotype))
-      else:
-        phenotype = None
-
-      data = parser.get_selected_data(this_config, include_aid=include_aid,
-                                      target=target, phenotype=phenotype)
-
-      # lowercase string fields for consistency
-      for col, dtype in data.dtypes.iteritems():
-        if dtype == np.dtype('object'):
-          data[col] = data[col].str.lower()
-
-      output_filename = 'aid{}-{}-data.pkl.gz'.format(aid, target)
+      data = parser.get_data()
       total += len(data)
+
+      # save dataframe
+      output_filename = 'aid{}-{}-data.pkl.gz'.format(aid, target)
       print '{}\t{}\t{}\t{}'.format(aid, target, output_filename, len(data))
       write_pickle(data, output_filename)
-  assert len(aids) == len(config)  # make sure we found everything
+
+  # make sure we found everything
+  missing = set(config['aid']).difference(aids)
+  if len(missing):
+    warnings.warn('Missed AIDs {}'.format(missing))
+
+  # print a summary
   print 'Found {} assays for {} targets ({} total data points)'.format(
     len(aids), len(targets), total)
 

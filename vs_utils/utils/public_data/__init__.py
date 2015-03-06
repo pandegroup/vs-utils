@@ -3,6 +3,7 @@ Utilities for public_data.
 """
 import gzip
 import json
+import numpy as np
 import pandas as pd
 import warnings
 
@@ -141,7 +142,7 @@ class PcbaJsonParser(object):
     tids = {}
     names = []
     for field in self.get_results():
-      name = field['name']
+      name = field['name'].strip()  # clean up extra whitespace
       if name in names:
         warnings.warn(
           'Duplicated field "{}" in AID {}'.format(name, self.get_aid()))
@@ -180,8 +181,7 @@ class PcbaJsonParser(object):
     assert len(df) == len(data)
     return df
 
-  def get_selected_data(self, column_mapping, include_aid=False, target=None,
-                        phenotype=None):
+  def get_selected_data(self, column_mapping, with_aid=False, phenotype=None):
     """
     Get a subset of the assay data.
 
@@ -191,10 +191,8 @@ class PcbaJsonParser(object):
       Mapping between output dataframe column names and assay data column names
       from which to extract data (e.g. 'potency': 'EC50'). Values that are not
       found in the assay data columns will be treated as constants.
-    include_aid : bool, optional (default False)
+    with_aid : bool, optional (default False)
       Annotate each data point with the AID for this assay.
-    target : str, optional
-      Assay target to include for each data point.
     phenotype : str, optional
       Default phenotype for non-inactive data points (e.g., 'inhibitor').
 
@@ -202,15 +200,18 @@ class PcbaJsonParser(object):
     -------
     A pandas dataframe containing the selected assay data.
     """
+    # make a copy of the column mapping
+    column_mapping = column_mapping.copy()
+
     # add standard PCBA columns
     column_mapping['sid'] = 'sid'
     column_mapping['outcome'] = 'outcome'
 
     # add optional columns
-    if include_aid:
+    if with_aid:
       column_mapping['aid'] = self.get_aid()
-    if target is not None:
-      column_mapping['target'] = target
+    elif 'aid' in column_mapping:
+      warnings.warn('column_mapping contains "aid"')
 
     # get selected columns
     data = self.get_data()
@@ -278,3 +279,85 @@ class PcbaPandasHandler(object):
       Writes internal dataframe to provided location as csv.
       """
       self.df.to_csv(out)
+
+
+class PcbaDataExtractor(object):
+  """
+  Extract selected data from PCBA assay data.
+
+  Parameters
+  ----------
+  filename : str
+    PCBA JSON assay data file.
+  config : dict or pd.Series
+    Mapping between output dataframe column names and assay data column names
+    from which to extract data (e.g. 'potency': 'EC50'). Values that are not
+    found in the assay data columns will be treated as constants.
+  with_aid : bool, optional (default False)
+    Annotate each data point with the AID for this assay.
+  """
+  def __init__(self, filename, config, with_aid=True):
+    self.filename = filename
+    self.parser = PcbaJsonParser(filename)
+    self.with_aid = with_aid
+    self.config = config
+    self.phenotype = None  # default phenotype for this assay
+    self._check_config()  # check configuration
+
+  def get_data(self, lower=True):
+    """
+    Get selected data from the assay.
+
+    Parameters
+    ----------
+    lower : bool, optional (default True)
+      Lowercase string fields for consistency.
+    """
+    data = self.parser.get_selected_data(self.config, with_aid=self.with_aid,
+                                         phenotype=self.phenotype)
+    if lower:
+      for col, dtype in data.dtypes.iteritems():
+        if dtype == np.dtype('object'):
+          data[col] = data[col].str.lower()
+    return data
+
+  def _check_config(self):
+    """
+    Check the column mapping and other configuration parameters.
+    """
+    # make a copy of the config
+    config = self.config.copy()
+
+    # check for some common column names
+    columns = self.parser.get_result_names()
+    if 'Potency' in columns:
+      config['potency'] = 'Potency'
+    if 'Efficacy' in columns:
+      config['efficacy'] = 'Efficacy'
+    if 'Phenotype' in columns:
+      config['phenotype'] = 'Phenotype'
+
+    # target cleanup
+    # add gi: prefix to integer targets
+    if 'target' in config:
+      try:
+        int(config['target'])
+        config['target'] = 'gi{}'.format(config['target'])
+      except ValueError:
+        pass
+
+    # phenotype handling
+    # either a column name or a default annotation
+    phenotypes = {'in': 'inhibitor', 'ac': 'activator', 'ag': 'activator',
+                  'an': 'inhibitor', 'ia': 'inhibitor'}
+    phenotype = config.get('phenotype', None)
+    if phenotype and phenotype not in self.parser.get_result_names():
+      del config['phenotype']  # remove from column mapping
+      if phenotype in phenotypes.iterkeys():
+        phenotype = phenotypes[phenotype]  # map to full name
+      if phenotype not in phenotypes.itervalues():
+        raise NotImplementedError(
+          'Unrecognized phenotype "{}"'.format(phenotype))
+      self.phenotype = phenotype  # set default phenotype for this assay
+
+    self.config = config
