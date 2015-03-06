@@ -18,20 +18,19 @@ Here's an example configuration file:
 
 Running the script with this configuration file will generate a output file
 'aid998-gi757912-data.pkl.gz' containing a dataframe with columns ['aid',
-'target', 'potency', 'hill_slope'].
+'target', 'potency', 'hill_slope', 'efficacy', 'phenotype', 'sid', 'outcome'].
 
-The 'aid' and 'target' fields do not match
-columns in the assay data, so they are considered constants and will be the
-same for each row of the dataframe. The 'potency' and 'hill_slope' columns will
-be populated from the 'Potency' and 'Fit_Hillslope' columns in the original
-data, respectively.
+The 'potency' and 'hill_slope' columns will be populated from the 'Potency' and
+'Fit_Hillslope' columns in the original data, respectively. The 'aid' and
+'target' fields do not match columns in the assay data, so they are considered
+constants and will be the same for each row of the dataframe.
 
-There will also be columns added for fields that are standard for PCBA data,
-such as a column to track SIDs ('sid') and categorical activity outcomes
-('outcome'). Additionally, columns are added when commonly-occurring fields are
-recognized (to simplify writing the configuration file). In this example,
-'phenotype' and 'efficacy' columns are added to track the commonly-occurring
-'Phenotype' and 'Efficacy' fields.
+Columns are added for fields that are standard for PCBA data, such as a column
+to track SIDs ('sid') and categorical activity outcomes ('outcome').
+Additionally, columns are added when commonly-occurring fields are recognized
+(to simplify writing the configuration file). In this example, 'phenotype' and
+'efficacy' columns are added to track the commonly-occurring 'Phenotype' and
+'Efficacy' fields.
 """
 import argparse
 import glob
