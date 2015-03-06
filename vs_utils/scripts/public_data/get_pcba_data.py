@@ -4,6 +4,34 @@ Extract PCBA data.
 One dataframe is created for each file. The AID and target are associated with
 each data point, so routing can be done on a per-point basis using either
 field.
+
+Configuration File
+------------------
+The configuration file is a CSV file whose column headers correspond to columns
+that will appear in the saved dataframes. The file must contain an 'aid' column
+listing the PCBA assay IDs (AIDs) from which data will be extracted.
+
+Here's an example configuration file:
+
+> aid,target,potency,hill_slope
+> 998,757912,Potency,Fit_HillSlope
+
+Running the script with this configuration file will generate a output file
+'aid998-gi757912-data.pkl.gz' containing a dataframe with columns ['aid',
+'target', 'potency', 'hill_slope'].
+
+The 'aid' and 'target' fields do not match
+columns in the assay data, so they are considered constants and will be the
+same for each row of the dataframe. The 'potency' and 'hill_slope' columns will
+be populated from the 'Potency' and 'Fit_Hillslope' columns in the original
+data, respectively.
+
+There will also be columns added for fields that are standard for PCBA data,
+such as a column to track SIDs ('sid') and categorical activity outcomes
+('outcome'). Additionally, columns are added when commonly-occurring fields are
+recognized (to simplify writing the configuration file). In this example,
+'phenotype' and 'efficacy' columns are added to track the commonly-occurring
+'Phenotype' and 'Efficacy' fields.
 """
 import argparse
 import glob
@@ -45,6 +73,8 @@ def main(dirs, config_filename, with_aid, with_target):
   targets = set()
   total = 0
   config = pd.read_csv(config_filename)
+  if 'aid' not in config.columns:
+    raise ValueError('Configuration file must contain "aid" column.')
   assert len(config) == len(pd.unique(config['aid']))
   for this_dir in dirs:
     for filename in glob.glob(os.path.join(this_dir, '*.json.gz')):
