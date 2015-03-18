@@ -64,14 +64,20 @@ def parse_args(input_args=None):
                       help='Do not include AID with each data point.')
   parser.add_argument('--no-target', action='store_false', dest='with_target',
                       help='Do not include target with each data point.')
+  parser.add_argument('--phenotype', action='store_true',
+                      help='Require compound-level phenotype data.')
+  parser.add_argument('-s', '--summary',
+                      help='Filename for summary information.')
   return parser.parse_args(input_args)
 
 
-def main(dirs, config_filename, with_aid, with_target):
+def main(dirs, config_filename, summary_filename=None, with_aid=True,
+         with_target=True, phenotype=False):
   aids = set()
   targets = set()
   total = 0
   config = pd.read_csv(config_filename)
+  summary = []
   if 'aid' not in config.columns:
     raise ValueError('Configuration file must contain "aid" column.')
   assert len(config) == len(pd.unique(config['aid']))
@@ -91,7 +97,14 @@ def main(dirs, config_filename, with_aid, with_target):
         del this_config['target']
 
       # get data
-      parser = PcbaDataExtractor(filename, this_config, with_aid=with_aid)
+      try:
+        parser = PcbaDataExtractor(filename, this_config, with_aid=with_aid)
+      except NotImplementedError as e:
+        warnings.warn(e.message)
+        continue
+      if phenotype and 'phenotype' not in parser.config:
+        warnings.warn('{} has no phenotype'.format(aid))
+        continue
       assert aid == parser.parser.get_aid()  # sanity check for AID match
       aids.add(aid)
       target = parser.config.get('target')
@@ -102,6 +115,8 @@ def main(dirs, config_filename, with_aid, with_target):
       # save dataframe
       output_filename = 'aid{}-{}-data.pkl.gz'.format(aid, target)
       print '{}\t{}\t{}\t{}'.format(aid, target, output_filename, len(data))
+      summary.append({'aid': aid, 'target': target,
+                      'filename': output_filename, 'size': len(data)})
       write_pickle(data, output_filename)
 
   # make sure we found everything
@@ -109,10 +124,14 @@ def main(dirs, config_filename, with_aid, with_target):
   if len(missing):
     warnings.warn('Missed AIDs {}'.format(missing))
 
-  # print a summary
-  print 'Found {} assays for {} targets ({} total data points)'.format(
-    len(aids), len(targets), total)
+  # save a summary
+  summary = pd.DataFrame(summary)
+  if summary_filename is not None:
+    write_pickle(summary, summary_filename)
+  warnings.warn('Found {} assays for {} targets ({} total data points)'.format(
+    len(aids), len(targets), total))
 
 if __name__ == '__main__':
   args = parse_args()
-  main(args.dirs, args.config, args.with_aid, args.with_target)
+  main(args.dirs, args.config, args.summary, args.with_aid, args.with_target,
+       args.phenotype)

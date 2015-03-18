@@ -6,3 +6,4 @@ pandas
 PIL
 rdkit
 scipy
+ujson
