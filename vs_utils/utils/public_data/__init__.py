@@ -31,6 +31,30 @@ def read_json(filename):
   return tree
 
 
+def read_sid_cid_map(filename):
+  """
+  Read SID->CID map.
+
+  Parameters
+  ----------
+  filename : str
+    SID->CID map.
+  """
+  if filename.endswith('.gz'):
+    f = gzip.open(filename)
+  else:
+    f = open(filename)
+  try:
+    sid_cid = {}
+    for line in f:
+      sid, cid = line.split()
+      assert int(sid) not in sid_cid
+      sid_cid[int(sid)] = int(cid)
+    return sid_cid
+  finally:
+    f.close()
+
+
 class PcbaJsonParser(object):
   """
   Parser for PubChemBioAssay JSON.
@@ -324,7 +348,7 @@ class PcbaDataExtractor(object):
     self.phenotype = None  # default phenotype for this assay
     self._check_config()  # check configuration
 
-  def get_data(self, lower=True):
+  def get_data(self, lower=True, sid_cid=None):
     """
     Get selected data from the assay.
 
@@ -332,9 +356,18 @@ class PcbaDataExtractor(object):
     ----------
     lower : bool, optional (default True)
       Lowercase string fields for consistency.
+    sid_cid : dict, optional
+      SID->CID mapping. If provided, adds a 'cid' column to the dataframe.
     """
     data = self.parser.get_selected_data(self.config, with_aid=self.with_aid,
                                          phenotype=self.phenotype)
+
+    # map SIDs to CIDs
+    if sid_cid is not None:
+      cids = [sid_cid.get(sid) for sid in data['sid'].values]
+      data['cid'] = pd.Series(cids, index=data.index)
+
+    # lowercase string fields for consistency
     if lower:
       for col, dtype in data.dtypes.iteritems():
         if dtype == np.dtype('object'):
