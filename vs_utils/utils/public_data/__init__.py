@@ -365,7 +365,7 @@ class PcbaDataExtractor(object):
     # map SIDs to CIDs
     if sid_cid is not None:
       cids = [sid_cid.get(sid) for sid in data['sid'].values]
-      data['cid'] = pd.Series(cids, index=data.index)
+      data.loc[:, 'cid'] = pd.Series(cids, index=data.index)
 
     # lowercase string fields for consistency
     if lower:
