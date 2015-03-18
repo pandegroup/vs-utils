@@ -20,20 +20,24 @@ do
     *) echo "Unexpected option ${flag}"; exit 1 ;;
   esac
 done
+
+if [[ -z ${input_filename} ]]
+then
+  echo "Must provide input filename"
+  exit 1
+fi
+
+if [[ -z ${output_filename} ]]
+then
+  echo "Must provide output filename"
+  exit 1
+fi
+
 if [[ ${receptor} = 'true' ]]
 then
   opts='-xr'
 else
   opts=''
 fi
-if [[ -z ${input_filename} ]]
-then
-  echo "Must provide input filename"
-  exit 1
-fi
-if [[ -z ${output_filename} ]]
-then
-  echo "Must provide output filename"
-  exit 1
-fi
+
 obabel ${input_filename} -O ${output_filename} ${opts}
