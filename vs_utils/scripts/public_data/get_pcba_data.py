@@ -39,7 +39,7 @@ import pandas as pd
 import warnings
 
 from vs_utils.utils import write_pickle
-from vs_utils.utils.public_data import PcbaDataExtractor
+from vs_utils.utils.public_data import PcbaDataExtractor, read_sid_cid_map
 
 __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2015, Stanford University"
@@ -58,20 +58,31 @@ def parse_args(input_args=None):
   parser = argparse.ArgumentParser()
   parser.add_argument('dirs', nargs='+',
                       help='Directories containing PCBA JSON files.')
-  parser.add_argument('-c', '--config', required=1,
+  parser.add_argument('-c', '--config', required=True,
                       help='Configuration file containing assay annotations.')
+  parser.add_argument('-m', '--map',
+                      help='SID->CID map filename.')
+  parser.add_argument('-s', '--summary',
+                      help='Filename for summary information.')
   parser.add_argument('--no-aid', action='store_false', dest='with_aid',
                       help='Do not include AID with each data point.')
   parser.add_argument('--no-target', action='store_false', dest='with_target',
                       help='Do not include target with each data point.')
+  parser.add_argument('--phenotype', action='store_true',
+                      help='Require compound-level phenotype data.')
   return parser.parse_args(input_args)
 
 
-def main(dirs, config_filename, with_aid, with_target):
+def main(dirs, config_filename, map_filename=None, summary_filename=None,
+         with_aid=True, with_target=True, phenotype=False):
   aids = set()
   targets = set()
   total = 0
   config = pd.read_csv(config_filename)
+  summary = []
+  sid_cid = None
+  if map_filename is not None:
+    sid_cid = read_sid_cid_map(map_filename)
   if 'aid' not in config.columns:
     raise ValueError('Configuration file must contain "aid" column.')
   assert len(config) == len(pd.unique(config['aid']))
@@ -91,17 +102,26 @@ def main(dirs, config_filename, with_aid, with_target):
         del this_config['target']
 
       # get data
-      parser = PcbaDataExtractor(filename, this_config, with_aid=with_aid)
-      assert aid == parser.parser.get_aid()  # sanity check for AID match
+      try:
+        extractor = PcbaDataExtractor(filename, this_config, with_aid=with_aid)
+      except NotImplementedError as e:
+        warnings.warn(e.message)
+        continue
+      if phenotype and 'phenotype' not in extractor.config:
+        warnings.warn('{} has no phenotype'.format(aid))
+        continue
+      assert aid == extractor.parser.get_aid()  # sanity check for AID match
       aids.add(aid)
-      target = parser.config.get('target')
+      target = extractor.config.get('target')
       targets.add(target)
-      data = parser.get_data()
+      data = extractor.get_data(sid_cid=sid_cid)
       total += len(data)
 
       # save dataframe
       output_filename = 'aid{}-{}-data.pkl.gz'.format(aid, target)
       print '{}\t{}\t{}\t{}'.format(aid, target, output_filename, len(data))
+      summary.append({'aid': aid, 'target': target,
+                      'filename': output_filename, 'size': len(data)})
       write_pickle(data, output_filename)
 
   # make sure we found everything
@@ -109,10 +129,14 @@ def main(dirs, config_filename, with_aid, with_target):
   if len(missing):
     warnings.warn('Missed AIDs {}'.format(missing))
 
-  # print a summary
-  print 'Found {} assays for {} targets ({} total data points)'.format(
-    len(aids), len(targets), total)
+  # save a summary
+  summary = pd.DataFrame(summary)
+  if summary_filename is not None:
+    write_pickle(summary, summary_filename)
+  warnings.warn('Found {} assays for {} targets ({} total data points)'.format(
+    len(aids), len(targets), total))
 
 if __name__ == '__main__':
   args = parse_args()
-  main(args.dirs, args.config, args.with_aid, args.with_target)
+  main(args.dirs, args.config, args.map, args.summary, args.with_aid,
+       args.with_target, args.phenotype)

@@ -27,11 +27,11 @@ def read_pickle(filename):
         Filename.
     """
     if filename.endswith('.gz'):
-        f = gzip.open(filename)
+        with gzip.open(filename) as f:
+            data = cPickle.load(f)
     else:
-        f = open(filename)
-    data = cPickle.load(f)
-    f.close()
+        with open(filename) as f:
+            data = cPickle.load(f)
     return data
 
 
