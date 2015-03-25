@@ -110,7 +110,9 @@ class TestFeaturize(unittest.TestCase):
             names = self.names
         if smiles is None:
             smiles = self.smiles
-        assert data['features'].shape == shape, data['features'].shape
+        assert len(data) == shape[0]
+        if len(shape) > 1:
+            assert data.ix[0, 'features'].shape == shape[1:]
         assert np.array_equal(data['y'], targets), data['y']
         assert np.array_equal(data['names'], names), data['names']
         assert np.array_equal(data['smiles'], smiles), data['smiles']
