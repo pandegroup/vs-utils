@@ -12,10 +12,11 @@ import argparse
 import inspect
 import joblib
 import numpy as np
+import pandas as pd
 
 from vs_utils.features import get_featurizers
 from vs_utils.utils import (read_pickle, ScaffoldGenerator, SmilesGenerator,
-                             write_pickle)
+                            write_pickle)
 from vs_utils.utils.parallel_utils import LocalCluster
 from vs_utils.utils.rdkit_utils import serial
 
@@ -193,14 +194,17 @@ def main(featurizer_class, input_filename, output_filename,
         data['names'] = mol_names
     if scaffolds:
         data['scaffolds'] = get_scaffolds(mols, chiral_scaffolds)
-    data['args'] = {'featurizer_class': featurizer_class.__name__,
-                    'input_filename': input_filename,
-                    'target_filename': target_filename,
-                    'featurizer_kwargs': featurizer_kwargs,
-                    'chiral_scaffolds': chiral_scaffolds}
+
+    # construct a DataFrame
+    try:
+        if data['features'].ndim > 1:
+            data['features'] = [row for row in data['features']]
+    except AttributeError:
+        pass
+    df = pd.DataFrame(data)
 
     # write output file
-    write_output_file(data, output_filename, compression_level)
+    write_output_file(df, output_filename, compression_level)
 
 
 def collate_mols(mols, mol_names, targets, target_names):
