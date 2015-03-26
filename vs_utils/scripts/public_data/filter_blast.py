@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """
-Filter BLAST results.
+Filter BLAST results. Threshold results based on various metrics such as
+expectation value, sequence identity, and query or subject coverage.
 """
 import argparse
 import numpy as np
