@@ -2,6 +2,9 @@
 """
 Filter BLAST results. Threshold results based on various metrics such as
 expectation value, sequence identity, and query or subject coverage.
+
+Some of these metrics are not part of the standard BLAST output and must be
+specifically requested (see blast.sh).
 """
 import argparse
 import numpy as np
