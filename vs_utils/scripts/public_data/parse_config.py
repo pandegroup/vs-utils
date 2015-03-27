@@ -57,7 +57,7 @@ def main(config_filename, output_filename, pdb_filename=None):
   # construct dataframe
   points = []
   for target, aids in targets.iteritems():
-    points.append({'target': target, 'aids': aids, 'pdb': pdb.get(target)})
+    points.append({'target': target, 'aids': aids, 'pdbs': pdb.get(target)})
   df = pd.DataFrame(points)
   write_pickle(df, output_filename)
 
