@@ -6,7 +6,7 @@ input_filename=''
 add_atoms='hydrogen'
 keep_heterogens='none'
 pH='7.4'
-while getopts 'hi:akp' flag
+while getopts 'hi:a:k:p:' flag
 do
   case "${flag}" in
     h) echo "usage: vina_prep.sh -i input_filename"
@@ -46,11 +46,10 @@ pdbfixer ${input_filename} \
     --ph=${pH} \
     --output=${fixed_filename}
 
-# create PDBQT with obabel
-opts='-xr'
+# create PDBQT with obabel (-xr treats the molecule as rigid)
 output_basename=$(basename ${input_filename} | sed 's/\..*$//g')
-echo obabel ${input_filename} -O ${output_basename}.pdbqt ${opts}
-obabel -i pdb ${fixed_filename} -O ${output_basename}.pdbqt ${opts}
+echo obabel ${input_filename} -O ${output_basename}.pdbqt -xr
+obabel -i pdb ${fixed_filename} -O ${output_basename}.pdbqt -xr
 
 # cleanup
-#rm ${fixed_filename}
+rm ${fixed_filename}
