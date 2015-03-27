@@ -35,6 +35,11 @@ fi
 
 # process PDB with pdbfixer
 fixed_filename=$(mktemp)
+echo pdbfixer ${input_filename} \
+    --add-atoms=${add_atoms} \
+    --keep-heterogens=${keep_heterogens} \
+    --ph=${pH} \
+    --output=${fixed_filename}
 pdbfixer ${input_filename} \
     --add-atoms=${add_atoms} \
     --keep-heterogens=${keep_heterogens} \
@@ -43,9 +48,9 @@ pdbfixer ${input_filename} \
 
 # create PDBQT with obabel
 opts='-xr'
-output_basename=$(basename ${fixed_filename} | sed 's/\..*$//g')
+output_basename=$(basename ${input_filename} | sed 's/\..*$//g')
 echo obabel ${input_filename} -O ${output_basename}.pdbqt ${opts}
-obabel ${input_filename} -O ${output_basename}.pdbqt ${opts}
+obabel -i pdb ${fixed_filename} -O ${output_basename}.pdbqt ${opts}
 
 # cleanup
-rm ${fixed_filename}
+#rm ${fixed_filename}
