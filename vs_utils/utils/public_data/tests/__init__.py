@@ -1,13 +1,48 @@
 """
 Tests for public_data.
 """
+import gzip
 import os
+import pandas as pd
 import tempfile
 import unittest
 import csv
 
 from vs_utils.utils.public_data import (PcbaDataExtractor, PcbaJsonParser,
-                                        PcbaPandasHandler)
+                                        PcbaPandasHandler, read_json,
+                                        read_sid_cid_map)
+
+
+def test_read_json():
+  """
+  Test read_json.
+  """
+  data = read_json(os.path.join(os.path.split(os.path.realpath(__file__))[0],
+                                'data/aid490.json'))
+  assert data['PC_AssaySubmit']['assay']['descr']['aid']['id'] == 490
+  data = read_json(os.path.join(os.path.split(os.path.realpath(__file__))[0],
+                                'data/aid490.json.gz'))
+  assert data['PC_AssaySubmit']['assay']['descr']['aid']['id'] == 490
+
+
+def test_read_sid_cid_map():
+  """
+  Test read_sid_cid_map.
+  """
+  f, filename = tempfile.mkstemp(suffix='.txt')
+  os.close(f)
+  g, gilename = tempfile.mkstemp(suffix='.txt.gz')
+  os.close(g)
+  try:
+    with open(filename, 'wb') as f:
+      f.write('123456\t7890\n')
+    with gzip.open(gilename, 'wb') as g:
+      g.write('123456\t7890\n')
+    assert read_sid_cid_map(filename) == {123456: 7890}
+    assert read_sid_cid_map(gilename) == {123456: 7890}
+  finally:
+    os.remove(filename)
+    os.remove(gilename)
 
 
 class TestPcbaJsonParser(unittest.TestCase):
@@ -286,6 +321,13 @@ class TestPcbaDataExtractor(unittest.TestCase):
     config = {'target': '1296534', 'r2': 'Fit_R2', 'phenotype': 'in'}
     engine = PcbaDataExtractor(self.aid998, config, with_aid=True)
 
+    # check SID->CID mapping
+    data = engine.get_data()
+    assert 'cid' not in data.columns
+    data = engine.get_data(sid_cid={11110959: 1730})
+    assert data[data['sid'] == 11110959].iloc[0]['cid'] == 1730
+    assert pd.isnull(data[data['sid'] == 11111313].iloc[0]['cid'])
+
     # check lowercase
     data = engine.get_data(lower=True)
     assert data[data['sid'] == 11110959].iloc[0]['phenotype'] == 'inhibitor'
@@ -303,13 +345,13 @@ class TestPcbaDataExtractor(unittest.TestCase):
 
     # without common fields
     engine = PcbaDataExtractor(self.aid540325, config, with_aid=True)
-    assert engine.config['target'] == 'gi1296534'
+    assert engine.config['target'] == 'gi_1296534'
     assert 'phenotype' not in engine.config
     assert engine.phenotype == 'inhibitor'
 
     # with common fields
     engine = PcbaDataExtractor(self.aid998, config, with_aid=True)
-    assert engine.config['target'] == 'gi1296534'
+    assert engine.config['target'] == 'gi_1296534'
     assert 'phenotype' in engine.config
     assert engine.config['phenotype'] == 'Phenotype'
     assert engine.config['potency'] == 'Potency'

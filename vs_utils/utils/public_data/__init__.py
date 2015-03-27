@@ -2,10 +2,57 @@
 Utilities for public_data.
 """
 import gzip
-import json
+try:
+  import ujson as json
+except ImportError:
+  import json
 import numpy as np
 import pandas as pd
 import warnings
+
+
+def read_json(filename):
+  """
+  Read a JSON file.
+
+  Parameters
+  ----------
+  filename : str
+    Filename. Must be of type .json or .json.gz.
+  """
+  if filename.endswith('json.gz'):
+    with gzip.open(filename) as f:
+      tree = json.load(f)
+  elif filename.endswith('.json'):
+    with open(filename) as f:
+      tree = json.load(f)
+  else:
+    raise ValueError('Filename must be of type .json or .json.gz.')
+  return tree
+
+
+def read_sid_cid_map(filename):
+  """
+  Read SID->CID map.
+
+  Parameters
+  ----------
+  filename : str
+    SID->CID map.
+  """
+  if filename.endswith('.gz'):
+    f = gzip.open(filename)
+  else:
+    f = open(filename)
+  try:
+    sid_cid = {}
+    for line in f:
+      sid, cid = line.split()
+      assert int(sid) not in sid_cid
+      sid_cid[int(sid)] = int(cid)
+    return sid_cid
+  finally:
+    f.close()
 
 
 class PcbaJsonParser(object):
@@ -18,14 +65,8 @@ class PcbaJsonParser(object):
       Filename.
   """
   def __init__(self, filename):
-    if filename.endswith(".gz"):
-      with gzip.open(filename) as f:
-        self.tree = json.load(f)
-    elif filename.endswith(".json"):
-      with open(filename) as f:
-        self.tree = json.load(f)
-    else:
-      raise ValueError("filename must be of type .json or .json.gz!")
+    self.tree = read_json(filename)
+    self.data = None
 
     # move in to the assay description
     try:
@@ -157,6 +198,8 @@ class PcbaJsonParser(object):
     """
     Get assay data in a Pandas dataframe.
     """
+    if self.data is not None:
+      return self.data
     try:
       data = self.tree['PC_AssaySubmit']['data']
     except KeyError:
@@ -179,6 +222,7 @@ class PcbaJsonParser(object):
       series.append(point)
     df = pd.DataFrame(series)
     assert len(df) == len(data)
+    self.data = df
     return df
 
   def get_selected_data(self, column_mapping, with_aid=False, phenotype=None):
@@ -304,7 +348,7 @@ class PcbaDataExtractor(object):
     self.phenotype = None  # default phenotype for this assay
     self._check_config()  # check configuration
 
-  def get_data(self, lower=True):
+  def get_data(self, lower=True, sid_cid=None):
     """
     Get selected data from the assay.
 
@@ -312,13 +356,22 @@ class PcbaDataExtractor(object):
     ----------
     lower : bool, optional (default True)
       Lowercase string fields for consistency.
+    sid_cid : dict, optional
+      SID->CID mapping. If provided, adds a 'cid' column to the dataframe.
     """
     data = self.parser.get_selected_data(self.config, with_aid=self.with_aid,
                                          phenotype=self.phenotype)
+
+    # map SIDs to CIDs
+    if sid_cid is not None:
+      cids = [sid_cid.get(sid) for sid in data['sid'].values]
+      data.loc[:, 'cid'] = pd.Series(cids, index=data.index)
+
+    # lowercase string fields for consistency
     if lower:
       for col, dtype in data.dtypes.iteritems():
         if dtype == np.dtype('object'):
-          data[col] = data[col].str.lower()
+          data.loc[:, col] = data[col].str.lower()
     return data
 
   def _check_config(self):
@@ -327,6 +380,11 @@ class PcbaDataExtractor(object):
     """
     # make a copy of the config
     config = self.config.copy()
+
+    # remove null columns
+    for key, value in config.iteritems():
+      if pd.isnull(value):
+        del config[key]
 
     # check for some common column names
     columns = self.parser.get_result_names()
@@ -342,16 +400,17 @@ class PcbaDataExtractor(object):
     if 'target' in config:
       try:
         int(config['target'])
-        config['target'] = 'gi{}'.format(config['target'])
+        config['target'] = 'gi_{}'.format(config['target'])
       except ValueError:
         pass
 
     # phenotype handling
     # either a column name or a default annotation
     phenotypes = {'in': 'inhibitor', 'ac': 'activator', 'ag': 'activator',
-                  'an': 'inhibitor', 'ia': 'inhibitor'}
-    phenotype = config.get('phenotype', None)
-    if phenotype and phenotype not in self.parser.get_result_names():
+                  'an': 'inhibitor', 'ia': 'inhibitor', 'pam': 'PAM',
+                  'nam': 'NAM', '?': None}
+    phenotype = config.get('phenotype')
+    if phenotype and phenotype not in columns:
       del config['phenotype']  # remove from column mapping
       if phenotype in phenotypes.iterkeys():
         phenotype = phenotypes[phenotype]  # map to full name
