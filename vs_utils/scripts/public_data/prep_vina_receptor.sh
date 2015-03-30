@@ -48,7 +48,7 @@ pdbfixer ${input_filename} \
 
 # create PDBQT with obabel (-xr treats the molecule as rigid)
 output_basename=$(basename ${input_filename} | sed 's/\..*$//g')
-echo obabel ${input_filename} -O ${output_basename}.pdbqt -xr
+echo obabel -i pdb ${fixed_filename} -O ${output_basename}.pdbqt -xr
 obabel -i pdb ${fixed_filename} -O ${output_basename}.pdbqt -xr
 
 # cleanup
