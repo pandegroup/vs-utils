@@ -3,7 +3,7 @@
 # Prepare receptors for AutoDock Vina.
 ######################################
 input_filename=''
-add_atoms='hydrogen'
+add_atoms='all'
 keep_heterogens='none'
 pH='7.4'
 while getopts 'hi:a:k:p:' flag
@@ -12,7 +12,7 @@ do
     h) echo "usage: vina_prep.sh -i input_filename"
        echo ""
        echo "options:"
-       echo "-a     atoms to add [default: hydrogen]"
+       echo "-a     atoms to add [default: all]"
        echo "-k     heterogens to keep [default: none]"
        echo "-p     pH of added hydrogens [default: 7.4]"
        echo ""
