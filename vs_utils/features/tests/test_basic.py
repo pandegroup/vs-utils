@@ -10,41 +10,41 @@ from vs_utils.features.basic import MolecularWeight, SimpleDescriptors
 
 
 class TestMolecularWeight(unittest.TestCase):
+  """
+  Test MolecularWeight.
+  """
+  def setUp(self):
     """
-    Test MolecularWeight.
+    Set up tests.
     """
-    def setUp(self):
-        """
-        Set up tests.
-        """
-        smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
-        self.mol = Chem.MolFromSmiles(smiles)
-        self.engine = MolecularWeight()
+    smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
+    self.mol = Chem.MolFromSmiles(smiles)
+    self.engine = MolecularWeight()
 
-    def test_mw(self):
-        """
-        Test MW.
-        """
-        assert np.allclose(self.engine([self.mol]), 180, atol=0.1)
+  def testMW(self):
+    """
+    Test MW.
+    """
+    assert np.allclose(self.engine([self.mol]), 180, atol=0.1)
 
 
 class TestSimpleDescriptors(unittest.TestCase):
+  """
+  Test SimpleDescriptors.
+  """
+  def setUp(self):
     """
-    Test SimpleDescriptors.
+    Set up tests.
     """
-    def setUp(self):
-        """
-        Set up tests.
-        """
-        smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
-        self.mol = Chem.MolFromSmiles(smiles)
-        self.engine = SimpleDescriptors()
+    smiles = 'CC(=O)OC1=CC=CC=C1C(=O)O'
+    self.mol = Chem.MolFromSmiles(smiles)
+    self.engine = SimpleDescriptors()
 
-    def test_simple_descriptors(self):
-        """
-        Test simple descriptors.
-        """
-        descriptors = self.engine([self.mol])
-        assert np.allclose(
-            descriptors[0, self.engine.descriptors.index('ExactMolWt')], 180,
-            atol=0.1)
+  def testSimpleDescriptors(self):
+    """
+    Test simple descriptors.
+    """
+    descriptors = self.engine([self.mol])
+    assert np.allclose(
+      descriptors[0, self.engine.descriptors.index('ExactMolWt')], 180,
+      atol=0.1)
