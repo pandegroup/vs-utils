@@ -35,6 +35,7 @@ class point:
     self.y = y
     self.z = z
 
+  # TODO(bramsundar): Should this be __copy__
   def copy_of(self):
     return point(self.x, self.y, self.z)
 
@@ -85,8 +86,12 @@ class atom:
     self.atomtype=""
     self.IndicesOfAtomsConnecting=[]
     self.charge = 0
+    # TODO(bramsundar): resid is a numeric field while residue is a
+    # length-3 string. Is there a canonical ordering of the residues?
     self.resid = 0
     self.chain = ""
+    # TODO(bramsundar): Nothing in this class uses structure. Is it ok
+    # to take out, or is it used elsewhere?
     self.structure = ""
     self.comment = ""
 
@@ -217,114 +222,138 @@ class atom:
 
 ## TODO(bramsundar): Uncomment this class once tests are written for
 ## classes above.
-#class PDB:
-#
-#  def __init__ (self):
-#    self.AllAtoms={}
-#    self.NonProteinAtoms = {}
-#    self.max_x = -9999.99
-#    self.min_x = 9999.99
-#    self.max_y = -9999.99
-#    self.min_y = 9999.99
-#    self.max_z = -9999.99
-#    self.min_z = 9999.99
-#    self.rotateable_bonds_count = 0
-#    self.functions = MathFunctions()
-#    self.protein_resnames = ["ALA", "ARG", "ASN", "ASP", "ASH", "ASX",
-#      "CYS", "CYM", "CYX", "GLN", "GLU", "GLH", "GLX", "GLY", "HIS",
-#      "HID", "HIE", "HIP", "ILE", "LEU", "LYS", "LYN", "MET", "PHE",
-#      "PRO", "SER", "THR", "TRP", "TYR", "VAL"]
-#    self.aromatic_rings = []
-#    self.charges = [] # a list of points
-#    self.OrigFileName = ""
-#
-#  def LoadPDB_from_file(self, FileName, line_header=""):
-#
-#    self.line_header=line_header
-#
-#    # Now load the file into a list
-#    file = open(FileName,"r")
-#    lines = file.readlines()
-#    file.close()
-#    self.LoadPDB_from_list(lines, self.line_header)
-#
-#  def LoadPDB_from_list(self, lines, line_header=""):
-#
-#    self.line_header=line_header
-#    autoindex = 1
-#    self.__init__()
-#    # going to keep track of atomname_resid_chain pairs, to make sure
-#    # redundants aren't loaded.  This basically gets rid of rotomers,
-#    # I think.
-#    atom_already_loaded = []
-#
-#    for t in range(0,len(lines)):
-#      line=lines[t]
-#
-#      if "between atoms" in line and " A " in line:
-#        self.rotateable_bonds_count = self.rotateable_bonds_count + 1
-#
-#      if len(line) >= 7:
-#        # Load atom data (coordinates, etc.)
-#        if line[0:4]=="ATOM" or line[0:6]=="HETATM":
-#          TempAtom = atom()
-#          TempAtom.ReadPDBLine(line)
-#
-#          # this string unique identifies each atom
-#          key = (TempAtom.atomname.strip() + "_" +
-#            str(TempAtom.resid) + "_" + TempAtom.residue.strip() +
-#            "_" + TempAtom.chain.strip())
-#          # so this is a receptor atom that has already been loaded once
-#          if (key in atom_already_loaded and
-#            TempAtom.residue.strip() in self.protein_resnames):
-#            print (self.line_header + "WARNING: Duplicate receptor atom detected: \""
-#             + TempAtom.line.strip()+ "\". Not loading this duplicate."
-#
-#          # so either the atom hasn't been loaded, or else it's a non-receptor
-#          # atom so note that non-receptor atoms can have redundant names, but
-#          # receptor atoms cannot.  This is because protein residues often
-#          # contain rotamers
-#          if (not key in atom_already_loaded or not
-#            TempAtom.residue.strip() in self.protein_resnames):
-#            # so each atom can only be loaded once. No rotamers.
-#            atom_already_loaded.append(key)
-#            # So you're actually reindexing everything here.
-#            self.AllAtoms[autoindex] = TempAtom
-#            if (not TempAtom.residue[-3:] in self.protein_resnames):
-#              self.NonProteinAtoms[autoindex] = TempAtom
-#
-#            autoindex = autoindex + 1
-#
-#    self.CheckProteinFormat()
-#    # only for the ligand, because bonds can be inferred based on
-#    # atomnames from PDB
-#    self.CreateBondsByDistance()
-#      self.assign_aromatic_rings()
-#      self.assign_charges()
-#
+# TODO(bramsundar): Other packages (mdtraj in particular) already
+# implement PDB handling. Can this class be reconstructed as a thin
+# wrapper around MDTraj or RDKit PDB handling?
+class PDB:
+  """
+  PDB file handler class.
+
+  TODO(bramsundar): Add a a short summary of actual PDB handling
+  methodology here.
+  """
+
+  def __init__(self):
+    self.AllAtoms={}
+    self.NonProteinAtoms = {}
+    self.max_x = -9999.99
+    self.min_x = 9999.99
+    self.max_y = -9999.99
+    self.min_y = 9999.99
+    self.max_z = -9999.99
+    self.min_z = 9999.99
+    self.rotateable_bonds_count = 0
+    self.functions = MathFunctions()
+    self.protein_resnames = ["ALA", "ARG", "ASN", "ASP", "ASH", "ASX",
+      "CYS", "CYM", "CYX", "GLN", "GLU", "GLH", "GLX", "GLY", "HIS",
+      "HID", "HIE", "HIP", "ILE", "LEU", "LYS", "LYN", "MET", "PHE",
+      "PRO", "SER", "THR", "TRP", "TYR", "VAL"]
+    self.aromatic_rings = []
+    self.charges = [] # a list of points
+    self.OrigFileName = ""
+
+  def LoadPDB_from_file(self, FileName, line_header=""):
+    """
+    Sets fields of self by reading PDB file at path FileName.
+    """
+
+    self.line_header=line_header
+
+    # Now load the file into a list
+    file = open(FileName,"r")
+    lines = file.readlines()
+    file.close()
+    self.LoadPDB_from_list(lines, self.line_header)
+
+  def LoadPDB_from_list(self, lines, line_header=""):
+    """
+    Given a PDB file as a list of lines, loads fields into self.
+
+    TODO(bramsundar): Should this be a private method?
+    """
+
+    self.line_header=line_header
+    autoindex = 1
+    self.__init__()
+    # going to keep track of atomname_resid_chain pairs, to make sure
+    # redundants aren't loaded.  This basically gets rid of rotomers,
+    # I think.
+    atom_already_loaded = []
+
+    for t in range(0, len(lines)):
+      line=lines[t]
+
+      if "between atoms" in line and " A " in line:
+        self.rotateable_bonds_count = self.rotateable_bonds_count + 1
+
+      if len(line) >= 7:
+        # Load atom data (coordinates, etc.)
+        if line[0:4]=="ATOM" or line[0:6]=="HETATM":
+          TempAtom = atom()
+          TempAtom.ReadPDBLine(line)
+
+          # this string unique identifies each atom
+          key = (TempAtom.atomname.strip() + "_" +
+            str(TempAtom.resid) + "_" + TempAtom.residue.strip() +
+            "_" + TempAtom.chain.strip())
+          # so this is a receptor atom that has already been loaded once
+          if (key in atom_already_loaded and TempAtom.residue.strip() in self.protein_resnames):
+            print (self.line_header + "WARNING: Duplicate receptor atom detected: \""
+               + TempAtom.line.strip() + "\". Not loading this
+               duplicate.")
+
+          # so either the atom hasn't been loaded, or else it's a non-receptor
+          # atom so note that non-receptor atoms can have redundant names, but
+          # receptor atoms cannot.  This is because protein residues often
+          # contain rotamers
+          if (not key in atom_already_loaded or not TempAtom.residue.strip() in self.protein_resnames):
+            # so each atom can only be loaded once. No rotamers.
+            atom_already_loaded.append(key)
+            # So you're actually reindexing everything here.
+            self.AllAtoms[autoindex] = TempAtom
+            if (not TempAtom.residue[-3:] in self.protein_resnames):
+              self.NonProteinAtoms[autoindex] = TempAtom
+
+            autoindex = autoindex + 1
+
+    self.CheckProteinFormat()
+    # only for the ligand, because bonds can be inferred based on
+    # atomnames from PDB
+    self.CreateBondsByDistance()
+      self.assign_aromatic_rings()
+      self.assign_charges()
+
 #    def printout(self, thestring):
 #      lines = textwrap.wrap(thestring, 80)
 #      for line in lines:
 #        print line
-#
-#    def SavePDB(self, filename):
-#      f = open(filename, 'w')
-#      towrite = self.SavePDBString()
-#      # just so no PDB is empty, VMD will load them all
-#      if towrite.strip() == "":
-#        towrite = "ATOM      1  X   XXX             0.000   0.000   0.000                       X"
-#      f.write(towrite)
-#      f.close()
-#
-#    def SavePDBString(self):
-#
-#      ToOutput = ""
-#
-#      # write coordinates
-#      for atomindex in self.AllAtoms:
-#        ToOutput = ToOutput + self.AllAtoms[atomindex].CreatePDBLine(atomindex) + "\n"
-#
-#      return ToOutput
+
+  def SavePDB(self, filename):
+    """
+    Writes a PDB file version of self to filename.
+    
+    Parameters
+    ----------
+    filename: string
+      path to desired PDB file output.
+    """
+    f = open(filename, 'w')
+    towrite = self.SavePDBString()
+    # just so no PDB is empty, VMD will load them all
+    if towrite.strip() == "":
+      towrite = "ATOM      1  X   XXX             0.000   0.000   0.000                       X"
+    f.write(towrite)
+    f.close()
+
+  def SavePDBString(self):
+    """
+    Generates a PDB string version of self. Used by SavePDB.
+    """
+    ToOutput = ""
+    # write coordinates
+    for atomindex in self.AllAtoms:
+      ToOutput = ToOutput + self.AllAtoms[atomindex].CreatePDBLine(atomindex) + "\n"
+    return ToOutput
 #
 #    def AddNewAtom(self, atom):
 #
@@ -1648,3 +1677,93 @@ class atom:
 #        atom = self.AllAtoms[atom_index]
 #        if atom.chain == chain and atom.resid == resid:
 #          atom.structure = structure
+
+# TODO(bramsundar): Rework this to use numpy instead of custom
+# implementations.
+class MathFunctions:
+  
+  pass
+#  def vector_subtraction(self, vector1, vector2): # vector1 - vector2
+#    return point(vector1.x - vector2.x, vector1.y - vector2.y, vector1.z - vector2.z)
+#  
+#  def CrossProduct(self, Pt1, Pt2): # never tested
+#    Response = point(0,0,0)
+#  
+#    Response.x = Pt1.y * Pt2.z - Pt1.z * Pt2.y
+#    Response.y = Pt1.z * Pt2.x - Pt1.x * Pt2.z
+#    Response.z = Pt1.x * Pt2.y - Pt1.y * Pt2.x
+#  
+#    return Response;
+#  
+#  def vector_scalar_multiply(self, vector, scalar):
+#    return point(vector.x * scalar, vector.y * scalar, vector.z * scalar)
+#  
+#  def dot_product(self, point1, point2):
+#    return point1.x * point2.x + point1.y * point2.y + point1.z * point2.z
+#  
+#  def dihedral(self, point1, point2, point3, point4): # never tested
+#  
+#    b1 = self.vector_subtraction(point2, point1)
+#    b2 = self.vector_subtraction(point3, point2)
+#    b3 = self.vector_subtraction(point4, point3)
+#  
+#    b2Xb3 = self.CrossProduct(b2,b3)
+#    b1Xb2 = self.CrossProduct(b1,b2)
+#  
+#    b1XMagb2 = self.vector_scalar_multiply(b1,b2.Magnitude())
+#    radians = math.atan2(self.dot_product(b1XMagb2,b2Xb3), self.dot_product(b1Xb2,b2Xb3))
+#    return radians
+#  
+#  def angle_between_three_points(self, point1, point2, point3): # As in three connected atoms
+#    vector1 = self.vector_subtraction(point1, point2)
+#    vector2 = self.vector_subtraction(point3, point2)
+#    return self.angle_between_points(vector1, vector2)
+#  
+#  def angle_between_points(self, point1, point2):
+#    new_point1 = self.return_normalized_vector(point1)
+#    new_point2 = self.return_normalized_vector(point2)
+#    dot_prod = self.dot_product(new_point1, new_point2)
+#    if dot_prod > 1.0: dot_prod = 1.0 # to prevent errors that can rarely occur
+#    if dot_prod < -1.0: dot_prod = -1.0
+#    return math.acos(dot_prod)
+#  
+#  def return_normalized_vector(self, vector):
+#    dist = self.distance(point(0,0,0), vector)
+#    return point(vector.x/dist, vector.y/dist, vector.z/dist)
+#  
+#  def distance(self, point1, point2):
+#    deltax = point1.x - point2.x
+#    deltay = point1.y - point2.y
+#    deltaz = point1.z - point2.z
+#  
+#    return math.sqrt(math.pow(deltax,2) + math.pow(deltay,2) + math.pow(deltaz,2))
+#      
+#  def project_point_onto_plane(self, apoint, plane_coefficients): 
+#    # essentially finds the point on the plane that is closest to the
+#    # specified point the plane_coefficients are [a,b,c,d], where the
+#    # plane is ax + by + cz = d
+#
+#    # First, define a plane using cooeficients a, b, c, d such that ax + by + cz = d
+#    a = plane_coefficients[0]
+#    b = plane_coefficients[1]
+#    c = plane_coefficients[2]
+#    d = plane_coefficients[3]
+#    
+#    # Now, define a point in space (s,u,v)
+#    s = apoint.x
+#    u = apoint.y
+#    v = apoint.z
+#    
+#    # the formula of a line perpendicular to the plan passing through (s,u,v) is:
+#    #x = s + at
+#    #y = u + bt
+#    #z = v + ct
+#    
+#    t = (d - a*s - b*u - c*v) / (a*a + b*b + c*c)
+#    
+#    # here's the point closest on the plane
+#    x = s + a*t
+#    y = u + b*t
+#    z = v + c*t
+#    
+#    return point(x,y,z)
