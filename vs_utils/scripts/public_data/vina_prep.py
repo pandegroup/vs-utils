@@ -41,7 +41,7 @@ def main(input_filename, receptor=False, split=False):
     os.close(f)
     try:
       pdbfixer_args = ['pdbfixer', input_filename, '--keep-heterogens=none',
-                       '--ph=7.4', '--add-atoms=hydrogen',
+                       '--ph=7.4', '--add-atoms=all',
                        '--output={}'.format(fixed_filename)]
       subprocess.check_call(pdbfixer_args)
       obabel_args = ['obabel', fixed_filename, '-O', output_filename, '-xr']
