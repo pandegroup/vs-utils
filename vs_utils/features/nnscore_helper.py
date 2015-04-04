@@ -297,10 +297,11 @@ class PDB:
             str(TempAtom.resid) + "_" + TempAtom.residue.strip() +
             "_" + TempAtom.chain.strip())
           # so this is a receptor atom that has already been loaded once
-          if (key in atom_already_loaded and TempAtom.residue.strip() in self.protein_resnames):
-            print (self.line_header + "WARNING: Duplicate receptor atom detected: \""
-               + TempAtom.line.strip() + "\". Not loading this
-               duplicate.")
+          if (key in atom_already_loaded 
+            and TempAtom.residue.strip() in self.protein_resnames):
+            print (self.line_header 
+                + "WARNING: Duplicate receptor atom detected: \""
+                + TempAtom.line.strip() + "\". Not loading this duplicate.")
 
           # so either the atom hasn't been loaded, or else it's a non-receptor
           # atom so note that non-receptor atoms can have redundant names, but
@@ -320,8 +321,8 @@ class PDB:
     # only for the ligand, because bonds can be inferred based on
     # atomnames from PDB
     self.CreateBondsByDistance()
-      self.assign_aromatic_rings()
-      self.assign_charges()
+    self.assign_aromatic_rings()
+    self.assign_charges()
 
 #    def printout(self, thestring):
 #      lines = textwrap.wrap(thestring, 80)
@@ -354,17 +355,24 @@ class PDB:
     for atomindex in self.AllAtoms:
       ToOutput = ToOutput + self.AllAtoms[atomindex].CreatePDBLine(atomindex) + "\n"
     return ToOutput
-#
-#    def AddNewAtom(self, atom):
-#
-#      # first get available index
-#      t = 1
-#      while t in self.AllAtoms.keys():
-#        t = t + 1
-#
-#      # now add atom
-#      self.AllAtoms[t] = atom
-#
+
+  def AddNewAtom(self, atom):
+    """
+    Adds an extra atom to this PDB.
+
+    Parameters
+    ----------
+    atom: object of atom class
+      Will be added to self.
+    """
+    # first get available index
+    t = 1
+    while t in self.AllAtoms.keys():
+      t = t + 1
+
+    # now add atom
+    self.AllAtoms[t] = atom
+
 #    def connected_atoms_of_given_element(self, index, connected_atom_element):
 #      atom = self.AllAtoms[index]
 #      connected_atoms = []

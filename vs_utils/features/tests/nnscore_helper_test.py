@@ -138,9 +138,19 @@ class TestPDB(unittest.TestCase):
     """
     self.pdb.SavePDB(self.pdb_filename) 
     empty_pdb = PDB()
-    with file.open(self.pdb_filename) as pdb_file:
+    with open(self.pdb_filename) as pdb_file:
       for line in pdb_file:
         print line
     empty_pdb.LoadPDB_from_file(self.pdb_filename)
-    
+
+  def testAddNewAtom(self):
+    """
+    TestPDB: Verifies that new atoms can be added.
+    """
+    # Verify that no atoms are present when we start.
+    assert len(self.pdb.AllAtoms.keys()) == 0
+    empty_atom = atom()
+    self.pdb.AddNewAtom(empty_atom)
+    # Verify that we now have one atom
+    assert len(self.pdb.AllAtoms.keys()) == 1
 
