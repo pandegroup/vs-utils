@@ -76,24 +76,26 @@ class atom:
   TODO(bramsundar): Ligand or Protein atom?
   """
 
-  def __init__ (self):
-    self.atomname = ""
-    self.residue = ""
-    self.coordinates = point(99999, 99999, 99999)
-    self.element = ""
-    self.PDBIndex = ""
-    self.line=""
-    self.atomtype=""
-    self.IndicesOfAtomsConnecting=[]
-    self.charge = 0
+  def __init__ (self, atomname="", residue="", 
+                coordinates=point(99999, 99999, 99999), element="",
+                PDBIndex="", line="", atomtype="",
+                IndicesOfAtomsConnecting=[], charge=0, resid=0,
+                chain="", structure="", comment=""):
+    self.atomname = atomname 
+    self.residue = residue 
+    self.coordinates = coordinates 
+    self.element = element 
+    self.PDBIndex = PDBIndex 
+    self.line = line 
+    self.atomtype = atomtype 
+    self.IndicesOfAtomsConnecting = IndicesOfAtomsConnecting
+    self.charge = charge 
     # TODO(bramsundar): resid is a numeric field while residue is a
     # length-3 string. Is there a canonical ordering of the residues?
-    self.resid = 0
-    self.chain = ""
-    # TODO(bramsundar): Nothing in this class uses structure. Is it ok
-    # to take out, or is it used elsewhere?
-    self.structure = ""
-    self.comment = ""
+    self.resid = resid 
+    self.chain = chain 
+    self.structure = structure 
+    self.comment = comment 
 
   def copy_of(self):
     theatom = atom()
@@ -373,19 +375,29 @@ class PDB:
     # now add atom
     self.AllAtoms[t] = atom
 
-#    def connected_atoms_of_given_element(self, index, connected_atom_element):
-#      atom = self.AllAtoms[index]
-#      connected_atoms = []
-#      for index2 in atom.IndeciesOfAtomsConnecting:
-#        atom2 = self.AllAtoms[index2]
-#        if atom2.element == connected_atom_element:
-#          connected_atoms.append(index2)
-#      return connected_atoms
-#
+  def ConnectedAtomsOfGivenElement(self, index, con_element):
+    """
+    Returns all neighbors of atom at index with element con_element. 
+
+    Parameters
+    ----------
+    index: integer 
+      Index of base atom.
+    con_element: string
+      Name of desired element.
+    """
+    atom = self.AllAtoms[index]
+    connected_atoms = []
+    for con_index in atom.IndicesOfAtomsConnecting:
+      con_atom = self.AllAtoms[con_index]
+      if con_atom.element == con_element:
+        connected_atoms.append(con_index)
+    return connected_atoms
+
 #    def connected_heavy_atoms(self, index):
 #      atom = self.AllAtoms[index]
 #      connected_atoms = []
-#      for index2 in atom.IndeciesOfAtomsConnecting:
+#      for index2 in atom.IndicesOfAtomsConnecting:
 #        atom2 = self.AllAtoms[index2]
 #        if atom2.element != "H": connected_atoms.append(index2)
 #      return connected_atoms
@@ -736,7 +748,7 @@ class PDB:
 #            # a quartinary amine, so it's easy
 #            if atom.NumberOfNeighbors() == 4:
 #              indexes = [atom_index]
-#              indexes.extend(atom.IndeciesOfAtomsConnecting)
+#              indexes.extend(atom.IndicesOfAtomsConnecting)
 #              # so the indicies stored is just the index of the nitrogen and any attached atoms
 #              chrg = self.charged(atom.coordinates, indexes, True)
 #              self.charges.append(chrg)
@@ -745,9 +757,9 @@ class PDB:
 #            # charge would be stabalized.
 #            elif atom.NumberOfNeighbors() == 3:
 #              nitrogen = atom
-#              atom1 = self.AllAtoms[atom.IndeciesOfAtomsConnecting[0]]
-#              atom2 = self.AllAtoms[atom.IndeciesOfAtomsConnecting[1]]
-#              atom3 = self.AllAtoms[atom.IndeciesOfAtomsConnecting[2]]
+#              atom1 = self.AllAtoms[atom.IndicesOfAtomsConnecting[0]]
+#              atom2 = self.AllAtoms[atom.IndicesOfAtomsConnecting[1]]
+#              atom3 = self.AllAtoms[atom.IndicesOfAtomsConnecting[2]]
 #              angle1 = (self.functions.angle_between_three_points(atom1.coordinates,
 #                nitrogen.coordinates, atom2.coordinates) * 180.0 /
 #                math.pi)
@@ -760,7 +772,7 @@ class PDB:
 #              average_angle = (angle1 + angle2 + angle3) / 3
 #              if math.fabs(average_angle - 109.0) < 5.0:
 #                indexes = [atom_index]
-#                indexes.extend(atom.IndeciesOfAtomsConnecting)
+#                indexes.extend(atom.IndicesOfAtomsConnecting)
 #                # so indexes added are the nitrogen and any attached atoms.
 #                chrg = self.charged(nitrogen.coordinates, indexes, True)
 #                self.charges.append(chrg)
@@ -770,14 +782,14 @@ class PDB:
 #          if atom.element == "C":
 #            # the carbon has only three atoms connected to it
 #            if atom.NumberOfNeighbors() == 3:
-#              nitrogens = self.connected_atoms_of_given_element(atom_index,"N")
+#              nitrogens = self.ConnectedAtomsOfGivenElement(atom_index,"N")
 #              # so carbon is connected to at least two nitrogens now
 #              # we need to count the number of nitrogens that are only
 #              # connected to one heavy atom (the carbon)
 #              if len(nitrogens) >= 2:
 #
 #                nitrogens_to_use = []
-#                all_connected = atom.IndeciesOfAtomsConnecting[:]
+#                all_connected = atom.IndicesOfAtomsConnecting[:]
 #                not_isolated = -1
 #
 #                for atmindex in nitrogens:
@@ -816,8 +828,8 @@ class PDB:
 #
 #                    indexes = [atom_index]
 #                    indexes.extend(nitrogens_to_use)
-#                    indexes.extend(self.connected_atoms_of_given_element(nitrogens_to_use[0],"H"))
-#                    indexes.extend(self.connected_atoms_of_given_element(nitrogens_to_use[1],"H"))
+#                    indexes.extend(self.ConnectedAtomsOfGivenElement(nitrogens_to_use[0],"H"))
+#                    indexes.extend(self.ConnectedAtomsOfGivenElement(nitrogens_to_use[1],"H"))
 #
 #                    chrg = self.charged(pt, indexes, True) # True because it's positive
 #                    self.charges.append(chrg)
@@ -825,7 +837,7 @@ class PDB:
 #          if atom.element == "C": # let's check for a carboxylate
 #              # a carboxylate carbon will have three items connected to it.
 #              if atom.NumberOfNeighbors() == 3:
-#                oxygens = self.connected_atoms_of_given_element(atom_index,"O")
+#                oxygens = self.ConnectedAtomsOfGivenElement(atom_index,"O")
 #                # a carboxylate will have two oxygens connected to
 #                # it. Now, each of the oxygens should be connected
 #                # to only one heavy atom (so if it's connected to a
@@ -850,7 +862,7 @@ class PDB:
 #          # (the phosphorus). I think this will get several phosphorus
 #          # substances.
 #          if atom.element == "P":
-#            oxygens = self.connected_atoms_of_given_element(atom_index,"O")
+#            oxygens = self.ConnectedAtomsOfGivenElement(atom_index,"O")
 #            if len(oxygens) >=2: # the phosphorus is bound to at least two oxygens
 #              # now count the number of oxygens that are only bound to the phosphorus
 #              count = 0
@@ -866,7 +878,7 @@ class PDB:
 #          # bound to at least three oxygens and at least three are
 #          # bound to only the sulfur (or the sulfur and a hydrogen).
 #          if atom.element == "S":
-#            oxygens = self.connected_atoms_of_given_element(atom_index,"O")
+#            oxygens = self.ConnectedAtomsOfGivenElement(atom_index,"O")
 #            # the sulfur is bound to at least three oxygens now
 #            # count the number of oxygens that are only bound to the
 #            # sulfur
@@ -1202,7 +1214,7 @@ class PDB:
 #
 #          # now check the dihedral between the ring atoms and an atom
 #          # connected to the current atom to see if that's flat too.
-#          for substituent_atom_index in cur_atom.IndeciesOfAtomsConnecting:
+#          for substituent_atom_index in cur_atom.IndicesOfAtomsConnecting:
 #              pt_sub = self.NonProteinAtoms[substituent_atom_index].coordinates
 #              angle = self.functions.dihedral(pt2, pt3, pt4, pt_sub) * 180 / math.pi
 #              # 15 degress is the cutoff, ring[t], ring[t+1], ring[t+2],
@@ -1390,7 +1402,7 @@ class PDB:
 #      AllRings = []
 #
 #      atom = self.AllAtoms[index]
-#      for conneceted_atom in atom.IndeciesOfAtomsConnecting:
+#      for conneceted_atom in atom.IndicesOfAtomsConnecting:
 #        self.ring_recursive(conneceted_atom, [index], index, AllRings)
 #
 #      return AllRings
@@ -1407,7 +1419,7 @@ class PDB:
 #      temp = AlreadyCrossed[:]
 #      temp.append(index)
 #
-#      for conneceted_atom in atom.IndeciesOfAtomsConnecting:
+#      for conneceted_atom in atom.IndicesOfAtomsConnecting:
 #        if not conneceted_atom in AlreadyCrossed:
 #          self.ring_recursive(conneceted_atom, temp, orig_atom, AllRings)
 #        if conneceted_atom == orig_atom and orig_atom != AlreadyCrossed[-1]:

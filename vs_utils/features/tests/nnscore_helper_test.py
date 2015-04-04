@@ -154,3 +154,27 @@ class TestPDB(unittest.TestCase):
     # Verify that we now have one atom
     assert len(self.pdb.AllAtoms.keys()) == 1
 
+  def testConnectedAtomsOfGivenElement(self):
+    """
+    TestPDB: Verifies that connected atom retrieval works. 
+    """
+    # Verify that no atoms are present when we start.
+    assert len(self.pdb.AllAtoms.keys()) == 0
+    carbon_atom = atom(element="C")
+    oxygen_atom = atom(element="O")
+    hydrogen_atom = atom(element="H")
+
+    self.pdb.AddNewAtom(carbon_atom)
+    self.pdb.AddNewAtom(oxygen_atom)
+    self.pdb.AddNewAtom(hydrogen_atom)
+
+    # We want a carboxyl, so C connects O and H
+    carbon_atom.IndicesOfAtomsConnecting = [2,3]
+    oxygen_atom.IndicesOfAtomsConnecting = [1]
+    hydrogen_atom.IndicesOfAtomsConnecting = [1]
+
+    connected_oxygens = self.pdb.ConnectedAtomsOfGivenElement(1, "O")
+    assert len(connected_oxygens) == 1
+
+    connected_hydrogens = self.pdb.ConnectedAtomsOfGivenElement(1, "H")
+    assert len(connected_hydrogens) == 1
