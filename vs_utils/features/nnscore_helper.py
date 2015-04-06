@@ -271,6 +271,26 @@ class atom:
     self.chain = Line[21:22]
     if self.residue.strip() == "": self.residue = " MOL"
 
+class charged():
+  """
+  A class that represeents a charged atom.
+  """
+  def __init__(self, coordinates, indices, positive):
+    """
+    Parameters
+    ----------
+    coordinates: point
+      Coordinates of atom.
+    indices: list
+      Contains boolean true or false entries for self and neighbors to
+      specify if positive or negative charge
+    positive: bool
+      Whether this atom is positive or negative. 
+    """
+    self.coordinates = coordinates
+    self.indices = indices
+    self.positive = positive
+
 ## TODO(bramsundar): Uncomment this class once tests are written for
 ## classes above.
 # TODO(bramsundar): Other packages (mdtraj in particular) already
@@ -293,7 +313,7 @@ class PDB:
     self.min_y = 9999.99
     self.max_z = -9999.99
     self.min_z = 9999.99
-    self.rotateable_bonds_count = 0
+    self.rotatable_bonds_count = 0
     self.functions = MathFunctions()
     self.protein_resnames = ["ALA", "ARG", "ASN", "ASP", "ASH", "ASX",
       "CYS", "CYM", "CYX", "GLN", "GLU", "GLH", "GLX", "GLY", "HIS",
@@ -335,7 +355,7 @@ class PDB:
       line=lines[t]
 
       if "between atoms" in line and " A " in line:
-        self.rotateable_bonds_count = self.rotateable_bonds_count + 1
+        self.rotatable_bonds_count = self.rotatable_bonds_count + 1
 
       if len(line) >= 7:
         # Load atom data (coordinates, etc.)
@@ -358,7 +378,8 @@ class PDB:
           # atom so note that non-receptor atoms can have redundant names, but
           # receptor atoms cannot.  This is because protein residues often
           # contain rotamers
-          if (not key in atom_already_loaded or not TempAtom.residue.strip() in self.protein_resnames):
+          if (not key in atom_already_loaded 
+              or not TempAtom.residue.strip() in self.protein_resnames):
             # so each atom can only be loaded once. No rotamers.
             atom_already_loaded.append(key)
             # So you're actually reindexing everything here.
@@ -373,7 +394,8 @@ class PDB:
     # atomnames from PDB
     self.CreateNonProteinAtomBondsByDistance()
     self.assign_aromatic_rings()
-    self.AssignCharges()
+    self.AssignNonProteinCharges()
+    self.AssignProteinCharges()
 
   def SavePDB(self, filename):
     """
@@ -416,6 +438,23 @@ class PDB:
 
     # now add atom
     self.AllAtoms[t] = atom
+
+  def AddNewNonProteinAtom(self, atom):
+    """
+    Adds an extra non-protein atom to this PDB.
+
+    Parameters
+    ----------
+    atom: object of atom class
+      Will be added to self.
+    """
+    # first get available index
+    t = len(self.AllAtoms.keys()) + 1
+    # now add atom
+    self.AllAtoms[t] = atom
+    # Add to non-protein list
+    self.NonProteinAtoms[t] = atom
+
 
   def ConnectedAtomsOfGivenElement(self, index, con_element):
     """
@@ -723,25 +762,21 @@ class PDB:
   # Functions to identify positive charges
   # ======================================
 
-  def AssignCharges(self):
+  def AssignNonProteinCharges(self):
     """
-    Assign positive and negative charges to atoms.
+    Assign positive and negative charges to non-protein atoms.
 
     This function handles the following cases:
 
       1) Metallic ions (assumed to be cations)
       2) Quartenary amines (such as NH4+)
+      2) sp3 hybridized nitrogen (such as pyrrolidine)
       3) Carboxylates (RCOO-)
-      4) Guanidino Groups (‒NH‒C(=NH)‒NH2)
+      4) Guanidino Groups (NHC(=NH)NH2)
       5) Phosphates (PO4(3-))
       6) Sulfonate (RSO2O-)
       7) Charged Residues (in helper function)
     """
-    # Get all the quartenary amines on non-protein residues (these are the
-    # only non-protein groups that will be identified as positively
-    # charged). Note that nitrogen has only 5 valence electrons (out of 8
-    # for a full shell), so any nitrogen with four bonds must be positively
-    # charged (think NH4+).
     AllCharged = []
     for atom_index in self.NonProteinAtoms:
       atom = self.NonProteinAtoms[atom_index]
@@ -750,20 +785,27 @@ class PDB:
           atom.element == "RH" or atom.element == "ZN" or
           atom.element == "FE" or atom.element == "BI" or
           atom.element == "AS" or atom.element == "AG"):
-        chrg = self.charged(atom.coordinates, [atom_index], True)
+        chrg = charged(atom.coordinates, [atom_index], True)
         self.charges.append(chrg)
 
+      # Get all the quartenary amines on non-protein residues (these are the
+      # only non-protein groups that will be identified as positively
+      # charged). Note that nitrogen has only 5 valence electrons (out of 8
+      # for a full shell), so any nitrogen with four bonds must be positively
+      # charged (think NH4+).
       if atom.element == "N":
         # a quartenary amine, so it's easy
         if atom.NumberOfNeighbors() == 4:
           indexes = [atom_index]
           indexes.extend(atom.IndicesOfAtomsConnecting)
           # so the indices stored is just the index of the nitrogen and any attached atoms
-          chrg = self.charged(atom.coordinates, indexes, True)
+          chrg = charged(atom.coordinates, indexes, True)
           self.charges.append(chrg)
         # maybe you only have two hydrogens added, but they're sp3 hybridized.
         # Just count this as a quartenary amine, since I think the positive
-        # charge would be stabilized.
+        # charge would be stabilized. This situation can arise with
+        # lone-pair electron nitrogen compounds like pyrrolidine
+        # (http://www.chem.ucla.edu/harding/tutorials/lone_pair.pdf)
         elif atom.NumberOfNeighbors() == 3:
           nitrogen = atom
           atom1 = self.AllAtoms[atom.IndicesOfAtomsConnecting[0]]
@@ -785,7 +827,7 @@ class PDB:
             indexes = [atom_index]
             indexes.extend(atom.IndicesOfAtomsConnecting)
             # so indexes added are the nitrogen and any attached atoms.
-            chrg = self.charged(nitrogen.coordinates, indexes, True)
+            chrg = charged(nitrogen.coordinates, indexes, True)
             self.charges.append(chrg)
 
       # let's check for guanidino-like groups (actually H2N-C-NH2,
@@ -842,7 +884,7 @@ class PDB:
                 indexes.extend(self.ConnectedAtomsOfGivenElement(nitrogens_to_use[0],"H"))
                 indexes.extend(self.ConnectedAtomsOfGivenElement(nitrogens_to_use[1],"H"))
 
-                chrg = self.charged(pt, indexes, True) # True because it's positive
+                chrg = charged(pt, indexes, True) # True because it's positive
                 self.charges.append(chrg)
 
       if atom.element == "C": # let's check for a carboxylate
@@ -864,7 +906,7 @@ class PDB:
                 pt.x = pt.x / 2.0
                 pt.y = pt.y / 2.0
                 pt.z = pt.z / 2.0
-                chrg = self.charged(pt, [oxygens[0],
+                chrg = charged(pt, [oxygens[0],
                     atom_index, oxygens[1]], False)
                 self.charges.append(chrg)
 
@@ -882,7 +924,7 @@ class PDB:
           if count >=2: # so there are at least two oxygens that are only bound to the phosphorus
             indexes = [atom_index]
             indexes.extend(oxygens)
-            chrg = self.charged(atom.coordinates, indexes, False)
+            chrg = charged(atom.coordinates, indexes, False)
             self.charges.append(chrg)
 
       # let's check for a sulfonate or anything where a sulfur is
@@ -902,36 +944,41 @@ class PDB:
           if count >=3:
             indexes = [atom_index]
             indexes.extend(oxygens)
-            chrg = self.charged(atom.coordinates, indexes, False)
+            chrg = charged(atom.coordinates, indexes, False)
             self.charges.append(chrg)
 
-    # Now that you've found all the positive charges in non-protein
-    # residues, it's time to look for aromatic rings in protein
-    # residues
-    curr_res = ""
-    first = True
-    residue = []
 
-    for atom_index in self.AllAtoms:
-      atom = self.AllAtoms[atom_index]
-      key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
-
-      if first == True:
-        curr_res = key
-        first = False
-
-      if key != curr_res:
-
-        self.assign_charged_from_protein_process_residue(residue, last_key)
-        residue = []
-        curr_res = key
-
-      residue.append(atom_index)
-      last_key = key
-
-    self.assign_charged_from_protein_process_residue(residue, last_key)
+#  def AssignProteinCharges(self):
+#    """
+#    Assigns charges to atoms in charged residues.
+#    """
+#    # TODO(bramsundar): Is this comment meant to be here?
+#    # Now that you've found all the positive charges in non-protein
+#    # residues, it's time to look for aromatic rings in protein
+#    # residues
+#    curr_res = ""
+#    first = True
+#    residue = []
 #
-#    def assign_charged_from_protein_process_residue(self, residue, last_key):
+#    for atom_index in self.AllAtoms:
+#      atom = self.AllAtoms[atom_index]
+#      key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
+#
+#      if first == True:
+#        curr_res = key
+#        first = False
+#
+#      if key != curr_res:
+#
+#        self.AssignChargesFromProteinProcessResidue(residue, last_key)
+#        residue = []
+#        curr_res = key
+#
+#      residue.append(atom_index)
+#      last_key = key
+#
+#
+#    def AssignChargesFromProteinProcessResidue(self, residue, last_key):
 #      temp = last_key.strip().split("_")
 #      resname = temp[0]
 #      real_resname = resname[-3:]
@@ -953,7 +1000,7 @@ class PDB:
 #                if atom2.atomname.strip() == "HZ2": indexes.append(index2)
 #                if atom2.atomname.strip() == "HZ3": indexes.append(index2)
 #
-#            chrg = self.charged(atom.coordinates, indexes, True)
+#            chrg = charged(atom.coordinates, indexes, True)
 #            self.charges.append(chrg)
 #        break
 #
@@ -991,7 +1038,7 @@ class PDB:
 #        charge_pt.z = charge_pt.z / count
 #
 #        if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
-#            chrg = self.charged(charge_pt, indices, True)
+#            chrg = charged(charge_pt, indices, True)
 #            self.charges.append(chrg)
 #
 #        if (real_resname == "HIS" or real_resname == "HID" or
@@ -1027,7 +1074,7 @@ class PDB:
 #            charge_pt.y = charge_pt.y / count
 #            charge_pt.z = charge_pt.z / count
 #            if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
-#              chrg = self.charged(charge_pt, indices, True)
+#              chrg = charged(charge_pt, indices, True)
 #              self.charges.append(chrg)
 #
 #        if real_resname == "GLU" or real_resname == "GLH" or real_resname == "GLX":
@@ -1058,7 +1105,7 @@ class PDB:
 #          charge_pt.y = charge_pt.y / count
 #          charge_pt.z = charge_pt.z / count
 #          if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
-#            chrg = self.charged(charge_pt, indices, False) # False because it's a negative charge
+#            chrg = charged(charge_pt, indices, False) # False because it's a negative charge
 #            self.charges.append(chrg)
 #
 #        # TODO(bramsundar): This comment about Cation-Pi interactions
@@ -1094,28 +1141,9 @@ class PDB:
 #            charge_pt.z = charge_pt.z / count
 #            if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
 #              # False because it's a negative charge
-#              chrg = self.charged(charge_pt, indices, False)
+#              chrg = charged(charge_pt, indices, False)
 #              self.charges.append(chrg)
 #
-    class charged():
-      """
-      A local class that represeents a charged atom.
-      """
-      def __init__(self, coordinates, indices, positive):
-        """
-        Parameters
-        ----------
-        coordinates: point
-          Coordinates of atom.
-        indices: list
-          Contains boolean true or false entries for self and neighbors to
-          specify if positive or negative charge
-        positive: bool
-          Whether this atom is positive or negative. 
-        """
-        self.coordinates = coordinates
-        self.indices = indices
-        self.positive = positive
 #
 #    # Functions to identify aromatic rings
 #    # ====================================

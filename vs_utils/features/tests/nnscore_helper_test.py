@@ -209,19 +209,48 @@ class TestPDB(unittest.TestCase):
     carbon_atom = atom(element="C", coordinates=point(0,0,1))
     oxygen_atom = atom(element="O", coordinates=point(0,0,2))
 
-    self.pdb.AddNewAtom(carbon_atom)
-    self.pdb.AddNewAtom(oxygen_atom)
-    self.pdb.NonProteinAtoms[1] = carbon_atom
-    self.pdb.NonProteinAtoms[2] = oxygen_atom
+    self.pdb.AddNewNonProteinAtom(carbon_atom)
+    self.pdb.AddNewNonProteinAtom(oxygen_atom)
 
     self.pdb.CreateNonProteinAtomBondsByDistance()
     assert len(carbon_atom.IndicesOfAtomsConnecting) == 1
     assert len(oxygen_atom.IndicesOfAtomsConnecting) == 1
 
-  def testAssignPositiveCharges(self):
+  def testAssignNonProteinCharges(self):
     """
-    TestPDB: Verify that positive charges are assigned properly.
+    TestPDB: Verify that non-protein charges are assigned properly.
     """
+    # Test metallic ion charge.
+    self.pdb = PDB()
+    assert len(self.pdb.charges) == 0
+    magnesium_atom = atom(element="MG", coordinates=point(0,0,0))
+    self.pdb.AddNewNonProteinAtom(magnesium_atom)
+    self.pdb.AssignNonProteinCharges()
+    assert len(self.pdb.charges) == 1
+
+    # Test ammonium
+    self.pdb = PDB()
+    assert len(self.pdb.charges) == 0
+    # We assign the coordinates to form a tetrahedron; see
+    # http://en.wikipedia.org/wiki/Tetrahedron#Formulas_for_a_regular_tetrahedron
+    nitrogen_atom = atom(element="N", coordinates=point(0,0,0))
+    hydrogen_atom1 = atom(element="H", coordinates=point(1,0,-1./np.sqrt(2)))
+    hydrogen_atom2 = atom(element="H", coordinates=point(-1,0,-1./np.sqrt(2)))
+    hydrogen_atom3 = atom(element="H", coordinates=point(0,1,1./np.sqrt(2)))
+    hydrogen_atom4 = atom(element="H", coordinates=point(0,-1,1./np.sqrt(2)))
+    self.pdb.AddNewNonProteinAtom(nitrogen_atom)
+    self.pdb.AddNewNonProteinAtom(hydrogen_atom1)
+    self.pdb.AddNewNonProteinAtom(hydrogen_atom2)
+    self.pdb.AddNewNonProteinAtom(hydrogen_atom3)
+    self.pdb.AddNewNonProteinAtom(hydrogen_atom4)
+    nitrogen_atom.IndicesOfAtomsConnecting = [2, 3, 4, 5]
+    self.pdb.AssignNonProteinCharges()
+    assert len(self.pdb.charges) == 1
+
+    # TODO(bramsundar): Figure out how to add more tests here. The issue is
+    # that it becomes challenging to specify complicated geometries in the
+    # test scripts. Maybe have a collection of data PDBs for tests?
+
 
 
 
