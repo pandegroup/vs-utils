@@ -123,7 +123,7 @@ class TestPDB(unittest.TestCase):
     self.temp_dir = tempfile.mkdtemp()
     self.pdb = PDB()
 
-    _, self.pdb_filename = tempfile.mkstemp(suffix='.pdb', 
+    _, self.pdb_filename = tempfile.mkstemp(suffix='.pdb',
         dir=self.temp_dir)
 
   def tearDown(self):
@@ -134,9 +134,9 @@ class TestPDB(unittest.TestCase):
 
   def testSaveAndLoad(self):
     """
-    TestPDB: Saves dummpy PDB to file and verifies that it can be reloaded.
+    TestPDB: Saves dummy PDB to file and verifies that it can be reloaded.
     """
-    self.pdb.SavePDB(self.pdb_filename) 
+    self.pdb.SavePDB(self.pdb_filename)
     empty_pdb = PDB()
     with open(self.pdb_filename) as pdb_file:
       for line in pdb_file:
@@ -156,7 +156,7 @@ class TestPDB(unittest.TestCase):
 
   def testConnectedAtomsOfGivenElement(self):
     """
-    TestPDB: Verifies that connected atom retrieval works. 
+    TestPDB: Verifies that connected atom retrieval works.
     """
     # Verify that no atoms are present when we start.
     assert len(self.pdb.AllAtoms.keys()) == 0
@@ -178,3 +178,53 @@ class TestPDB(unittest.TestCase):
 
     connected_hydrogens = self.pdb.ConnectedAtomsOfGivenElement(1, "H")
     assert len(connected_hydrogens) == 1
+
+  def testConnectedHeavyAtoms(self):
+    """
+    TestPDB: Verifies retrieval of connected heavy atoms.
+    """
+    # Verify that no atoms are present when we start.
+    assert len(self.pdb.AllAtoms.keys()) == 0
+    carbon_atom = atom(element="C")
+    oxygen_atom = atom(element="O")
+    hydrogen_atom = atom(element="H")
+
+    self.pdb.AddNewAtom(carbon_atom)
+    self.pdb.AddNewAtom(oxygen_atom)
+    self.pdb.AddNewAtom(hydrogen_atom)
+
+    # We want a carboxyl, so C connects O and H
+    carbon_atom.IndicesOfAtomsConnecting = [2,3]
+    oxygen_atom.IndicesOfAtomsConnecting = [1]
+    hydrogen_atom.IndicesOfAtomsConnecting = [1]
+
+    connected_heavy_atoms = self.pdb.ConnectedHeavyAtoms(1)
+    assert len(connected_heavy_atoms) == 1
+    assert connected_heavy_atoms[0] == 2
+
+  def testCreateNonProteinAtomBondsByDistance(self):
+    """
+    TestPDB: Verifies creation of bonds.
+    """
+    carbon_atom = atom(element="C", coordinates=point(0,0,1))
+    oxygen_atom = atom(element="O", coordinates=point(0,0,2))
+
+    self.pdb.AddNewAtom(carbon_atom)
+    self.pdb.AddNewAtom(oxygen_atom)
+    self.pdb.NonProteinAtoms[1] = carbon_atom
+    self.pdb.NonProteinAtoms[2] = oxygen_atom
+
+    self.pdb.CreateNonProteinAtomBondsByDistance()
+    assert len(carbon_atom.IndicesOfAtomsConnecting) == 1
+    assert len(oxygen_atom.IndicesOfAtomsConnecting) == 1
+
+  def testAssignPositiveCharges(self):
+    """
+    TestPDB: Verify that positive charges are assigned properly.
+    """
+
+
+
+#  def testCheckProteinFormat(self):
+#    """
+#    TestPDB: Verifies
