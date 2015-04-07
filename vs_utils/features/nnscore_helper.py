@@ -104,9 +104,11 @@ class atom:
     IndicesOfAtomConnecting: list
       The indices (in a PDB object) of all atoms bonded to this one.
     charge: float
-      Associated electrotstatic charge.
+      Associated electrostatic charge.
     resid: int
-      TODO(bramsundar)
+      The residue number in the receptor (listing the protein as a chain from
+      N-Terminus to C-Terminus). Assumes this is a protein atom.
+      TODO(bramsundar): Verify that this explanation is correct.
     chain: string
       TODO(bramsundar)
     structure: string
