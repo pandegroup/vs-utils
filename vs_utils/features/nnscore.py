@@ -221,6 +221,11 @@ class binana:
     """
     Compute possible hydrophobic contacts between ligand and atom.
 
+    Returns a dictionary whose keys are atompairs of type
+    "RESIDUETYPE_ATOM" where RESIDUETYPE is either "SIDECHAIN" or
+    "BACKBONE" and ATOM is the receptor atom type "O" or "C" or etc. The
+    values count the number of hydrophobic contacts.
+
     Parameters
     ----------
     ligand: PDB
@@ -245,82 +250,131 @@ class binana:
           hashtable_entry_add_one(hydrophobics, hydrophobic_key)
     return hydrophobics, pdb_hydrophobic
 
-  def compute_electrostatic_energy(self, ligand_atom, receptor_atom):
-    dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
-    # calculate electrostatic energies for all less than 4 A
-    ligand_charge = ligand_atom.charge
-    receptor_charge = receptor_atom.charge
-    # to convert into J/mol; might be nice to double check this
-    # TODO(bramsundar): What are units of
-    # ligand_charge/receptor_charge?
-    coulomb_energy = ((ligand_charge * receptor_charge / dist)
-        * ELECTROSTATIC_JOULE_PER_MOL)
-    hashtable_entry_add_one(ligand_receptor_electrostatics,
-        atomstr, coulomb_energy)
+  def compute_electrostatic_energy(self, ligand, receptor):
+    """
+    Compute electrostatic energy between ligand and atom.
 
-  def compute_active_site_flexibility(self, ligand_atom,
-    receptor_atom):
-    # Now get statistics to judge active-site flexibility
+    Returns a dictionary whose keys are atompairs of type "ATOM_ATOM" with
+    one atom from the receptor and the other from the ligand. The ATOM
+    terms can equal "C", "O", etc. The values are the associated coulomb
+    energies for this pair.
 
-    # first can be sidechain or backbone, second back be alpha,
-    # beta, or other, so six catagories
-    flexibility_key = (receptor_atom.SideChainOrBackBone() + "_"
-        + receptor_atom.structure)
-    if receptor_atom.structure == "ALPHA":
-      pdb_contacts_alpha_helix.AddNewAtom(receptor_atom.copy_of())
-    elif receptor_atom.structure == "BETA":
-      pdb_contacts_beta_sheet.AddNewAtom(receptor_atom.copy_of())
-    elif receptor_atom.structure == "OTHER":
-      pdb_contacts_other_2nd_structure.AddNewAtom(receptor_atom.copy_of())
+    Parameters
+    ----------
+    ligand: PDB
+      A PDB Object describing the ligand molecule.
+    receptor: PDB
+      A PDB object describing the receptor protein.
+      
+    """
+    ligand_receptor_electrostatics = {}
+    for ligand_atom_index in ligand.AllAtoms:
+      ligand_atom = ligand.AllAtoms[ligand_atom_index]
+      for receptor_atom_index in receptor.AllAtoms:
+        receptor_atom = receptor.AllAtoms[receptor_atom_index]
+        atomtypes = [ligand_atom.atomtype, receptor_atom.atomtype]
+        atomstr = "_".join(sorted(atomtypes))
+        dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
+        # calculate electrostatic energies for all less than 4 A
+        ligand_charge = ligand_atom.charge
+        receptor_charge = receptor_atom.charge
+        # to convert into J/mol; might be nice to double check this
+        # TODO(bramsundar): What are units of
+        # ligand_charge/receptor_charge?
+        coulomb_energy = ((ligand_charge * receptor_charge / dist)
+            * ELECTROSTATIC_JOULE_PER_MOL)
+        hashtable_entry_add_one(ligand_receptor_electrostatics,
+            atomstr, coulomb_energy)
+    return ligand_receptor_electrostatics
 
-    if receptor_atom.SideChainOrBackBone() == "BACKBONE":
-      pdb_back_bone.AddNewAtom(receptor_atom.copy_of())
-    elif receptor_atom.SideChainOrBackBone() == "SIDECHAIN":
-      pdb_side_chain.AddNewAtom(receptor_atom.copy_of())
+  def compute_active_site_flexibility(self, ligand, receptor):
+    """
+    Compute statistics to judge active-site flexibility
 
-    hashtable_entry_add_one(active_site_flexibility, flexibility_key)
+    Returns a dictionary whose keys are atompairs of type
+    "RESIDUETYPE_STRUCTURE" where RESIDUETYPE is either "SIDECHAIN" or
+    "BACKBONE" and STRUCTURE is either ALPHA, BETA, or OTHER and
+    corresponds to the protein secondary structure of the current residue. 
+
+    Parameters
+    ----------
+    ligand: PDB
+      A PDB Object describing the ligand molecule.
+    receptor: PDB
+      A PDB object describing the receptor protein.
+      
+    """
+    active_site_flexibility = {}
+    for receptor_atom_index in receptor.AllAtoms:
+      receptor_atom = receptor.AllAtoms[receptor_atom_index]
+
+      flexibility_key = (receptor_atom.SideChainOrBackBone() + "_"
+          + receptor_atom.structure)
+      hashtable_entry_add_one(active_site_flexibility, flexibility_key)
+    return active_site_flexibility
 
 
-  def compute_hydrogen_bond(self, ligand_atom, receptor_atom):
-    # Now see if there's some sort of hydrogen bond between
-    # these two atoms. distance cutoff = 4, angle cutoff = 40.
-    # Note that this is liberal.
-    if ((ligand_atom.element == "O" or ligand_atom.element == "N")
-      and (receptor_atom.element == "O"
-          or receptor_atom.element == "N")):
+  def compute_hydrogen_bonds(self, ligand, receptor):
+    """
+    Computes hydrogen bonds between ligand and receptor.
 
-      # now build a list of all the hydrogens close to these
-      # atoms
-      hydrogens = []
+    Returns a dictionary whose keys are atompairs of type "ATOM_ATOM" with
+    one atom from the receptor and the other from the ligand. The ATOM
+    terms can equal "C", "O", etc. The values are the associated coulomb
+    energies for this pair.
 
-      for atm_index in ligand.AllAtoms:
-        if ligand.AllAtoms[atm_index].element == "H":
-          # so it's a hydrogen
-          if (ligand.AllAtoms[atm_index].coordinates.dist_to(
-              ligand_atom.coordinates) < H_BOND_DIST):
-            ligand.AllAtoms[atm_index].comment = "LIGAND"
-            hydrogens.append(ligand.AllAtoms[atm_index])
+    Parameters
+    ----------
+    ligand: PDB
+      A PDB Object describing the ligand molecule.
+    receptor: PDB
+      A PDB object describing the receptor protein.
+      
+    """
+    hbonds = {}
+    for ligand_atom_index in ligand.AllAtoms:
+      ligand_atom = ligand.AllAtoms[ligand_atom_index]
+      for receptor_atom_index in receptor.AllAtoms:
+        receptor_atom = receptor.AllAtoms[receptor_atom_index]
+        # Now see if there's some sort of hydrogen bond between
+        # these two atoms. distance cutoff = 4, angle cutoff = 40.
+        # Note that this is liberal.
+        if ((ligand_atom.element == "O" or ligand_atom.element == "N")
+          and (receptor_atom.element == "O"
+              or receptor_atom.element == "N")):
 
-      for atm_index in receptor.AllAtoms:
-        if receptor.AllAtoms[atm_index].element == "H": # so it's a hydrogen
-          if (receptor.AllAtoms[atm_index].coordinates.dist_to(
-              receptor_atom.coordinates) < H_BOND_DIST):
-            receptor.AllAtoms[atm_index].comment = "RECEPTOR"
-            hydrogens.append(receptor.AllAtoms[atm_index])
+          # now build a list of all the hydrogens close to these
+          # atoms
+          hydrogens = []
 
-      # now we need to check the angles
-      for hydrogen in hydrogens:
-        if (math.fabs(180 - functions.angle_between_three_points(
-              ligand_atom.coordinates,
-              hydrogen.coordinates,
-              receptor_atom.coordinates) * 180.0 / math.pi) <= 40.0):
-          hbonds_key = ("HDONOR_" + hydrogen.comment + "_" +
-              receptor_atom.SideChainOrBackBone() + "_" +
-              receptor_atom.structure)
-          pdb_hbonds.AddNewAtom(ligand_atom.copy_of())
-          pdb_hbonds.AddNewAtom(hydrogen.copy_of())
-          pdb_hbonds.AddNewAtom(receptor_atom.copy_of())
-          hashtable_entry_add_one(hbonds, hbonds_key)
+          for atm_index in ligand.AllAtoms:
+            if ligand.AllAtoms[atm_index].element == "H":
+              # so it's a hydrogen
+              if (ligand.AllAtoms[atm_index].coordinates.dist_to(
+                  ligand_atom.coordinates) < H_BOND_DIST):
+                ligand.AllAtoms[atm_index].comment = "LIGAND"
+                hydrogens.append(ligand.AllAtoms[atm_index])
+
+          for atm_index in receptor.AllAtoms:
+            if receptor.AllAtoms[atm_index].element == "H": # so it's a hydrogen
+              if (receptor.AllAtoms[atm_index].coordinates.dist_to(
+                  receptor_atom.coordinates) < H_BOND_DIST):
+                receptor.AllAtoms[atm_index].comment = "RECEPTOR"
+                hydrogens.append(receptor.AllAtoms[atm_index])
+
+          # now we need to check the angles
+          for hydrogen in hydrogens:
+            if (math.fabs(180 - functions.angle_between_three_points(
+                  ligand_atom.coordinates,
+                  hydrogen.coordinates,
+                  receptor_atom.coordinates) * 180.0 / math.pi) <= 40.0):
+              hbonds_key = ("HDONOR_" + hydrogen.comment + "_" +
+                  receptor_atom.SideChainOrBackBone() + "_" +
+                  receptor_atom.structure)
+              pdb_hbonds.AddNewAtom(ligand_atom.copy_of())
+              pdb_hbonds.AddNewAtom(hydrogen.copy_of())
+              pdb_hbonds.AddNewAtom(receptor_atom.copy_of())
+              hashtable_entry_add_one(hbonds, hbonds_key)
 
   def compute_ligand_atom_counts(self, ligand):
     """Counts atoms of each type in given ligand.
@@ -349,11 +403,6 @@ class binana:
 
     # Where are these used?
     pdb_contacts = PDB()
-    pdb_contacts_alpha_helix = PDB()
-    pdb_contacts_beta_sheet = PDB()
-    pdb_contacts_other_2nd_structure = PDB()
-    pdb_back_bone = PDB()
-    pdb_side_chain = PDB()
 
     for ligand_atom_index in ligand.AllAtoms:
       for receptor_atom_index in receptor.AllAtoms:
@@ -903,8 +952,6 @@ class binana:
 
 #   # Get distance measurements between protein and ligand atom types,
 #   # as well as some other measurements
-#   active_site_flexibility = {}
-#   hbonds = {}
 #   ligand.rotatable_bonds_count
 #   functions = MathFunctions()
 
@@ -912,7 +959,6 @@ class binana:
 #   # example)
 #   ligand_receptor_close_contacts = {}
 #   ligand_receptor_contacts = {}
-#   ligand_receptor_electrostatics = {}
 #
 #   pdb_close_contacts = PDB()
 

@@ -73,8 +73,6 @@ class atom:
   """
   Implements a container class for atoms. This class contains useful
   annotations about the atom.
-
-  TODO(bramsundar): Ligand or Protein atom?
   """
 
   def __init__ (self, atomname="", residue="",
@@ -112,9 +110,11 @@ class atom:
     chain: string
       TODO(bramsundar)
     structure: string
-      TODO(bramsundar)
+      One of ALPHA, BETA, or OTHER for the type of protein secondary
+      structure this atom resides in (assuming this is a receptor atom).
     comments: string
-      TODO(bramsundar)
+      Either LIGAND or RECEPTOR depending on whether this is a ligand or
+      receptor atom. 
     """
     self.atomname = atomname
     self.residue = residue
@@ -438,6 +438,18 @@ class PDB:
 
     # now add atom
     self.AllAtoms[t] = atom
+
+  def AddNewAtoms(self, atoms):
+    """
+    Convenience function to add many atoms.
+
+    Parameters
+    ----------
+    atoms: list
+      Entries in atoms should be objects of type atom.
+    """
+    for atom_obj in atoms:
+      self.AddNewAtom(atom_obj)
 
   def AddNewNonProteinAtom(self, atom):
     """
