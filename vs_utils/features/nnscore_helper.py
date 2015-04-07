@@ -114,7 +114,7 @@ class atom:
     structure: string
       One of ALPHA, BETA, or OTHER for the type of protein secondary
       structure this atom resides in (assuming this is a receptor atom).
-    comments: string
+    comment: string
       Either LIGAND or RECEPTOR depending on whether this is a ligand or
       receptor atom. 
     """

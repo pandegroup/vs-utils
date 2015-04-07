@@ -63,6 +63,7 @@ ELECTROSTATIC_JOULE_PER_MOL = 138.94238460104697e4 # units?
 # O-H distance is 0.96 A, N-H is 1.01 A. See
 # http://www.science.uwaterloo.ca/~cchieh/cact/c120/bondel.html
 H_BOND_DIST = 1.3 # angstroms
+H_BOND_ANGLE = 40 # degrees
 # If atoms are < 2.5 A apart, we count it as a close contact
 CLOSE_CONTACT_CUTOFF = 2.5
 # If receptor and ligand atoms are > 4 A apart, we consider them
@@ -222,8 +223,8 @@ class binana:
     Compute possible hydrophobic contacts between ligand and atom.
 
     Returns a dictionary whose keys are atompairs of type
-    "RESIDUETYPE_ATOM" where RESIDUETYPE is either "SIDECHAIN" or
-    "BACKBONE" and ATOM is the receptor atom type "O" or "C" or etc. The
+    "${RESIDUETYPE}_${RECEPTOR_ATOM}" where RESIDUETYPE is either "SIDECHAIN" or
+    "BACKBONE" and RECEPTOR_ATOM is "O" or "C" or etc. The
     values count the number of hydrophobic contacts.
 
     Parameters
@@ -254,10 +255,9 @@ class binana:
     """
     Compute electrostatic energy between ligand and atom.
 
-    Returns a dictionary whose keys are atompairs of type "ATOM_ATOM" with
-    one atom from the receptor and the other from the ligand. The ATOM
-    terms can equal "C", "O", etc. The values are the associated coulomb
-    energies for this pair.
+    Returns a dictionary whose keys are atompairs of type
+    "${RECEPTOR_ATOM}_${LIGAND_ATOM}". The ATOM terms can equal "C", "O",
+    etc. The values are the associated coulomb energies for this pair.
 
     Parameters
     ----------
@@ -292,7 +292,7 @@ class binana:
     Compute statistics to judge active-site flexibility
 
     Returns a dictionary whose keys are atompairs of type
-    "RESIDUETYPE_STRUCTURE" where RESIDUETYPE is either "SIDECHAIN" or
+    "${RESIDUETYPE}_${STRUCTURE}" where RESIDUETYPE is either "SIDECHAIN" or
     "BACKBONE" and STRUCTURE is either ALPHA, BETA, or OTHER and
     corresponds to the protein secondary structure of the current residue. 
 
@@ -318,10 +318,11 @@ class binana:
     """
     Computes hydrogen bonds between ligand and receptor.
 
-    Returns a dictionary whose keys are atompairs of type "ATOM_ATOM" with
-    one atom from the receptor and the other from the ligand. The ATOM
-    terms can equal "C", "O", etc. The values are the associated coulomb
-    energies for this pair.
+    Returns a dictionary whose keys are of form
+    HDONOR_${COMMENT}_${RESIDUETYPE}_${STRUCTURE} where COMMENT is either
+    "RECEPTOR" or "LIGAND", RESIDUETYPE is "BACKBONE" or "SIDECHAIN" and
+    where STRUCTURE is "ALPHA" or "BETA" or "OTHER". The values are counts
+    of the numbers of hydrogen bonds associated with the given keys.
 
     Parameters
     ----------
@@ -329,7 +330,6 @@ class binana:
       A PDB Object describing the ligand molecule.
     receptor: PDB
       A PDB object describing the receptor protein.
-      
     """
     hbonds = {}
     for ligand_atom_index in ligand.AllAtoms:
@@ -337,7 +337,8 @@ class binana:
       for receptor_atom_index in receptor.AllAtoms:
         receptor_atom = receptor.AllAtoms[receptor_atom_index]
         # Now see if there's some sort of hydrogen bond between
-        # these two atoms. distance cutoff = 4, angle cutoff = 40.
+        # these two atoms. distance cutoff = H_BOND_DIST, angle cutoff =
+        # H_BOND_ANGLE.
         # Note that this is liberal.
         if ((ligand_atom.element == "O" or ligand_atom.element == "N")
           and (receptor_atom.element == "O"
@@ -363,21 +364,25 @@ class binana:
                 hydrogens.append(receptor.AllAtoms[atm_index])
 
           # now we need to check the angles
+          # TODO(bramsundar): Verify this heuristic and add a source
+          # citation.
           for hydrogen in hydrogens:
             if (math.fabs(180 - functions.angle_between_three_points(
                   ligand_atom.coordinates,
                   hydrogen.coordinates,
-                  receptor_atom.coordinates) * 180.0 / math.pi) <= 40.0):
+                  receptor_atom.coordinates) * 180.0 / math.pi) <=
+                  H_BOND_ANGLE):
               hbonds_key = ("HDONOR_" + hydrogen.comment + "_" +
                   receptor_atom.SideChainOrBackBone() + "_" +
                   receptor_atom.structure)
-              pdb_hbonds.AddNewAtom(ligand_atom.copy_of())
-              pdb_hbonds.AddNewAtom(hydrogen.copy_of())
-              pdb_hbonds.AddNewAtom(receptor_atom.copy_of())
               hashtable_entry_add_one(hbonds, hbonds_key)
+    return hbonds
 
   def compute_ligand_atom_counts(self, ligand):
     """Counts atoms of each type in given ligand.
+
+    Returns a dictionary that makes between atom types ("C", "O", etc.) to
+    counts.
 
     Parameters
     ----------
@@ -400,10 +405,8 @@ class binana:
     Compute distance measurements and electrotstatics between ligand
     and receptor.
     """
-
-    # Where are these used?
-    pdb_contacts = PDB()
-
+    ligand_receptor_close_contacts = {}
+    ligand_receptor_contacts = {}
     for ligand_atom_index in ligand.AllAtoms:
       for receptor_atom_index in receptor.AllAtoms:
         ligand_atom = ligand.AllAtoms[ligand_atom_index]
@@ -420,13 +423,11 @@ class binana:
         elif dist < CONTACT_CUTOFF:
           hashtable_entry_add_one(ligand_receptor_contacts,
               atomstr)
-          pdb_contacts.AddNewAtom(ligand_atom.copy_of())
-          pdb_contacts.AddNewAtom(receptor_atom.copy_of())
 
-          self.compute_electrostatic_energy(ligand_atom, receptor_atom)
-          self.compute_active_site_flexibility(ligand_atom, receptor_atom)
-          self.compute_hydrophobic_contact(ligand_atom, receptor_atom)
-          self.compute_hydrogen_bond(ligand_atom, receptor_atom)
+          #self.compute_electrostatic_energy(ligand_atom, receptor_atom)
+          #self.compute_active_site_flexibility(ligand_atom, receptor_atom)
+          #self.compute_hydrophobic_contact(ligand_atom, receptor_atom)
+          #self.compute_hydrogen_bond(ligand_atom, receptor_atom)
 
   def compute_pi_pi_stacking(self, ligand, receptor):
     """
@@ -439,8 +440,6 @@ class binana:
     receptor: PDB Object
       protein to dock agains.
     """
-    pdb_pistack = PDB()
-    pdb_pi_T = PDB()
     for lig_aromatic in ligand.aromatic_rings:
       for rec_aromatic in receptor.aromatic_rings:
         dist = lig_aromatic.center.dist_to(rec_aromatic.center)
@@ -495,10 +494,6 @@ class binana:
                   structure = "OTHER"
                 key = "STACKING_" + structure
 
-                for index in lig_aromatic.indices:
-                  pdb_pistack.AddNewAtom(ligand.AllAtoms[index].copy_of())
-                for index in rec_aromatic.indices:
-                  pdb_pistack.AddNewAtom(receptor.AllAtoms[index].copy_of())
 
                 hashtable_entry_add_one(PI_interactions, key)
 
@@ -549,11 +544,6 @@ class binana:
                   # since it could be interacting with a cofactor or something
                   structure = "OTHER"
                 key = "T-SHAPED_" + structure
-
-                for index in lig_aromatic.indices:
-                  pdb_pi_T.AddNewAtom(ligand.AllAtoms[index].copy_of())
-                for index in rec_aromatic.indices:
-                  pdb_pi_T.AddNewAtom(receptor.AllAtoms[index].copy_of())
 
                 hashtable_entry_add_one(PI_interactions, key)
 
@@ -669,6 +659,7 @@ class binana:
     # terms are not used anywhere else in the file. Might be ok to
     # just delete it. Ok, I do see one use. It looks like this step is
     # used to provide padding so we have a fixed-length vector.
+    data = self.compute_data()
     vina_output = data['vina_output']
     rotatable_bonds_count = {'rot_bonds': data['rotatable_bonds_count']}
 
@@ -678,33 +669,6 @@ class binana:
       }
     for key in data['active_site_flexibility']:
       active_site_flexibility[key] = data['active_site_flexibility'][key]
-
-    alpha_tmp = (active_site_flexibility['BACKBONE_ALPHA'] +
-        active_site_flexibility['SIDECHAIN_ALPHA'])
-    beta_tmp = (active_site_flexibility['BACKBONE_BETA'] +
-        active_site_flexibility['SIDECHAIN_BETA'])
-    other_tmp = (active_site_flexibility['BACKBONE_OTHER'] +
-        active_site_flexibility['SIDECHAIN_OTHER'])
-    active_site_flexibility_by_structure = {
-        'ALPHA':alpha_tmp, 'BETA':beta_tmp, 'OTHER':other_tmp}
-
-    backbone_tmp = (active_site_flexibility['BACKBONE_ALPHA'] +
-        active_site_flexibility['BACKBONE_BETA'] +
-        active_site_flexibility['BACKBONE_OTHER'])
-    sidechain_tmp = (active_site_flexibility['SIDECHAIN_ALPHA']
-        + active_site_flexibility['SIDECHAIN_BETA'] +
-        active_site_flexibility['SIDECHAIN_OTHER'])
-    active_site_flexibility_by_backbone_or_sidechain = {
-        'BACKBONE':backbone_tmp, 'SIDECHAIN':sidechain_tmp}
-
-    all = (active_site_flexibility['BACKBONE_ALPHA'] +
-        active_site_flexibility['BACKBONE_BETA'] +
-        active_site_flexibility['BACKBONE_OTHER'] +
-        active_site_flexibility['SIDECHAIN_ALPHA'] +
-        active_site_flexibility['SIDECHAIN_BETA'] +
-        active_site_flexibility['SIDECHAIN_OTHER'])
-
-    active_site_flexibility_all = {'all': all}
 
     hbonds = {
       'HDONOR-LIGAND_BACKBONE_ALPHA': 0,
@@ -723,63 +687,6 @@ class binana:
       key2 = key.replace("HDONOR_","HDONOR-")
       hbonds[key2] = data['hbonds'][key]
 
-    hdonor_ligand = (hbonds['HDONOR-LIGAND_BACKBONE_ALPHA'] +
-        hbonds['HDONOR-LIGAND_BACKBONE_BETA'] +
-        hbonds['HDONOR-LIGAND_BACKBONE_OTHER'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_ALPHA'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_BETA'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_OTHER'])
-    hdonor_receptor = (hbonds['HDONOR-RECEPTOR_BACKBONE_ALPHA'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_BETA'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_OTHER'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_ALPHA'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_BETA'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_OTHER'])
-    hbonds_by_location_of_hdonor = {'LIGAND':hdonor_ligand, 'RECEPTOR':hdonor_receptor}
-
-    hbond_backbone = (hbonds['HDONOR-LIGAND_BACKBONE_ALPHA'] +
-        hbonds['HDONOR-LIGAND_BACKBONE_BETA'] +
-        hbonds['HDONOR-LIGAND_BACKBONE_OTHER'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_ALPHA'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_BETA'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_OTHER'])
-    hbond_sidechain = (hbonds['HDONOR-LIGAND_SIDECHAIN_ALPHA'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_BETA'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_OTHER'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_ALPHA'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_BETA'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_OTHER'])
-    hbonds_by_backbone_or_sidechain = {
-      'BACKBONE':hbond_backbone, 'SIDECHAIN':hbond_sidechain}
-    hbond_alpha = (hbonds['HDONOR-LIGAND_BACKBONE_ALPHA'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_ALPHA'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_ALPHA'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_ALPHA'])
-    hbond_beta = (hbonds['HDONOR-LIGAND_BACKBONE_BETA'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_BETA'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_BETA'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_BETA'])
-    hbond_other = (hbonds['HDONOR-LIGAND_BACKBONE_OTHER'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_OTHER'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_OTHER'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_OTHER'])
-    hbonds_by_structure = {
-      'ALPHA':hbond_alpha, 'BETA':hbond_beta, 'OTHER':hbond_other}
-
-    # TODO(bramsundar): Rename all to something informative
-    all = (hbonds['HDONOR-LIGAND_BACKBONE_ALPHA'] +
-        hbonds['HDONOR-LIGAND_BACKBONE_BETA'] +
-        hbonds['HDONOR-LIGAND_BACKBONE_OTHER'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_ALPHA'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_BETA'] +
-        hbonds['HDONOR-LIGAND_SIDECHAIN_OTHER'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_ALPHA'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_BETA'] +
-        hbonds['HDONOR-RECEPTOR_BACKBONE_OTHER'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_ALPHA'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_BETA'] +
-        hbonds['HDONOR-RECEPTOR_SIDECHAIN_OTHER'])
-    hbonds_all = {'all':all}
 
     hydrophobics = {
       'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
@@ -788,31 +695,6 @@ class binana:
     for key in data['hydrophobics']:
       hydrophobics[key] = data['hydrophobics'][key]
 
-    alpha_tmp = (hydrophobics['BACKBONE_ALPHA'] +
-        hydrophobics['SIDECHAIN_ALPHA'])
-    beta_tmp = (hydrophobics['BACKBONE_BETA'] +
-        hydrophobics['SIDECHAIN_BETA'])
-    other_tmp = (hydrophobics['BACKBONE_OTHER'] +
-        hydrophobics['SIDECHAIN_OTHER'])
-    hydrophobics_by_structure = {
-      'ALPHA':alpha_tmp, 'BETA':beta_tmp, 'OTHER':other_tmp}
-
-    backbone_tmp = (hydrophobics['BACKBONE_ALPHA'] +
-        hydrophobics['BACKBONE_BETA'] +
-        hydrophobics['BACKBONE_OTHER'])
-    sidechain_tmp = (hydrophobics['SIDECHAIN_ALPHA'] +
-        hydrophobics['SIDECHAIN_BETA'] +
-        hydrophobics['SIDECHAIN_OTHER'])
-    hydrophobics_by_backbone_or_sidechain = {
-      'BACKBONE':backbone_tmp, 'SIDECHAIN':sidechain_tmp}
-
-    all = (hydrophobics['BACKBONE_ALPHA'] +
-      hydrophobics['BACKBONE_BETA'] +
-      hydrophobics['BACKBONE_OTHER'] +
-      hydrophobics['SIDECHAIN_ALPHA'] +
-      hydrophobics['SIDECHAIN_BETA'] +
-      hydrophobics['SIDECHAIN_OTHER'])
-    hydrophobics_all = {'all':all}
 
     stacking_tmp = {}
     for item in data['stacking']:
@@ -836,32 +718,6 @@ class binana:
     for key in pi_cation_tmp:
       pi_cation[key] = pi_cation_tmp[key]
 
-    pi_cation_ligand_charged = (pi_cation['LIGAND-CHARGED_ALPHA'] +
-        pi_cation['LIGAND-CHARGED_BETA'] +
-        pi_cation['LIGAND-CHARGED_OTHER'])
-    pi_cation_receptor_charged = (pi_cation['RECEPTOR-CHARGED_ALPHA'] +
-        pi_cation['RECEPTOR-CHARGED_BETA'] +
-        pi_cation['RECEPTOR-CHARGED_OTHER'])
-    pi_cation_charge_location = {
-        'LIGAND': pi_cation_ligand_charged,
-        'RECEPTOR': pi_cation_receptor_charged}
-
-    pi_cation_alpha = (pi_cation['LIGAND-CHARGED_ALPHA'] +
-        pi_cation['RECEPTOR-CHARGED_ALPHA'])
-    pi_cation_beta = (pi_cation['LIGAND-CHARGED_BETA'] +
-        pi_cation['RECEPTOR-CHARGED_BETA'])
-    pi_cation_other = (pi_cation['LIGAND-CHARGED_OTHER'] +
-        pi_cation['RECEPTOR-CHARGED_OTHER'])
-    pi_cation_by_structure = {
-      'ALPHA':pi_cation_alpha, 'BETA':pi_cation_beta, "OTHER":pi_cation_other}
-
-    all = (pi_cation['LIGAND-CHARGED_ALPHA'] +
-        pi_cation['LIGAND-CHARGED_BETA'] +
-        pi_cation['LIGAND-CHARGED_OTHER'] +
-        pi_cation['RECEPTOR-CHARGED_ALPHA'] +
-        pi_cation['RECEPTOR-CHARGED_BETA'] +
-        pi_cation['RECEPTOR-CHARGED_OTHER'])
-    pi_cation_all = {'all': all}
 
     t_shaped_tmp = {}
     for item in data['t_shaped']:
@@ -871,16 +727,10 @@ class binana:
     for key in t_shaped_tmp:
       t_shaped[key] = t_shaped_tmp[key]
 
-    all = t_shaped['ALPHA'] + t_shaped['BETA'] + t_shaped['OTHER']
-    t_shaped_all = {'all': all}
-
     salt_bridges = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
     for key in data['salt_bridges']:
       key2 = key.replace("SALT-BRIDGE_","")
       salt_bridges[key2] = data['salt_bridges'][key]
-
-    all = salt_bridges['ALPHA'] + salt_bridges['BETA'] + salt_bridges['OTHER']
-    salt_bridges_all = {'all': all}
 
     input_vector = []
     input_vector.extend(vina_output) # a list
@@ -961,8 +811,6 @@ class binana:
 #   ligand_receptor_contacts = {}
 #
 #   pdb_close_contacts = PDB()
-
-#   pdb_hbonds = PDB()
 
 #   self.compute_ligand_receptor_distances_and_charges()
 #

@@ -33,15 +33,15 @@ class TestBinana(unittest.TestCase):
     self.structured_receptor = PDB()
     backbone_alpha_receptor_atom = atom(element="C", coordinates=point(0,0,0),
         structure="ALPHA")
-    backbone_beta_receptor_atom = atom(element="C", coordinates=point(0,0,0),
+    backbone_beta_receptor_atom = atom(element="C", coordinates=point(0,0,1),
         structure="BETA")
-    backbone_other_receptor_atom = atom(element="C", coordinates=point(0,0,0),
+    backbone_other_receptor_atom = atom(element="C", coordinates=point(0,0,2),
         structure="OTHER")
-    sidechain_alpha_receptor_atom = atom(element="S", coordinates=point(0,0,0),
+    sidechain_alpha_receptor_atom = atom(element="S", coordinates=point(0,0,3),
         structure="ALPHA")
-    sidechain_beta_receptor_atom = atom(element="S", coordinates=point(0,0,0),
+    sidechain_beta_receptor_atom = atom(element="S", coordinates=point(0,0,4),
         structure="BETA")
-    sidechain_other_receptor_atom = atom(element="S", coordinates=point(0,0,0),
+    sidechain_other_receptor_atom = atom(element="S", coordinates=point(0,0,5),
         structure="OTHER")
     self.structured_receptor.AddNewAtoms([backbone_alpha_receptor_atom,
         backbone_beta_receptor_atom, backbone_other_receptor_atom,
@@ -76,6 +76,23 @@ class TestBinana(unittest.TestCase):
     """
     TestBinana: Gather statistics about active site protein atoms.
     """
-    active_size_flexibility = (
+    active_site_flexibility = (
         self.binana.compute_active_site_flexibility(self.hydrophobic_ligand,
         self.structured_receptor))
+    print active_site_flexibility
+    assert len(active_site_flexibility.keys()) == 6
+    assert "BACKBONE_ALPHA" in active_site_flexibility
+    assert "BACKBONE_BETA" in active_site_flexibility
+    assert "BACKBONE_OTHER" in active_site_flexibility
+    assert "SIDECHAIN_ALPHA" in active_site_flexibility
+    assert "SIDECHAIN_BETA" in active_site_flexibility
+    assert "SIDECHAIN_OTHER" in active_site_flexibility
+
+  def testComputeHydrogenBonds(self):
+    """
+    TestBinana: Compute the number of hydrogen bonds.
+    """
+    # TODO(bramsundar): Add a nontrivial test here
+    hbonds = (
+      self.binana.compute_hydrogen_bonds(self.hydrophobic_ligand,
+        self.receptor))
