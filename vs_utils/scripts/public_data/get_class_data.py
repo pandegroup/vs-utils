@@ -1,4 +1,7 @@
-"""Build data frames for non-PCBA classification datasets."""
+"""
+Build data frames for classification datasets with separate files for active
+and inactive molecules (e.g. DUD-E).
+"""
 import argparse
 import numpy as np
 import pandas as pd
