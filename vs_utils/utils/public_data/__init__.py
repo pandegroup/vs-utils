@@ -396,11 +396,11 @@ class PcbaDataExtractor(object):
       config['phenotype'] = 'Phenotype'
 
     # target cleanup
-    # add gi: prefix to integer targets
+    # add GI prefix to integer targets
     if 'target' in config:
       try:
         int(config['target'])
-        config['target'] = 'gi_{}'.format(config['target'])
+        config['target'] = 'GI{}'.format(config['target'])
       except ValueError:
         pass
 
@@ -416,7 +416,7 @@ class PcbaDataExtractor(object):
         phenotype = phenotypes[phenotype]  # map to full name
       if phenotype not in phenotypes.itervalues():
         raise NotImplementedError(
-          'Unrecognized phenotype "{}"'.format(phenotype))
+            'Unrecognized phenotype "{}"'.format(phenotype))
       self.phenotype = phenotype  # set default phenotype for this assay
 
     self.config = config

@@ -70,11 +70,13 @@ def parse_args(input_args=None):
                       help='Do not include target with each data point.')
   parser.add_argument('--phenotype', action='store_true',
                       help='Require compound-level phenotype data.')
+  parser.add_argument('--prefix', default='CID',
+                      help='Prefix for molecule IDs.')
   return parser.parse_args(input_args)
 
 
 def main(dirs, config_filename, map_filename=None, summary_filename=None,
-         with_aid=True, with_target=True, phenotype=False):
+         with_aid=True, with_target=True, phenotype=False, id_prefix='CID'):
   aids = set()
   targets = set()
   total = 0
@@ -117,8 +119,23 @@ def main(dirs, config_filename, map_filename=None, summary_filename=None,
       data = extractor.get_data(sid_cid=sid_cid)
       total += len(data)
 
+      # add generic molecule id column
+      if id_prefix == 'CID':
+        col = 'cid'
+      elif id_prefix == 'SID':
+        col = 'sid'
+      else:
+        raise NotImplementedError('Unrecognized ID prefix "{}"'.format(
+            id_prefix))
+      ids = [id_prefix + str(mol_id) for mol_id in data[col]]
+      data.loc[:, 'mol_id'] = pd.Series(ids, index=data.index)
+
+      # add generic assay id column
+      if with_aid:
+        data.loc[:, 'assay_id'] = 'PCBA' + str(aid)
+
       # save dataframe
-      output_filename = 'aid{}-{}-data.pkl.gz'.format(aid, target)
+      output_filename = 'aid{}-data.pkl.gz'.format(aid)
       print '{}\t{}\t{}\t{}'.format(aid, target, output_filename, len(data))
       summary.append({'aid': aid, 'target': target,
                       'filename': output_filename, 'size': len(data)})
@@ -134,9 +151,9 @@ def main(dirs, config_filename, map_filename=None, summary_filename=None,
   if summary_filename is not None:
     write_pickle(summary, summary_filename)
   warnings.warn('Found {} assays for {} targets ({} total data points)'.format(
-    len(aids), len(targets), total))
+      len(aids), len(targets), total))
 
 if __name__ == '__main__':
   args = parse_args()
   main(args.dirs, args.config, args.map, args.summary, args.with_aid,
-       args.with_target, args.phenotype)
+       args.with_target, args.phenotype, args.prefix)
