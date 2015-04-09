@@ -33,20 +33,20 @@ def parse_args(input_args=None):
   return parser.parse_args(input_args)
 
 
-def get_rows(reader, outcome, assay, target, with_aid=True, with_target=True,
-             phenotype=None, join=False):
+def get_rows(reader, outcome, assay_id, target, with_assay_id=True,
+             with_target=True, phenotype=None, join=False):
   """Get a row for each data point."""
   rows = []
-  cids = set()
+  mol_ids = set()
   mols = set()
   for mol in reader:
-    row = {'id': mol.GetProp('_Name'), 'outcome': outcome}
-    if join and row['id'] in cids:
+    row = {'mol_id': mol.GetProp('_Name'), 'outcome': outcome}
+    if join and row['mol_id'] in mol_ids:
       continue
-    cids.add(row['id'])
+    mol_ids.add(row['mol_id'])
     mols.add(mol)
-    if with_aid:
-      row['assay'] = assay
+    if with_assay_id:
+      row['assay_id'] = assay_id
     if with_target:
       row['target'] = target
     if phenotype is not None:
@@ -55,7 +55,7 @@ def get_rows(reader, outcome, assay, target, with_aid=True, with_target=True,
   return rows, mols
 
 
-def main(active_filename, decoy_filename, assay, target, with_assay=True,
+def main(active_filename, decoy_filename, assay_id, target, with_assay_id=True,
          with_target=True, phenotype=None, join=False, output_filename=None,
          unique_filename=None):
   rows = []
@@ -66,17 +66,17 @@ def main(active_filename, decoy_filename, assay, target, with_assay=True,
     if outcome == 'inactive' and phenotype is not None:
       this_phenotype = 'inactive'
     with serial.MolReader().open(filename) as reader:
-      this_rows, this_mols = get_rows(reader, outcome, assay, target,
-                                      with_assay, with_target, this_phenotype,
-                                      join)
+      this_rows, this_mols = get_rows(reader, outcome, assay_id, target,
+                                      with_assay_id, with_target,
+                                      this_phenotype, join)
       rows.extend(this_rows)
       mols.extend(this_mols)
   assert len(rows) == len(mols)
 
   df = pd.DataFrame(rows)
   if output_filename is None:
-    output_filename = '{}-{}-data.pkl.gz'.format(aid, target)
-  print '{}\t{}\t{}\t{}'.format(assay, target, output_filename, len(df))
+    output_filename = '{}-data.pkl.gz'.format(assay_id)
+  print '{}\t{}\t{}\t{}'.format(assay_id, target, output_filename, len(df))
   utils.write_pickle(df, output_filename)
 
   if unique_filename is not None:
