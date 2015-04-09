@@ -1,6 +1,8 @@
 """Build data frames for non-PCBA classification datasets."""
 import argparse
+import numpy as np
 import pandas as pd
+import warnings
 
 from vs_utils import utils
 
@@ -22,68 +24,69 @@ def parse_args(input_args=None):
                       help='Do not include AID with each data point.')
   parser.add_argument('--no-target', action='store_false', dest='with_target',
                       help='Do not include target with each data point.')
-  parser.add_argument('-j', '--join', action='store_true',
-                      help='Join duplicated molecules.')
   parser.add_argument('--phenotype',
                       help='Phenotype for actives in this assay.')
   parser.add_argument('-o', '--output',
                       help='Output filename.')
   parser.add_argument('--mols',
                       help='Filename to write unique molecules.')
+  parser.add_argument('--mol-prefix',
+                      help='Prefix for molecule IDs.')
   return parser.parse_args(input_args)
 
 
-def get_rows(reader, outcome, assay_id, target, with_assay_id=True,
-             with_target=True, phenotype=None, join=False):
+def get_rows(reader, outcome, phenotype=None, mol_id_prefix=None):
   """Get a row for each data point."""
   rows = []
   mol_ids = set()
-  mols = set()
   for mol in reader:
-    row = {'mol_id': mol.GetProp('_Name'), 'outcome': outcome}
-    if join and row['mol_id'] in mol_ids:
+    mol_id = mol.GetProp('_Name')
+    if mol_id_prefix is not None:
+      mol_id = mol_id_prefix + mol_id
+    row = {'mol_id': mol_id, 'outcome': outcome}
+    if mol_id in mol_ids:
+      warnings.warn(
+          'Merging duplicated "{}" mol_id "{}"'.format(outcome, mol_id))
       continue
-    mol_ids.add(row['mol_id'])
-    mols.add(mol)
-    if with_assay_id:
-      row['assay_id'] = assay_id
-    if with_target:
-      row['target'] = target
+    mol_ids.add(mol_id)
     if phenotype is not None:
       row['phenotype'] = phenotype
     rows.append(row)
-  return rows, mols
+  return rows
 
 
 def main(active_filename, decoy_filename, assay_id, target, with_assay_id=True,
-         with_target=True, phenotype=None, join=False, output_filename=None,
-         unique_filename=None):
+         with_target=True, phenotype=None, output_filename=None,
+         mol_id_prefix=None):
   rows = []
-  mols = []
   for outcome, filename in zip(['active', 'inactive'],
                                [active_filename, decoy_filename]):
     this_phenotype = phenotype
     if outcome == 'inactive' and phenotype is not None:
       this_phenotype = 'inactive'
     with serial.MolReader().open(filename) as reader:
-      this_rows, this_mols = get_rows(reader, outcome, assay_id, target,
-                                      with_assay_id, with_target,
-                                      this_phenotype, join)
+      this_rows = get_rows(reader, outcome, this_phenotype, mol_id_prefix)
       rows.extend(this_rows)
-      mols.extend(this_mols)
-  assert len(rows) == len(mols)
 
+  # create dataframe
   df = pd.DataFrame(rows)
+
+  # sanity check for duplicate mol_ids
+  assert len(np.unique(df['mol_id'])) == len(df)
+
+  # add assay_id and target columns
+  if with_assay_id:
+    df.loc[:, 'assay_id'] = assay_id
+  if with_target:
+    df.loc[:, 'target'] = target
+
   if output_filename is None:
-    output_filename = '{}-data.pkl.gz'.format(assay_id)
+    output_filename = '{}_data.pkl.gz'.format(assay_id)
   print '{}\t{}\t{}\t{}'.format(assay_id, target, output_filename, len(df))
   utils.write_pickle(df, output_filename)
 
-  if unique_filename is not None:
-    with serial.MolWriter().open(unique_filename) as writer:
-      writer.write(mols)
-
 if __name__ == '__main__':
   args = parse_args()
+  print args
   main(args.actives, args.decoys, args.assay, args.target, args.with_assay,
-       args.with_target, args.phenotype, args.join, args.output, args.mols)
+       args.with_target, args.phenotype, args.output, args.mol_prefix)
