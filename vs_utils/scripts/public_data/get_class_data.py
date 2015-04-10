@@ -3,11 +3,11 @@ Build data frames for classification datasets with separate files for active
 and inactive molecules (e.g. DUD-E).
 """
 import argparse
-import gzip
 import numpy as np
 import pandas as pd
 import warnings
 
+from vs_utils.utils import write_dataframe
 from vs_utils.utils.rdkit_utils import serial
 
 
@@ -30,6 +30,10 @@ def parse_args(input_args=None):
                       help='Phenotype for actives in this assay.')
   parser.add_argument('-o', '--output',
                       help='Output filename.')
+  parser.add_argument('-f', '--format',
+                      choices=['csv', 'csv.gz', 'pkl', 'pkl.gz'],
+                      default='pkl.gz',
+                      help='Output file format.')
   parser.add_argument('--mols',
                       help='Filename to write unique molecules.')
   parser.add_argument('--mol-prefix',
@@ -59,7 +63,7 @@ def get_rows(reader, outcome, phenotype=None, mol_id_prefix=None):
 
 def main(active_filename, decoy_filename, assay_id, target, with_assay_id=True,
          with_target=True, phenotype=None, output_filename=None,
-         mol_id_prefix=None):
+         mol_id_prefix=None, output_format='.pkl.gz'):
   rows = []
   for outcome, filename in zip(['active', 'inactive'],
                                [active_filename, decoy_filename]):
@@ -83,13 +87,13 @@ def main(active_filename, decoy_filename, assay_id, target, with_assay_id=True,
     df.loc[:, 'target'] = target
 
   if output_filename is None:
-    output_filename = '{}_data.csv.gz'.format(assay_id)
+    output_filename = '{}.{}'.format(assay_id, output_format)
   print '{}\t{}\t{}\t{}'.format(assay_id, target, output_filename, len(df))
-  with gzip.open(output_filename, 'wb') as f:
-    df.to_csv(f, index=False)
+  write_dataframe(df, output_filename)
 
 if __name__ == '__main__':
   args = parse_args()
   print args
   main(args.actives, args.decoys, args.assay, args.target, args.with_assay,
-       args.with_target, args.phenotype, args.output, args.mol_prefix)
+       args.with_target, args.phenotype, args.output, args.mol_prefix,
+       args.format)

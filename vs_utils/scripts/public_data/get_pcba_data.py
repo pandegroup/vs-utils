@@ -34,11 +34,11 @@ Additionally, columns are added when commonly-occurring fields are recognized
 """
 import argparse
 import glob
-import gzip
 import os
 import pandas as pd
 import warnings
 
+from vs_utils.utils import write_dataframe
 from vs_utils.utils.public_data import PcbaDataExtractor, read_sid_cid_map
 
 __author__ = "Steven Kearnes"
@@ -72,11 +72,16 @@ def parse_args(input_args=None):
                       help='Require compound-level phenotype data.')
   parser.add_argument('--prefix', default='CID',
                       help='Prefix for molecule IDs.')
+  parser.add_argument('-f', '--format',
+                      choices=['csv', 'csv.gz', 'pkl', 'pkl.gz'],
+                      default='pkl.gz',
+                      help='Output file format.')
   return parser.parse_args(input_args)
 
 
 def main(dirs, config_filename, map_filename=None, summary_filename=None,
-         with_aid=True, with_target=True, phenotype=False, id_prefix='CID'):
+         with_aid=True, with_target=True, phenotype=False, id_prefix='CID',
+         output_format='.pkl.gz'):
   aids = set()
   targets = set()
   total = 0
@@ -142,12 +147,11 @@ def main(dirs, config_filename, map_filename=None, summary_filename=None,
         data.loc[:, 'assay_id'] = assay_id
 
       # save dataframe
-      output_filename = '{}.csv.gz'.format(assay_id)
+      output_filename = '{}.{}'.format(assay_id, output_format)
       print '{}\t{}\t{}\t{}'.format(aid, target, output_filename, len(data))
+      write_dataframe(data, output_filename)
       summary.append({'aid': aid, 'target': target,
                       'filename': output_filename, 'size': len(data)})
-      with gzip.open(output_filename, 'wb') as f:
-        data.to_csv(f, index=False)
 
   # make sure we found everything
   missing = set(config['aid']).difference(aids)
@@ -157,12 +161,11 @@ def main(dirs, config_filename, map_filename=None, summary_filename=None,
   # save a summary
   summary = pd.DataFrame(summary)
   if summary_filename is not None:
-    with gzip.open(summary_filename, 'wb') as f:
-      summary.to_csv(f, index=False)
+    write_dataframe(summary, summary_filename)
   warnings.warn('Found {} assays for {} targets ({} total data points)'.format(
       len(aids), len(targets), total))
 
 if __name__ == '__main__':
   args = parse_args()
   main(args.dirs, args.config, args.map, args.summary, args.with_aid,
-       args.with_target, args.phenotype, args.prefix)
+       args.with_target, args.phenotype, args.prefix, args.format)
