@@ -34,11 +34,11 @@ Additionally, columns are added when commonly-occurring fields are recognized
 """
 import argparse
 import glob
+import gzip
 import os
 import pandas as pd
 import warnings
 
-from vs_utils.utils import write_pickle
 from vs_utils.utils.public_data import PcbaDataExtractor, read_sid_cid_map
 
 __author__ = "Steven Kearnes"
@@ -63,7 +63,7 @@ def parse_args(input_args=None):
   parser.add_argument('-m', '--map',
                       help='SID->CID map filename.')
   parser.add_argument('-s', '--summary',
-                      help='Filename for summary information.')
+                      help='Filename for summary information (.csv.gz).')
   parser.add_argument('--no-aid', action='store_false', dest='with_aid',
                       help='Do not include AID with each data point.')
   parser.add_argument('--no-target', action='store_false', dest='with_target',
@@ -142,11 +142,12 @@ def main(dirs, config_filename, map_filename=None, summary_filename=None,
         data.loc[:, 'assay_id'] = assay_id
 
       # save dataframe
-      output_filename = '{}.pkl.gz'.format(assay_id)
+      output_filename = '{}.csv.gz'.format(assay_id)
       print '{}\t{}\t{}\t{}'.format(aid, target, output_filename, len(data))
       summary.append({'aid': aid, 'target': target,
                       'filename': output_filename, 'size': len(data)})
-      write_pickle(data, output_filename)
+      with gzip.open(output_filename, 'wb') as f:
+        data.to_csv(f, index=False)
 
   # make sure we found everything
   missing = set(config['aid']).difference(aids)
@@ -156,7 +157,8 @@ def main(dirs, config_filename, map_filename=None, summary_filename=None,
   # save a summary
   summary = pd.DataFrame(summary)
   if summary_filename is not None:
-    write_pickle(summary, summary_filename)
+    with gzip.open(summary_filename, 'wb') as f:
+      summary.to_csv(f, index=False)
   warnings.warn('Found {} assays for {} targets ({} total data points)'.format(
       len(aids), len(targets), total))
 
