@@ -3,6 +3,7 @@ Test featurize.py.
 """
 import joblib
 import numpy as np
+import pandas as pd
 import shutil
 import tempfile
 import unittest
@@ -11,7 +12,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from vs_utils.scripts.featurize import main, parse_args
-from vs_utils.utils import read_pickle, write_pickle
+from vs_utils.utils import read_csv_features, read_pickle, write_pickle
 from vs_utils.utils.rdkit_utils import conformers, serial
 
 
@@ -100,6 +101,9 @@ class TestFeaturize(unittest.TestCase):
         # read output file
         if output_filename.endswith('.joblib'):
             data = joblib.load(output_filename)
+        elif (output_filename.endswith('.csv')
+                or output_filename.endswith('.csv.gz')):
+            data = read_csv_features(output_filename)
         else:
             data = read_pickle(output_filename)
 
@@ -112,7 +116,7 @@ class TestFeaturize(unittest.TestCase):
             smiles = self.smiles
         assert len(data) == shape[0]
         if len(shape) > 1:
-            assert data.ix[0, 'features'].shape == shape[1:]
+            assert np.asarray(data.ix[0, 'features']).shape == shape[1:]
         assert np.array_equal(data['y'], targets), data['y']
         assert np.array_equal(data['names'], names), data['names']
         assert np.array_equal(data['smiles'], smiles), data['smiles']
@@ -137,6 +141,18 @@ class TestFeaturize(unittest.TestCase):
         Save features using joblib.dump.
         """
         self.check_output(['circular'], (2, 2048), output_suffix='.joblib')
+
+    def test_csv(self):
+        """
+        Save features to csv.
+        """
+        self.check_output(['circular'], (2, 2048), output_suffix='.csv')
+
+    def test_csv_gz(self):
+        """
+        Save features to csv.gz.
+        """
+        self.check_output(['circular'], (2, 2048), output_suffix='.csv.gz')
 
     def test_circular(self):
         """

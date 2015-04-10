@@ -10,11 +10,74 @@ import cPickle
 import gzip
 import numpy as np
 import os
+import pandas as pd
 
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 
 from vs_utils.utils.rdkit_utils import PicklableMol, serial
+
+
+def write_dataframe(df, filename):
+    """
+    Serialize DataFrame.
+
+    Parameters
+    ----------
+    df : DataFrame
+      DataFrame to serialize.
+    filename : str
+      Output filename (file format is determined by suffix).
+    """
+    if filename.endswith('csv'):
+        df.to_csv(filename, index=False)
+    elif filename.endswith('csv.gz'):
+        with gzip.open(filename, 'wb') as f:
+          df.to_csv(f, index=False)
+    elif filename.endswith('.pkl') or filename.endswith('.pkl.gz'):
+        write_pickle(df, filename)
+    else:
+        raise NotImplementedError(
+            'Unrecognized extension for "{}"'.format(filename))
+
+
+def read_csv(filename):
+    """
+    Read CSV data into a DataFrame.
+
+    Parameters
+    ----------
+    filename : str
+        Filename containing serialized data.
+    """
+    if filename.endswith('.csv'):
+        return pd.read_csv(filename)
+    elif filename.endswith('.csv.gz'):
+        return pd.read_csv(filename, compression='gzip')
+    else:
+        raise ValueError('{} is not a csv file!'.format(filename))
+
+
+def read_csv_features(filename):
+    """
+    Read features that were written to csv by featurize.py.
+
+    Parameters
+    ----------
+    filename : str
+        CSV filename containing features.
+
+    Returns
+    -------
+    DataFrame with 'features' column containing numpy arrays.
+    """
+    df = read_csv(filename)
+    features = []
+    for _, row in df.iterrows():
+        features.append(np.fromstring(row.features, sep=' '))
+    del df['features']  # need to replace completely
+    df.loc[:, 'features'] = pd.Series(features, index=df.index)
+    return df
 
 
 def read_pickle(filename):

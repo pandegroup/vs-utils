@@ -16,7 +16,7 @@ import pandas as pd
 
 from vs_utils.features import get_featurizers
 from vs_utils.utils import (read_pickle, ScaffoldGenerator, SmilesGenerator,
-                            write_pickle)
+                            write_dataframe)
 from vs_utils.utils.parallel_utils import LocalCluster
 from vs_utils.utils.rdkit_utils import serial
 
@@ -52,7 +52,8 @@ def parse_args(input_args=None):
                         help='Start a local IPython.parallel cluster with ' +
                              'this many engines.')
     parser.add_argument('output',
-                        help='Output filename (.joblib, .pkl, or .pkl.gz).')
+                        help=('Output filename (.joblib, .pkl, .pkl.gz, .csv, '
+                              'or .csv.gz).'))
     parser.add_argument('-c', '--compression-level', type=int, default=3,
                         help='Compression level (0-9) to use with ' +
                              'joblib.dump.')
@@ -198,7 +199,15 @@ def main(featurizer_class, input_filename, output_filename,
     # construct a DataFrame
     try:
         if data['features'].ndim > 1:
-            data['features'] = [row for row in data['features']]
+            # numpy arrays will be "summarized" when written as strings
+            # use str(row.tolist())[1:-1] to remove the surrounding brackets
+            # remove commas (keeping spaces) to avoid conflicts with csv
+            if (output_filename.endswith('.csv')
+                    or output_filename.endswith('.csv.gz')):
+                data['features'] = [str(row.tolist())[1:-1].replace(', ', ' ')
+                                    for row in data['features']]
+            else:
+                data['features'] = [row for row in data['features']]
     except AttributeError:
         pass
     df = pd.DataFrame(data)
@@ -307,7 +316,7 @@ def get_scaffolds(mols, include_chirality=False):
     return scaffolds
 
 
-def write_output_file(data, output_filename, compression_level=3):
+def write_output_file(data, filename, compression_level=3):
     """
     Pickle output data, possibly to a compressed file.
 
@@ -315,17 +324,15 @@ def write_output_file(data, output_filename, compression_level=3):
     ----------
     data : object
         Object to pickle in output file.
-    output_filename : str
+    filename : str
         Output filename. Should end with .joblib, .pkl, or .pkl.gz.
     compression_level : int, optional (default 3)
         Compression level (0-9) to use with joblib.dump.
     """
-    if output_filename.endswith('.pkl') or output_filename.endswith('.pkl.gz'):
-        write_pickle(data, output_filename)
-    elif output_filename.endswith('.joblib'):
-        joblib.dump(data, output_filename, compress=compression_level)
+    if filename.endswith('.joblib'):
+      joblib.dump(data, filename, compress=compression_level)
     else:
-        raise NotImplementedError('Unrecognized output file extension.')
+      write_dataframe(data, filename)
 
 if __name__ == '__main__':
     args = parse_args()
