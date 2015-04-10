@@ -119,7 +119,7 @@ def main(dirs, config_filename, map_filename=None, summary_filename=None,
       data = extractor.get_data(sid_cid=sid_cid)
       total += len(data)
 
-      # add generic molecule id column
+      # add generic molecule ID column
       if id_prefix == 'CID':
         col = 'cid'
       elif id_prefix == 'SID':
@@ -127,15 +127,22 @@ def main(dirs, config_filename, map_filename=None, summary_filename=None,
       else:
         raise NotImplementedError('Unrecognized ID prefix "{}"'.format(
             id_prefix))
-      ids = [id_prefix + str(mol_id) for mol_id in data[col]]
+      ids = []
+      for i, mol_id in enumerate(data[col]):
+        try:
+          ids.append(id_prefix + str(int(mol_id)))
+        except ValueError:
+          warnings.warn('No ID for the following row:\n{}'.format(data.loc[i]))
+          ids.append(None)  # can be found with pd.isnull
       data.loc[:, 'mol_id'] = pd.Series(ids, index=data.index)
 
-      # add generic assay id column
+      # add generic assay ID column
+      assay_id = 'PCBA-' + str(aid)
       if with_aid:
-        data.loc[:, 'assay_id'] = 'PCBA' + str(aid)
+        data.loc[:, 'assay_id'] = assay_id
 
       # save dataframe
-      output_filename = 'aid{}-data.pkl.gz'.format(aid)
+      output_filename = '{}.pkl.gz'.format(assay_id)
       print '{}\t{}\t{}\t{}'.format(aid, target, output_filename, len(data))
       summary.append({'aid': aid, 'target': target,
                       'filename': output_filename, 'size': len(data)})
