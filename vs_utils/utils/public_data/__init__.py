@@ -186,7 +186,7 @@ class PcbaJsonParser(object):
       name = field['name'].strip()  # clean up extra whitespace
       if name in names:
         warnings.warn(
-          'Duplicated field "{}" in AID {}'.format(name, self.get_aid()))
+            'Duplicated field "{}" in AID {}'.format(name, self.get_aid()))
       tids[field['tid']] = name
       names.append(name)
     if from_tid:
@@ -221,6 +221,12 @@ class PcbaJsonParser(object):
           point[key] = value
       series.append(point)
     df = pd.DataFrame(series)
+
+    # add missing columns filled with null values
+    for col in tids.itervalues():
+      if col not in df.columns:
+        df.loc[:, col] = None
+
     assert len(df) == len(data)
     self.data = df
     return df
@@ -396,11 +402,11 @@ class PcbaDataExtractor(object):
       config['phenotype'] = 'Phenotype'
 
     # target cleanup
-    # add gi: prefix to integer targets
+    # add GI prefix to integer targets
     if 'target' in config:
       try:
         int(config['target'])
-        config['target'] = 'gi_{}'.format(config['target'])
+        config['target'] = 'GI{}'.format(config['target'])
       except ValueError:
         pass
 
@@ -416,7 +422,7 @@ class PcbaDataExtractor(object):
         phenotype = phenotypes[phenotype]  # map to full name
       if phenotype not in phenotypes.itervalues():
         raise NotImplementedError(
-          'Unrecognized phenotype "{}"'.format(phenotype))
+            'Unrecognized phenotype "{}"'.format(phenotype))
       self.phenotype = phenotype  # set default phenotype for this assay
 
     self.config = config
