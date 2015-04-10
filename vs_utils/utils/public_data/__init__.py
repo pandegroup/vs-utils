@@ -186,7 +186,7 @@ class PcbaJsonParser(object):
       name = field['name'].strip()  # clean up extra whitespace
       if name in names:
         warnings.warn(
-          'Duplicated field "{}" in AID {}'.format(name, self.get_aid()))
+            'Duplicated field "{}" in AID {}'.format(name, self.get_aid()))
       tids[field['tid']] = name
       names.append(name)
     if from_tid:
@@ -221,6 +221,12 @@ class PcbaJsonParser(object):
           point[key] = value
       series.append(point)
     df = pd.DataFrame(series)
+
+    # add missing columns filled with null values
+    for col in tids.itervalues():
+      if col not in df.columns:
+        df.loc[:, col] = None
+
     assert len(df) == len(data)
     self.data = df
     return df
