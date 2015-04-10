@@ -3,11 +3,10 @@ Build data frames for classification datasets with separate files for active
 and inactive molecules (e.g. DUD-E).
 """
 import argparse
+import gzip
 import numpy as np
 import pandas as pd
 import warnings
-
-from vs_utils import utils
 
 from vs_utils.utils.rdkit_utils import serial
 
@@ -84,9 +83,10 @@ def main(active_filename, decoy_filename, assay_id, target, with_assay_id=True,
     df.loc[:, 'target'] = target
 
   if output_filename is None:
-    output_filename = '{}_data.pkl.gz'.format(assay_id)
+    output_filename = '{}_data.csv.gz'.format(assay_id)
   print '{}\t{}\t{}\t{}'.format(assay_id, target, output_filename, len(df))
-  utils.write_pickle(df, output_filename)
+  with gzip.open(output_filename, 'wb') as f:
+    df.to_csv(f, index=False)
 
 if __name__ == '__main__':
   args = parse_args()
