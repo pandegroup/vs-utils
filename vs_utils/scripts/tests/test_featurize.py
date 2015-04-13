@@ -57,8 +57,8 @@ class TestFeaturize(unittest.TestCase):
 
         Parameters
         ----------
-        filemol_ids : list
-            Filemol_ids to delete.
+        filenames : list
+            Filenames to delete.
         """
         shutil.rmtree(self.temp_dir)
 
