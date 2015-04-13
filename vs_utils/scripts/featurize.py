@@ -166,7 +166,7 @@ def main(featurizer_class, input_filename, output_filename,
         targets = read_pickle(target_filename)
         if isinstance(targets, dict):
             mol_indices, target_indices = collate_mols(
-                mols, mol_ids, targets['y'], targets['names'])
+                mols, mol_ids, targets['y'], targets['mol_id'])
             mols = mols[mol_indices]
             mol_ids = mol_ids[mol_indices]
             targets = np.asarray(targets['y'])[target_indices]
