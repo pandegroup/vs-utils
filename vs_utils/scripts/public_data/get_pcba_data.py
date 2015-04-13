@@ -34,6 +34,7 @@ Additionally, columns are added when commonly-occurring fields are recognized
 """
 import argparse
 import glob
+import numpy as np
 import os
 import pandas as pd
 import warnings
@@ -136,9 +137,14 @@ def main(dirs, config_filename, map_filename=None, summary_filename=None,
       for i, mol_id in enumerate(data[col]):
         try:
           ids.append(id_prefix + str(int(mol_id)))
-        except ValueError:
+        except (TypeError, ValueError):
           warnings.warn('No ID for the following row:\n{}'.format(data.loc[i]))
           ids.append(None)  # can be found with pd.isnull
+
+      # skip this assay if there are no valid IDs
+      if np.all(pd.isnull(ids)):
+        warnings.warn('No valid IDs for AID {}. Skipping.'.format(aid))
+        continue
       data.loc[:, 'mol_id'] = pd.Series(ids, index=data.index)
 
       # add generic assay ID column
