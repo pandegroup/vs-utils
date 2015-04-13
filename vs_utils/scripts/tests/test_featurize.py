@@ -3,7 +3,6 @@ Test featurize.py.
 """
 import joblib
 import numpy as np
-import pandas as pd
 import shutil
 import tempfile
 import unittest
@@ -90,13 +89,15 @@ class TestFeaturize(unittest.TestCase):
         _, output_filename = tempfile.mkstemp(suffix=output_suffix,
                                               dir=self.temp_dir)
         input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, '--names'] + featurize_args
+                      output_filename, '--smiles'] + featurize_args
 
         # run script
         args = parse_args(input_args)
         main(args.klass, args.input, args.output, target_filename=args.targets,
-             featurizer_kwargs=vars(args.featurizer_kwargs), names=args.names,
-             scaffolds=args.scaffolds, chiral_scaffolds=args.chiral_scaffolds)
+             featurizer_kwargs=vars(args.featurizer_kwargs),
+             include_smiles=args.include_smiles, scaffolds=args.scaffolds,
+             chiral_scaffolds=args.chiral_scaffolds,
+             mol_id_prefix=args.mol_prefix)
 
         # read output file
         if output_filename.endswith('.joblib'):
@@ -118,7 +119,7 @@ class TestFeaturize(unittest.TestCase):
         if len(shape) > 1:
             assert np.asarray(data.ix[0, 'features']).shape == shape[1:]
         assert np.array_equal(data['y'], targets), data['y']
-        assert np.array_equal(data['names'], names), data['names']
+        assert np.array_equal(data['mol_id'], names), data['mol_id']
         assert np.array_equal(data['smiles'], smiles), data['smiles']
 
         # return output in case anything else needs to be checked
@@ -205,6 +206,16 @@ class TestFeaturize(unittest.TestCase):
         Test calculation of RDKit descriptors.
         """
         self.check_output(['descriptors'], (2, 196))
+
+    def test_mol_id_prefix(self):
+        """
+        Test that names are prepended with mol_id_prefix.
+        """
+        prefix = 'CID'
+        for i, name in enumerate(self.names):
+          self.names[i] = prefix + name
+        self.check_output(['--mol-prefix', prefix, 'circular', '--size', '512'],
+                          (2, 512))
 
     def test_scaffold(self):
         """

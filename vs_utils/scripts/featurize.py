@@ -42,8 +42,8 @@ def parse_args(input_args=None):
     parser.add_argument('--smiles-hydrogens', action='store_true')
     parser.add_argument('--scaffolds', action='store_true',
                         help='Calculate molecule scaffolds.')
-    parser.add_argument('--names', action='store_true',
-                        help='Include molecule names.')
+    parser.add_argument('--smiles', action='store_true', dest='include_smiles',
+                        help='Include molecule SMILES.')
     parser.add_argument('-p', '--parallel', action='store_true',
                         help='Whether to use IPython.parallel.')
     parser.add_argument('-id', '--cluster-id',
@@ -57,6 +57,8 @@ def parse_args(input_args=None):
     parser.add_argument('-c', '--compression-level', type=int, default=3,
                         help='Compression level (0-9) to use with ' +
                              'joblib.dump.')
+    parser.add_argument('--mol-prefix',
+                        help='Prefix for molecule IDs.')
 
     # featurizer subcommands
     featurizers = get_featurizers()
@@ -75,7 +77,7 @@ def parse_args(input_args=None):
                 continue
             kwargs = {}
             try:
-                kwargs['default'] = defaults[i-len(args)]
+                kwargs['default'] = defaults[i - len(args)]
                 if kwargs['default'] is not None:
                     kwargs['type'] = type(kwargs['default'])
             except IndexError:
@@ -93,7 +95,8 @@ def parse_args(input_args=None):
     args.featurizer_kwargs = parser.parse_args(input_args)
     for arg in ['input', 'output', 'klass', 'targets', 'parallel',
                 'cluster_id', 'n_engines', 'compression_level',
-                'smiles_hydrogens', 'names', 'scaffolds', 'chiral_scaffolds']:
+                'smiles_hydrogens', 'include_smiles', 'scaffolds',
+                'chiral_scaffolds', 'mol_prefix']:
         setattr(args, arg, getattr(args.featurizer_kwargs, arg))
         delattr(args.featurizer_kwargs, arg)
     return args
@@ -116,8 +119,8 @@ class HelpFormatter(argparse.RawTextHelpFormatter):
 def main(featurizer_class, input_filename, output_filename,
          target_filename=None, featurizer_kwargs=None, parallel=False,
          client_kwargs=None, view_flags=None, compression_level=3,
-         smiles_hydrogens=False, names=False, scaffolds=False,
-         chiral_scaffolds=False):
+         smiles_hydrogens=False, include_smiles=False, scaffolds=False,
+         chiral_scaffolds=False, mol_id_prefix=None):
     """
     Featurize molecules in input_filename using the given featurizer.
 
@@ -146,14 +149,16 @@ def main(featurizer_class, input_filename, output_filename,
         Compression level (0-9) to use with joblib.dump.
     smiles_hydrogens : bool, optional (default False)
         Whether to keep hydrogens when generating SMILES.
-    names : bool, optional (default False)
-        Whether to include molecule names in output.
+    include_smiles : bool, optional (default False)
+        Include SMILES in output.
     scaffolds : bool, optional (default False)
         Whether to include scaffolds in output.
     chiral_scaffods : bool, optional (default False)
         Whether to include chirality in scaffolds.
+    mol_id_prefix : str, optional
+        Prefix for molecule IDs.
     """
-    mols, mol_names = read_mols(input_filename)
+    mols, mol_ids = read_mols(input_filename, mol_id_prefix=mol_id_prefix)
 
     # get targets
     data = {}
@@ -161,9 +166,9 @@ def main(featurizer_class, input_filename, output_filename,
         targets = read_pickle(target_filename)
         if isinstance(targets, dict):
             mol_indices, target_indices = collate_mols(
-                mols, mol_names, targets['y'], targets['names'])
+                mols, mol_ids, targets['y'], targets['names'])
             mols = mols[mol_indices]
-            mol_names = mol_names[mol_indices]
+            mol_ids = mol_ids[mol_indices]
             targets = np.asarray(targets['y'])[target_indices]
         else:
             assert len(targets) == len(mols)
@@ -178,21 +183,19 @@ def main(featurizer_class, input_filename, output_filename,
 
     # fill in data container
     print "Saving results..."
+    data['mol_id'] = mol_ids
     data['features'] = features
-
-    # calculate SMILES
-    smiles = SmilesGenerator(remove_hydrogens=(not smiles_hydrogens))
-    data['smiles'] = np.asarray([smiles.get_smiles(mol) for mol in mols])
 
     # sanity checks
     assert data['features'].shape[0] == len(mols), (
         "Features do not match molecules.")
-    assert data['smiles'].shape[0] == len(mols), (
-        "SMILES do not match molecules.")
+    assert data['mol_id'].shape[0] == len(mols), (
+        "Molecule IDs do not match molecules.")
 
-    # names, scaffolds, args
-    if names:
-        data['names'] = mol_names
+    # smiles, scaffolds, args
+    if include_smiles:
+        smiles = SmilesGenerator(remove_hydrogens=(not smiles_hydrogens))
+        data['smiles'] = np.asarray([smiles.get_smiles(mol) for mol in mols])
     if scaffolds:
         data['scaffolds'] = get_scaffolds(mols, chiral_scaffolds)
 
@@ -266,7 +269,7 @@ def collate_mols(mols, mol_names, targets, target_names):
     return mol_indices, target_indices
 
 
-def read_mols(input_filename):
+def read_mols(input_filename, mol_id_prefix=None):
     """
     Read molecules from an input file and extract names.
 
@@ -276,17 +279,18 @@ def read_mols(input_filename):
         Filename containing molecules.
     """
     print "Reading molecules..."
-    reader = serial.MolReader()
-    reader.open(input_filename)
     mols = []
     names = []
-    for mol in reader.get_mols():
-        mols.append(mol)
-        if mol.HasProp('_Name'):
-            names.append(mol.GetProp('_Name'))
-        else:
-            names.append(None)
-    reader.close()
+    with serial.MolReader().open(input_filename) as reader:
+        for mol in reader.get_mols():
+            mols.append(mol)
+            if mol.HasProp('_Name'):
+                name = mol.GetProp('_Name')
+                if mol_id_prefix is not None:
+                    name = mol_id_prefix + name
+                names.append(name)
+            else:
+                names.append(None)
     mols = np.asarray(mols)
     names = np.asarray(names)
     return mols, names
@@ -354,7 +358,17 @@ if __name__ == '__main__':
     view_flags = {'retries': 1}
 
     # run main function
-    main(args.klass, args.input, args.output, args.targets,
-         vars(args.featurizer_kwargs), args.parallel, client_kwargs,
-         view_flags, args.compression_level, args.smiles_hydrogens, args.names,
-         args.scaffolds, args.chiral_scaffolds)
+    main(featurizer_class=args.klass,
+         input_filename=args.input,
+         output_filename=args.output,
+         target_filename=args.targets,
+         featurizer_kwargs=vars(args.featurizer_kwargs),
+         parallel=args.parallel,
+         client_kwargs=client_kwargs,
+         view_flags=view_flags,
+         compression_level=args.compression_level,
+         smiles_hydrogens=args.smiles_hydrogens,
+         include_smiles=args.include_smiles,
+         scaffolds=args.scaffolds,
+         chiral_scaffolds=args.chiral_scaffolds,
+         mol_id_prefix=args.mol_prefix)
