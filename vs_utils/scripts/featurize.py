@@ -219,7 +219,7 @@ def main(featurizer_class, input_filename, output_filename,
     write_output_file(df, output_filename, compression_level)
 
 
-def collate_mols(mols, mol_names, targets, target_names):
+def collate_mols(mols, mol_names, targets, target_ids):
     """
     Prune and reorder mols to match targets.
 
@@ -231,8 +231,8 @@ def collate_mols(mols, mol_names, targets, target_names):
         Molecule names.
     targets : array_like
         Targets.
-    target_names : array_like
-        Molecule names corresponding to targets.
+    target_ids : array_like
+        Molecule IDs corresponding to targets.
 
     Returns
     -------
@@ -245,10 +245,10 @@ def collate_mols(mols, mol_names, targets, target_names):
         for a molecule that has target data).
     """
     print "Collating molecules and targets..."
-    assert len(mols) == len(mol_names) and len(targets) == len(target_names)
+    assert len(mols) == len(mol_names) and len(targets) == len(target_ids)
 
     # make sure dtypes match for names so comparisons will work properly
-    target_names = np.asarray(target_names)
+    target_names = np.asarray(target_ids)
     mol_names = np.asarray(mol_names).astype(target_names.dtype)
 
     # sanity checks
