@@ -3,7 +3,6 @@ Test featurize.py.
 """
 import joblib
 import numpy as np
-import pandas as pd
 import shutil
 import tempfile
 import unittest
@@ -27,13 +26,13 @@ class TestFeaturize(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         smiles = ['CC(=O)OC1=CC=CC=C1C(=O)O',
                   'C[C@@H](C1=CC=C(C=C1)CC(C)C)C(=O)O']
-        self.names = ['aspirin', 'ibuprofen']
+        self.mol_ids = ['aspirin', 'ibuprofen']
         engine = conformers.ConformerGenerator(max_conformers=1)
         self.mols = []
         self.smiles = []  # use RDKit-generated SMILES
         for i in xrange(len(smiles)):
             mol = Chem.MolFromSmiles(smiles[i])
-            mol.SetProp('_Name', self.names[i])
+            mol.SetProp('_Name', self.mol_ids[i])
             self.mols.append(engine.generate_conformers(mol))
             self.smiles.append(Chem.MolToSmiles(mol, isomericSmiles=True,
                                                 canonical=True))
@@ -63,10 +62,10 @@ class TestFeaturize(unittest.TestCase):
         """
         shutil.rmtree(self.temp_dir)
 
-    def check_output(self, featurize_args, shape, targets=None, names=None,
+    def check_output(self, featurize_args, shape, targets=None, mol_ids=None,
                      smiles=None, output_suffix='.pkl'):
         """
-        Check features shape, targets, and names.
+        Check features shape, targets, and mol_ids.
 
         Parameters
         ----------
@@ -78,8 +77,8 @@ class TestFeaturize(unittest.TestCase):
             Expected shape of features.
         targets : list, optional
             Expected targets. Defaults to self.targets.
-        names : list, optional
-            Expected names. Defaults to self.names.
+        mol_ids : list, optional
+            Expected mol_ids. Defaults to self.mol_ids.
         smiles : list, optional
             Expected SMILES. Defaults to self.smiles.
         output_suffix : str, optional (default '.pkl')
@@ -90,13 +89,15 @@ class TestFeaturize(unittest.TestCase):
         _, output_filename = tempfile.mkstemp(suffix=output_suffix,
                                               dir=self.temp_dir)
         input_args = [self.input_filename, '-t', self.targets_filename,
-                      output_filename, '--names'] + featurize_args
+                      output_filename, '--smiles'] + featurize_args
 
         # run script
         args = parse_args(input_args)
         main(args.klass, args.input, args.output, target_filename=args.targets,
-             featurizer_kwargs=vars(args.featurizer_kwargs), names=args.names,
-             scaffolds=args.scaffolds, chiral_scaffolds=args.chiral_scaffolds)
+             featurizer_kwargs=vars(args.featurizer_kwargs),
+             include_smiles=args.include_smiles, scaffolds=args.scaffolds,
+             chiral_scaffolds=args.chiral_scaffolds,
+             mol_id_prefix=args.mol_prefix)
 
         # read output file
         if output_filename.endswith('.joblib'):
@@ -110,15 +111,15 @@ class TestFeaturize(unittest.TestCase):
         # check values
         if targets is None:
             targets = self.targets
-        if names is None:
-            names = self.names
+        if mol_ids is None:
+            mol_ids = self.mol_ids
         if smiles is None:
             smiles = self.smiles
         assert len(data) == shape[0]
         if len(shape) > 1:
             assert np.asarray(data.ix[0, 'features']).shape == shape[1:]
         assert np.array_equal(data['y'], targets), data['y']
-        assert np.array_equal(data['names'], names), data['names']
+        assert np.array_equal(data['mol_id'], mol_ids), data['mol_id']
         assert np.array_equal(data['smiles'], smiles), data['smiles']
 
         # return output in case anything else needs to be checked
@@ -206,6 +207,16 @@ class TestFeaturize(unittest.TestCase):
         """
         self.check_output(['descriptors'], (2, 196))
 
+    def test_mol_id_prefix(self):
+        """
+        Test that mol_ids are prepended with mol_id_prefix.
+        """
+        prefix = 'CID'
+        for i, mol_id in enumerate(self.mol_ids):
+          self.mol_ids[i] = prefix + mol_id
+        self.check_output(['--mol-prefix', prefix, 'circular', '--size', '512'],
+                          (2, 512))
+
     def test_scaffold(self):
         """
         Test scaffold featurizer.
@@ -231,7 +242,7 @@ class TestFeaturize(unittest.TestCase):
         mol.SetProp('_Name', 'romosetron')
         AllChem.Compute2DCoords(mol)
         self.mols[1] = mol
-        self.names[1] = 'romosetron'
+        self.mol_ids[1] = 'romosetron'
         self.smiles[1] = Chem.MolToSmiles(mol, isomericSmiles=True)
 
         # write mols
@@ -259,12 +270,12 @@ class TestFeaturize(unittest.TestCase):
         """
 
         # write targets
-        targets = {'names': ['ibuprofen'], 'y': [0]}
+        targets = {'mol_id': ['ibuprofen'], 'y': [0]}
         write_pickle(targets, self.targets_filename)
 
         # run script
         self.check_output(['circular'], (1, 2048), targets=targets['y'],
-                          names=targets['names'], smiles=[self.smiles[1]])
+                          mol_ids=targets['mol_id'], smiles=[self.smiles[1]])
 
     def test_collate_mols2(self):
         """
@@ -272,7 +283,7 @@ class TestFeaturize(unittest.TestCase):
         """
 
         # write targets
-        targets = {'names': ['aspirin', 'ibuprofen'], 'y': [0, 1]}
+        targets = {'mol_id': ['aspirin', 'ibuprofen'], 'y': [0, 1]}
         write_pickle(targets, self.targets_filename)
 
         # write mols
@@ -283,7 +294,7 @@ class TestFeaturize(unittest.TestCase):
 
         # run script
         self.check_output(['circular'], (1, 2048), targets=[0],
-                          names=['aspirin'], smiles=[self.smiles[0]])
+                          mol_ids=['aspirin'], smiles=[self.smiles[0]])
 
     def test_collate_mols3(self):
         """
@@ -292,7 +303,7 @@ class TestFeaturize(unittest.TestCase):
         """
 
         # write targets
-        targets = {'names': ['ibuprofen', 'aspirin'], 'y': [1, 0]}
+        targets = {'mol_id': ['ibuprofen', 'aspirin'], 'y': [1, 0]}
         write_pickle(targets, self.targets_filename)
 
         # run script
