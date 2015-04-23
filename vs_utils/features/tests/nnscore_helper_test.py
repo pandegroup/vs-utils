@@ -251,9 +251,3 @@ class TestPDB(unittest.TestCase):
     # that it becomes challenging to specify complicated geometries in the
     # test scripts. Maybe have a collection of data PDBs for tests?
 
-
-
-
-#  def testCheckProteinFormat(self):
-#    """
-#    TestPDB: Verifies

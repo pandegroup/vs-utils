@@ -13,16 +13,6 @@ The following code implements a featurizer based on NNScore 2.0.1
 __author__ = "Bharath Ramsundar"
 __license__ = "GNU General Public License"
 
-################################## MODIFY THIS VARIABLE TO POINT TO THE AUTODOCK VINA EXECUTABLE ##################################
-# TODO(bramsundar): Hard coding the vina executable is bad design.
-# Refactor this to match use of ambertools elsewhere.
-#vina_executable = "/PATH/TO/VINA_1_1_2/vina"
-vina_executable = (
-    "/home/bramsundar/iautodock/autodock_vina_1_1_2_linux_x86/bin/vina")
-# Example: vina_executable = "/gpfs/autodock_vina_1_1_2_linux_x86/bin/vina"
-###################################################################################################################################
-
-
 import textwrap
 import math
 import os
@@ -39,11 +29,6 @@ from vs_utils.features.nnscore_helper import PDB
 
 # TODO(bramsundar): Add some tests for the classes and functions in
 # this file. Will help verify that cleanup didn't bork anything.
-
-# TODO(bramsundar): Props to the author for the careful featurization,
-# but the code structure itself needs a lot of work. Are the misnamed
-# variables on purpose in places? I think he's trying to avoid
-# variable name collision with misspellings...
 
 # TODO(bramsundar): How does vs_utils handle scripts? Should I factor
 # the script part of this file elsewhere?
@@ -108,14 +93,6 @@ class NNScoreFeaturizer(Featurizer):
     pass
 
 
-#def getCommandOutput2(command):
-#  child = os.popen(command)
-#  data = child.read()
-#  err = child.close()
-#  if err:
-#      raise RuntimeError, '%s failed w/ exit code %d' % (command, err)
-#  return data
-
 def hashtable_entry_add_one(hashtable, key, toadd = 1):
   # note that dictionaries (hashtables) are passed by reference in python
   if hashtable.has_key(key):
@@ -179,11 +156,11 @@ class binana:
        rotatable bonds.
   """
 
-  #functions = MathFunctions()
+  functions = MathFunctions()
 
   # supporting functions
-
   def get_vina_output(self):
+    """Invoke vina on ligand and receptor."""
     # Now save the files
     preface ="REMARK "
 
@@ -236,7 +213,10 @@ class binana:
       
     """
     # Now see if there's hydrophobic contacts (C-C contacts)
-    hydrophobics = {}
+    hydrophobics = {
+      'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
+      'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
+      }
     pdb_hydrophobic = PDB()
     for ligand_atom_index in ligand.AllAtoms:
       ligand_atom = ligand.AllAtoms[ligand_atom_index]
@@ -267,7 +247,31 @@ class binana:
       A PDB object describing the receptor protein.
       
     """
-    ligand_receptor_electrostatics = {}
+    ligand_receptor_electrostatics = {
+        "A_MG": 0, "A_MN": 0, "BR_SA": 0, "CL_FE": 0, "CL_MG": 0,
+        "CL_MN": 0, "CL_NA": 0, "CL_P": 0, "CL_S": 0, "CL_ZN": 0,
+        "CU_HD": 0, "CU_N": 0, "FE_NA": 0, "FE_SA": 0, "MG_N": 0,
+        "MG_S": 0, "MG_SA": 0, "MN_NA": 0, "MN_S": 0, "MN_SA": 0,
+        "NA_P": 0, "P_S": 0, "P_SA": 0, "S_SA": 0, "A_A": 0.0, "A_BR":
+        0.0, "A_C": 0.0, "A_CL": 0.0, "A_F": 0.0, "A_FE": 0.0, "A_HD":
+        0.0, "A_I": 0.0, "A_N": 0.0, "A_NA": 0.0, "A_OA": 0.0, "A_P":
+        0.0, "A_S": 0.0, "A_SA": 0.0, "A_ZN": 0.0, "BR_C": 0.0,
+        "BR_HD": 0.0, "BR_N": 0.0, "BR_OA": 0.0, "C_C": 0.0, "C_CL":
+        0.0, "C_F": 0.0, "C_FE": 0.0, "C_HD": 0.0, "C_I": 0.0,
+        "CL_HD": 0.0, "CL_N": 0.0, "CL_OA": 0.0, "CL_SA": 0.0, "C_MG":
+        0.0, "C_MN": 0.0, "C_N": 0.0, "C_NA": 0.0, "C_OA": 0.0, "C_P":
+        0.0, "C_S": 0.0, "C_SA": 0.0, "C_ZN": 0.0, "FE_HD": 0.0,
+        "FE_N": 0.0, "FE_OA": 0.0, "F_HD": 0.0, "F_N": 0.0, "F_OA":
+        0.0, "F_SA": 0.0, "HD_HD": 0.0, "HD_I": 0.0, "HD_MG": 0.0,
+        "HD_MN": 0.0, "HD_N": 0.0, "HD_NA": 0.0, "HD_OA": 0.0, "HD_P":
+        0.0, "HD_S": 0.0, "HD_SA": 0.0, "HD_ZN": 0.0, "I_N": 0.0,
+        "I_OA": 0.0, "MG_NA": 0.0, "MG_OA": 0.0, "MG_P": 0.0, "MN_N":
+        0.0, "MN_OA": 0.0, "MN_P": 0.0, "NA_OA": 0.0, "NA_S": 0.0,
+        "NA_SA": 0.0, "NA_ZN": 0.0, "N_N": 0.0, "N_NA": 0.0, "N_OA":
+        0.0, "N_P": 0.0, "N_S": 0.0, "N_SA": 0.0, "N_ZN": 0.0,
+        "OA_OA": 0.0, "OA_P": 0.0, "OA_S": 0.0, "OA_SA": 0.0, "OA_ZN":
+        0.0, "P_ZN": 0.0, "SA_SA": 0.0, "SA_ZN": 0.0, "S_ZN": 0,
+        "F_ZN": 0}
     for ligand_atom_index in ligand.AllAtoms:
       ligand_atom = ligand.AllAtoms[ligand_atom_index]
       for receptor_atom_index in receptor.AllAtoms:
@@ -304,7 +308,10 @@ class binana:
       A PDB object describing the receptor protein.
       
     """
-    active_site_flexibility = {}
+    active_site_flexibility = {
+      'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
+      'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
+      }
     for receptor_atom_index in receptor.AllAtoms:
       receptor_atom = receptor.AllAtoms[receptor_atom_index]
 
@@ -319,7 +326,7 @@ class binana:
     Computes hydrogen bonds between ligand and receptor.
 
     Returns a dictionary whose keys are of form
-    HDONOR_${COMMENT}_${RESIDUETYPE}_${STRUCTURE} where COMMENT is either
+    HDONOR-${COMMENT}_${RESIDUETYPE}_${STRUCTURE} where COMMENT is either
     "RECEPTOR" or "LIGAND", RESIDUETYPE is "BACKBONE" or "SIDECHAIN" and
     where STRUCTURE is "ALPHA" or "BETA" or "OTHER". The values are counts
     of the numbers of hydrogen bonds associated with the given keys.
@@ -331,7 +338,19 @@ class binana:
     receptor: PDB
       A PDB object describing the receptor protein.
     """
-    hbonds = {}
+    hbonds = {
+      'HDONOR-LIGAND_BACKBONE_ALPHA': 0,
+      'HDONOR-LIGAND_BACKBONE_BETA': 0,
+      'HDONOR-LIGAND_BACKBONE_OTHER': 0,
+      'HDONOR-LIGAND_SIDECHAIN_ALPHA': 0,
+      'HDONOR-LIGAND_SIDECHAIN_BETA': 0,
+      'HDONOR-LIGAND_SIDECHAIN_OTHER': 0,
+      'HDONOR-RECEPTOR_BACKBONE_ALPHA': 0,
+      'HDONOR-RECEPTOR_BACKBONE_BETA': 0,
+      'HDONOR-RECEPTOR_BACKBONE_OTHER': 0,
+      'HDONOR-RECEPTOR_SIDECHAIN_ALPHA': 0,
+      'HDONOR-RECEPTOR_SIDECHAIN_BETA': 0,
+      'HDONOR-RECEPTOR_SIDECHAIN_OTHER': 0}
     for ligand_atom_index in ligand.AllAtoms:
       ligand_atom = ligand.AllAtoms[ligand_atom_index]
       for receptor_atom_index in receptor.AllAtoms:
@@ -372,7 +391,7 @@ class binana:
                   hydrogen.coordinates,
                   receptor_atom.coordinates) * 180.0 / math.pi) <=
                   H_BOND_ANGLE):
-              hbonds_key = ("HDONOR_" + hydrogen.comment + "_" +
+              hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
                   receptor_atom.SideChainOrBackBone() + "_" +
                   receptor_atom.structure)
               hashtable_entry_add_one(hbonds, hbonds_key)
@@ -394,7 +413,9 @@ class binana:
     ligand_atom_types: dictionary
       Keys are atom types; values are integer counts.
     """
-    ligand_atom_types = {}
+    ligand_atom_types = {
+        'A': 0, 'BR': 0, 'C': 0, 'CL': 0, 'F': 0, 'HD': 0, 'I': 0,
+        'N': 0, 'NA': 0, 'OA': 0, 'P': 0, 'S': 0, 'SA': 0}
     for ligand_atom_index in ligand.AllAtoms:
       ligand_atom = ligand.AllAtoms[ligand_atom_index]
       hashtable_entry_add_one(ligand_atom_types, ligand_atom.atomtype)
@@ -404,9 +425,47 @@ class binana:
     """
     Compute distance measurements and electrotstatics between ligand
     and receptor.
+    Parameters
+    ----------
+    ligand: TODO(bramsundar)
+    receptor: TODO(bramsundar)
     """
-    ligand_receptor_close_contacts = {}
-    ligand_receptor_contacts = {}
+    ligand_receptor_close_contacts = {
+        "A_A": 0, "A_C": 0, "A_CL": 0, "A_F": 0, "A_FE": 0, "A_MG": 0,
+        "A_MN": 0, "A_NA": 0, "A_SA": 0, "BR_C": 0, "BR_OA": 0, "C_CL":
+        0, "CD_OA": 0, "CL_FE": 0, "CL_MG": 0, "CL_N": 0, "CL_OA": 0,
+        "CL_ZN": 0, "C_MN": 0, "C_NA": 0, "F_N": 0, "F_SA": 0, "F_ZN":
+        0, "HD_MN": 0, "MN_N": 0, "NA_SA": 0, "N_SA": 0, "A_HD": 0,
+        "A_N": 0, "A_OA": 0, "A_ZN": 0, "BR_HD": 0, "C_C": 0, "C_F": 0,
+        "C_HD": 0, "CL_HD": 0, "C_MG": 0, "C_N": 0, "C_OA": 0, "C_SA":
+        0, "C_ZN": 0, "FE_HD": 0, "FE_N": 0, "FE_OA": 0, "F_HD": 0,
+        "F_OA": 0, "HD_HD": 0, "HD_I": 0, "HD_MG": 0, "HD_N": 0,
+        "HD_NA": 0, "HD_OA": 0, "HD_P": 0, "HD_S": 0, "HD_SA": 0,
+        "HD_ZN": 0, "MG_NA": 0, "MG_OA": 0, "MN_OA": 0, "NA_OA": 0,
+        "NA_ZN": 0, "N_N": 0, "N_NA": 0, "N_OA": 0, "N_ZN": 0, "OA_OA":
+        0, "OA_SA": 0, "OA_ZN": 0, "SA_ZN": 0, "S_ZN": 0}
+    ligand_receptor_contacts = {
+        "A_CU": 0, "A_MG": 0, "A_MN": 0, "BR_SA": 0, "C_CD": 0,
+        "CL_FE": 0, "CL_MG": 0, "CL_MN": 0, "CL_NA": 0, "CL_P": 0,
+        "CL_S": 0, "CL_ZN": 0, "CU_HD": 0, "CU_N": 0, "FE_NA": 0,
+        "FE_SA": 0, "MG_N": 0, "MG_S": 0, "MG_SA": 0, "MN_NA": 0,
+        "MN_S": 0, "MN_SA": 0, "NA_P": 0, "P_S": 0, "P_SA": 0, "S_SA":
+        0, "A_A": 0, "A_BR": 0, "A_C": 0, "A_CL": 0, "A_F": 0, "A_FE":
+        0, "A_HD": 0, "A_I": 0, "A_N": 0, "A_NA": 0, "A_OA": 0, "A_P":
+        0, "A_S": 0, "A_SA": 0, "A_ZN": 0, "BR_C": 0, "BR_HD": 0,
+        "BR_N": 0, "BR_OA": 0, "C_C": 0, "C_CL": 0, "C_F": 0, "C_FE":
+        0, "C_HD": 0, "C_I": 0, "CL_HD": 0, "CL_N": 0, "CL_OA": 0,
+        "CL_SA": 0, "C_MG": 0, "C_MN": 0, "C_N": 0, "C_NA": 0, "C_OA":
+        0, "C_P": 0, "C_S": 0, "C_SA": 0, "C_ZN": 0, "FE_HD": 0,
+        "FE_N": 0, "FE_OA": 0, "F_HD": 0, "F_N": 0, "F_OA": 0, "F_SA":
+        0, "HD_HD": 0, "HD_I": 0, "HD_MG": 0, "HD_MN": 0, "HD_N": 0,
+        "HD_NA": 0, "HD_OA": 0, "HD_P": 0, "HD_S": 0, "HD_SA": 0,
+        "HD_ZN": 0, "I_N": 0, "I_OA": 0, "MG_NA": 0, "MG_OA": 0,
+        "MG_P": 0, "MN_N": 0, "MN_OA": 0, "MN_P": 0, "NA_OA": 0,
+        "NA_S": 0, "NA_SA": 0, "NA_ZN": 0, "N_N": 0, "N_NA": 0,
+        "N_OA": 0, "N_P": 0, "N_S": 0, "N_SA": 0, "N_ZN": 0, "OA_OA":
+        0, "OA_P": 0, "OA_S": 0, "OA_SA": 0, "OA_ZN": 0, "P_ZN": 0,
+        "SA_SA": 0, "SA_ZN": 0, "S_ZN": 0}
     for ligand_atom_index in ligand.AllAtoms:
       for receptor_atom_index in receptor.AllAtoms:
         ligand_atom = ligand.AllAtoms[ligand_atom_index]
@@ -440,6 +499,7 @@ class binana:
     receptor: PDB Object
       protein to dock agains.
     """
+    PI_interactions = {}
     for lig_aromatic in ligand.aromatic_rings:
       for rec_aromatic in receptor.aromatic_rings:
         dist = lig_aromatic.center.dist_to(rec_aromatic.center)
@@ -546,6 +606,7 @@ class binana:
                 key = "T-SHAPED_" + structure
 
                 hashtable_entry_add_one(PI_interactions, key)
+    return PI_interactions
 
   def compute_pi_cation(self, ligand, receptor):
     """
@@ -558,6 +619,10 @@ class binana:
     receptor: PDB Object
       protein to dock agains.
     """
+    pi_cation = {
+      'LIGAND-CHARGED_ALPHA': 0, 'LIGAND-CHARGED_BETA': 0,
+      'LIGAND-CHARGED_OTHER': 0, 'RECEPTOR-CHARGED_ALPHA': 0,
+      'RECEPTOR-CHARGED_BETA': 0, 'RECEPTOR-CHARGED_OTHER': 0}
     for aromatic in receptor.aromatic_rings:
       for charged in ligand.charges:
         if charged.positive == True: # so only consider positive charges
@@ -579,7 +644,7 @@ class binana:
               for index in charged.indices:
                 pdb_pi_cat.AddNewAtom(ligand.AllAtoms[index].copy_of())
 
-              hashtable_entry_add_one(PI_interactions, key)
+              hashtable_entry_add_one(pi_cation, key)
 
     for aromatic in ligand.aromatic_rings:
       # now it's the ligand that has the aromatic group
@@ -600,7 +665,8 @@ class binana:
               for index in charged.indices:
                 pdb_pi_cat.AddNewAtom(receptor.AllAtoms[index].copy_of())
 
-              hashtable_entry_add_one(PI_interactions, key)
+              hashtable_entry_add_one(pi_cation, key)
+    return pi_cation
 
   def compute_salt_bridges(self, ligand, receptor):
     """
@@ -613,6 +679,7 @@ class binana:
     receptor: PDB Object
       protein to dock agains.
     """
+    salt_bridges = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
     for receptor_charge in receptor.charges:
       for ligand_charge in ligand.charges:
         if ligand_charge.positive != receptor_charge.positive:
@@ -625,12 +692,8 @@ class binana:
               structure = "OTHER"
             key = "SALT-BRIDGE_" + structure
 
-            for index in receptor_charge.indices:
-              pdb_salt_bridges.AddNewAtom(receptor.AllAtoms[index].copy_of())
-            for index in ligand_charge.indices:
-              pdb_salt_bridges.AddNewAtom(ligand.AllAtoms[index].copy_of())
-
             hashtable_entry_add_one(salt_bridges, key)
+    return salt_bridges
 
   def compute_data(self):
     # now create a single descriptor object
@@ -663,39 +726,6 @@ class binana:
     vina_output = data['vina_output']
     rotatable_bonds_count = {'rot_bonds': data['rotatable_bonds_count']}
 
-    active_site_flexibility = {
-      'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
-      'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
-      }
-    for key in data['active_site_flexibility']:
-      active_site_flexibility[key] = data['active_site_flexibility'][key]
-
-    hbonds = {
-      'HDONOR-LIGAND_BACKBONE_ALPHA': 0,
-      'HDONOR-LIGAND_BACKBONE_BETA': 0,
-      'HDONOR-LIGAND_BACKBONE_OTHER': 0,
-      'HDONOR-LIGAND_SIDECHAIN_ALPHA': 0,
-      'HDONOR-LIGAND_SIDECHAIN_BETA': 0,
-      'HDONOR-LIGAND_SIDECHAIN_OTHER': 0,
-      'HDONOR-RECEPTOR_BACKBONE_ALPHA': 0,
-      'HDONOR-RECEPTOR_BACKBONE_BETA': 0,
-      'HDONOR-RECEPTOR_BACKBONE_OTHER': 0,
-      'HDONOR-RECEPTOR_SIDECHAIN_ALPHA': 0,
-      'HDONOR-RECEPTOR_SIDECHAIN_BETA': 0,
-      'HDONOR-RECEPTOR_SIDECHAIN_OTHER': 0}
-    for key in data['hbonds']:
-      key2 = key.replace("HDONOR_","HDONOR-")
-      hbonds[key2] = data['hbonds'][key]
-
-
-    hydrophobics = {
-      'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
-      'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
-      }
-    for key in data['hydrophobics']:
-      hydrophobics[key] = data['hydrophobics'][key]
-
-
     stacking_tmp = {}
     for item in data['stacking']:
       item = item.split("_")
@@ -707,17 +737,6 @@ class binana:
     all = stacking['ALPHA'] + stacking['BETA'] + stacking['OTHER']
     stacking_all = {'all': all}
 
-    pi_cation_tmp = {}
-    for item in data['pi_cation']:
-      item = item.split("_")
-      pi_cation_tmp[item[1] + "_" + item[2]] = int(item[3])
-    pi_cation = {
-      'LIGAND-CHARGED_ALPHA': 0, 'LIGAND-CHARGED_BETA': 0,
-      'LIGAND-CHARGED_OTHER': 0, 'RECEPTOR-CHARGED_ALPHA': 0,
-      'RECEPTOR-CHARGED_BETA': 0, 'RECEPTOR-CHARGED_OTHER': 0}
-    for key in pi_cation_tmp:
-      pi_cation[key] = pi_cation_tmp[key]
-
 
     t_shaped_tmp = {}
     for item in data['t_shaped']:
@@ -726,11 +745,6 @@ class binana:
     t_shaped = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
     for key in t_shaped_tmp:
       t_shaped[key] = t_shaped_tmp[key]
-
-    salt_bridges = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
-    for key in data['salt_bridges']:
-      key2 = key.replace("SALT-BRIDGE_","")
-      salt_bridges[key2] = data['salt_bridges'][key]
 
     input_vector = []
     input_vector.extend(vina_output) # a list
@@ -773,11 +787,7 @@ class binana:
       if "SHAPED" in together: t_shaped.append(together)
 
 
-  # The meat of the class; must be a more elegant way of doing this
-  # TODO(bramsundar): Factor this __init__ into multiple functions to
-  # avoid ~ 800 line function.
-  #def __init__(self, ligand_pdbqt_filename, receptor, parameters, line_header):
-  def __init__(self):
+  def __init__(self, ligand_pdbqt_filename, receptor, parameters, line_header):
     """
     Parameters
     ----------
@@ -792,159 +802,46 @@ class binana:
       TODO(bramsundar): line separator in PDB files (?)
     """
 
-    pass
-#   receptor_pdbqt_filename = receptor.OrigFileName
-#
-#   self.ligand = PDB()
-#   self.ligand.LoadPDB_from_file(ligand_pdbqt_filename, line_header)
-#
-#   receptor.assign_secondary_structure()
+   receptor_pdbqt_filename = receptor.OrigFileName
 
-#   # Get distance measurements between protein and ligand atom types,
-#   # as well as some other measurements
-#   ligand.rotatable_bonds_count
-#   functions = MathFunctions()
+   self.ligand = PDB()
+   self.ligand.LoadPDB_from_file(ligand_pdbqt_filename, line_header)
 
-#   # These dictionaries are keyed by strings of atom-pairs (C_O for
-#   # example)
-#   ligand_receptor_close_contacts = {}
-#   ligand_receptor_contacts = {}
-#
-#   pdb_close_contacts = PDB()
+   receptor.assign_secondary_structure()
 
-#   self.compute_ligand_receptor_distances_and_charges()
-#
-#   # Get the total number of each atom type in the ligand
-#   ligand_atom_types = self.compute_ligand_atom_counts(
-#       self.ligand)
-#
-#
-#
-#   # Count pi-pi stacking and pi-T stacking interactions
-#   self.PI_interactions = {}
+   # Get distance measurements between protein and ligand atom types,
+   # as well as some other measurements
+   ligand.rotatable_bonds_count
+   functions = MathFunctions()
 
-#   self.compute_pi_pi_stacking(self.ligand, self.receptor)
-#
-#   # Now identify pi-cation interactions
-#   self.compute_pi_cation(self.ligand, self.receptor)
-#   self.pdb_pi_cat = PDB()
-#
-#
-#   # now count the number of salt bridges
-#   self.pdb_salt_bridges = PDB()
-#   self.salt_bridges = {}
+   # These dictionaries are keyed by strings of atom-pairs (C_O for
+   # example)
+   ligand_receptor_close_contacts = {}
+   ligand_receptor_contacts = {}
 
-#
-#
-#
-#    # TODO(bramsundar): Move this elsewhere?
-#    self.ligand_receptor_close_contacts = {
-#        "A_A": 0, "A_C": 0, "A_CL": 0, "A_F": 0, "A_FE": 0, "A_MG": 0,
-#        "A_MN": 0, "A_NA": 0, "A_SA": 0, "BR_C": 0, "BR_OA": 0, "C_CL":
-#        0, "CD_OA": 0, "CL_FE": 0, "CL_MG": 0, "CL_N": 0, "CL_OA": 0,
-#        "CL_ZN": 0, "C_MN": 0, "C_NA": 0, "F_N": 0, "F_SA": 0, "F_ZN":
-#        0, "HD_MN": 0, "MN_N": 0, "NA_SA": 0, "N_SA": 0, "A_HD": 0,
-#        "A_N": 0, "A_OA": 0, "A_ZN": 0, "BR_HD": 0, "C_C": 0, "C_F": 0,
-#        "C_HD": 0, "CL_HD": 0, "C_MG": 0, "C_N": 0, "C_OA": 0, "C_SA":
-#        0, "C_ZN": 0, "FE_HD": 0, "FE_N": 0, "FE_OA": 0, "F_HD": 0,
-#        "F_OA": 0, "HD_HD": 0, "HD_I": 0, "HD_MG": 0, "HD_N": 0,
-#        "HD_NA": 0, "HD_OA": 0, "HD_P": 0, "HD_S": 0, "HD_SA": 0,
-#        "HD_ZN": 0, "MG_NA": 0, "MG_OA": 0, "MN_OA": 0, "NA_OA": 0,
-#        "NA_ZN": 0, "N_N": 0, "N_NA": 0, "N_OA": 0, "N_ZN": 0, "OA_OA":
-#        0, "OA_SA": 0, "OA_ZN": 0, "SA_ZN": 0, "S_ZN": 0}
-#    for key in data['ligand_receptor_close_contacts']:
-#      if not key in self.ligand_receptor_close_contacts:
-#          print "\tWARNING: Atoms of types " + key.replace("_"," and ") + " come within 2.5 angstroms of each other."
-#          print "\t  The neural networks were not trained to deal with this juxtaposition,"
-#          print "\t  so it will be ignored."
-#          self.error = True
-#      else:
-#         self.ligand_receptor_close_contacts[key] = (
-#             data['ligand_receptor_close_contacts'][key])
-#
-#    self.ligand_receptor_contacts = {
-#        "A_CU": 0, "A_MG": 0, "A_MN": 0, "BR_SA": 0, "C_CD": 0,
-#        "CL_FE": 0, "CL_MG": 0, "CL_MN": 0, "CL_NA": 0, "CL_P": 0,
-#        "CL_S": 0, "CL_ZN": 0, "CU_HD": 0, "CU_N": 0, "FE_NA": 0,
-#        "FE_SA": 0, "MG_N": 0, "MG_S": 0, "MG_SA": 0, "MN_NA": 0,
-#        "MN_S": 0, "MN_SA": 0, "NA_P": 0, "P_S": 0, "P_SA": 0, "S_SA":
-#        0, "A_A": 0, "A_BR": 0, "A_C": 0, "A_CL": 0, "A_F": 0, "A_FE":
-#        0, "A_HD": 0, "A_I": 0, "A_N": 0, "A_NA": 0, "A_OA": 0, "A_P":
-#        0, "A_S": 0, "A_SA": 0, "A_ZN": 0, "BR_C": 0, "BR_HD": 0,
-#        "BR_N": 0, "BR_OA": 0, "C_C": 0, "C_CL": 0, "C_F": 0, "C_FE":
-#        0, "C_HD": 0, "C_I": 0, "CL_HD": 0, "CL_N": 0, "CL_OA": 0,
-#        "CL_SA": 0, "C_MG": 0, "C_MN": 0, "C_N": 0, "C_NA": 0, "C_OA":
-#        0, "C_P": 0, "C_S": 0, "C_SA": 0, "C_ZN": 0, "FE_HD": 0,
-#        "FE_N": 0, "FE_OA": 0, "F_HD": 0, "F_N": 0, "F_OA": 0, "F_SA":
-#        0, "HD_HD": 0, "HD_I": 0, "HD_MG": 0, "HD_MN": 0, "HD_N": 0,
-#        "HD_NA": 0, "HD_OA": 0, "HD_P": 0, "HD_S": 0, "HD_SA": 0,
-#        "HD_ZN": 0, "I_N": 0, "I_OA": 0, "MG_NA": 0, "MG_OA": 0,
-#        "MG_P": 0, "MN_N": 0, "MN_OA": 0, "MN_P": 0, "NA_OA": 0,
-#        "NA_S": 0, "NA_SA": 0, "NA_ZN": 0, "N_N": 0, "N_NA": 0,
-#        "N_OA": 0, "N_P": 0, "N_S": 0, "N_SA": 0, "N_ZN": 0, "OA_OA":
-#        0, "OA_P": 0, "OA_S": 0, "OA_SA": 0, "OA_ZN": 0, "P_ZN": 0,
-#        "SA_SA": 0, "SA_ZN": 0, "S_ZN": 0}
-#    for key in data['ligand_receptor_contacts']:
-#      if not key in self.ligand_receptor_contacts:
-#        print "\tWARNING: Atoms of types " + key.replace("_"," and ") + " come within 4 angstroms of each other."
-#        print "\t  The neural networks were not trained to deal with this juxtaposition,"
-#        print "\t  so it will be ignored."
-#
-#        self.error = True
-#      else:
-#        self.ligand_receptor_contacts[key] = (
-#            data['ligand_receptor_contacts'][key])
-#
-#    self.ligand_atom_types = {
-#        'A': 0, 'BR': 0, 'C': 0, 'CL': 0, 'F': 0, 'HD': 0, 'I': 0,
-#        'N': 0, 'NA': 0, 'OA': 0, 'P': 0, 'S': 0, 'SA': 0}
-#    for key in data['ligand_atom_types']:
-#      if not key in self.ligand_atom_types:
-#          print "\tWARNING: The ligand contains an atoms of type " + key + ". The neural networks"
-#          print "\t  were not trained to deal with this ligand atom type, so it will be ignored."
-#
-#          self.error = True
-#      else:
-#          self.ligand_atom_types[key] = data['ligand_atom_types'][key]
-#
-#    self.ligand_receptor_electrostatics = {
-#        "A_MG": 0, "A_MN": 0, "BR_SA": 0, "CL_FE": 0, "CL_MG": 0,
-#        "CL_MN": 0, "CL_NA": 0, "CL_P": 0, "CL_S": 0, "CL_ZN": 0,
-#        "CU_HD": 0, "CU_N": 0, "FE_NA": 0, "FE_SA": 0, "MG_N": 0,
-#        "MG_S": 0, "MG_SA": 0, "MN_NA": 0, "MN_S": 0, "MN_SA": 0,
-#        "NA_P": 0, "P_S": 0, "P_SA": 0, "S_SA": 0, "A_A": 0.0, "A_BR":
-#        0.0, "A_C": 0.0, "A_CL": 0.0, "A_F": 0.0, "A_FE": 0.0, "A_HD":
-#        0.0, "A_I": 0.0, "A_N": 0.0, "A_NA": 0.0, "A_OA": 0.0, "A_P":
-#        0.0, "A_S": 0.0, "A_SA": 0.0, "A_ZN": 0.0, "BR_C": 0.0,
-#        "BR_HD": 0.0, "BR_N": 0.0, "BR_OA": 0.0, "C_C": 0.0, "C_CL":
-#        0.0, "C_F": 0.0, "C_FE": 0.0, "C_HD": 0.0, "C_I": 0.0,
-#        "CL_HD": 0.0, "CL_N": 0.0, "CL_OA": 0.0, "CL_SA": 0.0, "C_MG":
-#        0.0, "C_MN": 0.0, "C_N": 0.0, "C_NA": 0.0, "C_OA": 0.0, "C_P":
-#        0.0, "C_S": 0.0, "C_SA": 0.0, "C_ZN": 0.0, "FE_HD": 0.0,
-#        "FE_N": 0.0, "FE_OA": 0.0, "F_HD": 0.0, "F_N": 0.0, "F_OA":
-#        0.0, "F_SA": 0.0, "HD_HD": 0.0, "HD_I": 0.0, "HD_MG": 0.0,
-#        "HD_MN": 0.0, "HD_N": 0.0, "HD_NA": 0.0, "HD_OA": 0.0, "HD_P":
-#        0.0, "HD_S": 0.0, "HD_SA": 0.0, "HD_ZN": 0.0, "I_N": 0.0,
-#        "I_OA": 0.0, "MG_NA": 0.0, "MG_OA": 0.0, "MG_P": 0.0, "MN_N":
-#        0.0, "MN_OA": 0.0, "MN_P": 0.0, "NA_OA": 0.0, "NA_S": 0.0,
-#        "NA_SA": 0.0, "NA_ZN": 0.0, "N_N": 0.0, "N_NA": 0.0, "N_OA":
-#        0.0, "N_P": 0.0, "N_S": 0.0, "N_SA": 0.0, "N_ZN": 0.0,
-#        "OA_OA": 0.0, "OA_P": 0.0, "OA_S": 0.0, "OA_SA": 0.0, "OA_ZN":
-#        0.0, "P_ZN": 0.0, "SA_SA": 0.0, "SA_ZN": 0.0, "S_ZN": 0,
-#        "F_ZN": 0}
-#
-#    for key in data['ligand_receptor_electrostatics']:
-#      if not key in self.ligand_receptor_electrostatics:
-#         print "\tWARNING: Atoms of types " + key.replace("_"," and ") + ", which come within 4 angstroms of each"
-#         print "\t  other, may interact electrostatically. However, the neural networks"
-#         print "\t  were not trained to deal with electrostatic interactions between atoms"
-#         print "\t  of these types, so they will be ignored."
-#
-#         self.error = True
-#      else:
-#         self.ligand_receptor_electrostatics[key] = (
-#             data['ligand_receptor_electrostatics'][key])
-#
+   pdb_close_contacts = PDB()
+
+   self.compute_ligand_receptor_distances_and_charges()
+
+   # Get the total number of each atom type in the ligand
+   ligand_atom_types = self.compute_ligand_atom_counts(
+       self.ligand)
+
+
+
+   # Count pi-pi stacking and pi-T stacking interactions
+   self.PI_interactions = {}
+
+   self.compute_pi_pi_stacking(self.ligand, self.receptor)
+
+   # Now identify pi-cation interactions
+   self.compute_pi_cation(self.ligand, self.receptor)
+   self.pdb_pi_cat = PDB()
+
+
+   # now count the number of salt bridges
+   self.salt_bridges = {}
+
 
 
 # TODO(bramsundar): I think vs_utils has a standard way of dealing
@@ -956,353 +853,24 @@ class command_line_parameters:
   def __init__(self, parameters):
 
     global vina_executable
-#
-#    # first, set defaults
-#    self.params['receptor'] = ''
-#    self.params['ligand'] = ''
-#    self.params['vina_executable'] = vina_executable
-#    # TRUE by default, but setting to false will speed up execution.
-#    # Good when rescoring many poses.
-#    self.params['check_vina_version'] = "TRUE"
-#
-#    # now get user inputed values
-#
-#    for index in range(len(parameters)):
-#      item = parameters[index]
-#      if item[:1] == '-': # so it's a parameter key value
-#        key = item.replace('-','').lower()
-#
-#        if key == "help":
-#          print "INTRODUCTION"
-#          print "============\n"
-#          print textwrap.fill("NNScore 2.01 (NNScore2.py) is a "
-#          "python script for predicting the binding affinity of "
-#          "receptor-ligand complexes. It is particularly well "
-#          "suited for rescoring ligands that have been docked
-#          using AutoDock Vina.") + "\n"
-#          print "REQUIREMENTS"
-#          print "============\n"
-#          print textwrap.fill("Python: NNScore 2.01 has been "
-#          "tested using Python versions 2.6.5, 2.6.1, and 2.5.2 on "
-#          "Ubuntu 10.04.1 LTS, Mac OS X 10.6.8, and Windows XP "
-#          "Professional, respectively. A copy of the Python "
-#          "interpreter can be downloaded from "
-#          "http://www.python.org/getit/.") + "\n"
-#          print textwrap.fill("AutoDock Vina 1.1.2: NNScore 2.01 "
-#          "uses AutoDock Vina 1.1.2 to obtain some information "
-#          "about the receptor-ligand complex. Note that previous "
-#          "versions of AutoDock Vina are not suitble. AutoDock Vina "
-#          "1.1.2 can be downloaded from "
-#          "http://vina.scripps.edu/download.html.") + "\n"
-#          print textwrap.fill("MGLTools: As receptor and ligand
-#          inputs, NNScore 2.01 accepts models in the PDBQT format.
-#          Files in the more common PDB format can be converted to
-#          the PDBQT format using scripts included in MGLTools
-#          (prepare_receptor4.py and prepare_ligand4.py). MGLTools
-#          can be obtained from
-#          http://mgltools.scripps.edu/downloads.") + "\n"
-#          print "COMMAND-LINE PARAMETERS"
-#          print "=======================\n"
-#          print textwrap.fill("-receptor: File name of the
-#          receptor PDBQT file.") + "\n"
-#          print textwrap.fill("-ligand: File name of the ligand
-#          PDBQT file. AutoDock Vina output files, typically
-#          containing multiple poses, are also permitted.") + "\n"
-#          print textwrap.fill("-vina_executable: The location of
-#          the AutoDock Vina 1.1.2 executable. If you don't wish to
-#          specify the location of this file every time you use
-#          NNScore 2.01, simply edit the vina_executable variable
-#          defined near the begining of the NNScore2.py script.") +
-#          "\n"
-#          print "PROGRAM OUTPUT"
-#          print "==============\n"
-#          print textwrap.fill("NNScore 2.01 evaluates each of the
-#          ligand poses contained in the file specified by the
-#          -ligand tag using 20 distinct neural-network scoring
-#          functions. The program then seeks to identify which of
-#          the poses has the highest predicted affinity using
-#          several metrics:") + "\n"
-#          print textwrap.fill("1) Each of the 20 networks are
-#          considered separately. The poses are ranked in 20
-#          different ways by the scores assigned by each network.") + "\n"
-#          print textwrap.fill("2) The poses are ranked by the best
-#          score given by any of the 20 networks.") + "\n"
-#          print textwrap.fill("3) The poses are ranked by the
-#          average of the scores given by the 20 networks. This is
-#          the recommended metric.") + "\n"
-#
-#
-#          sys.exit(0)
-#
-#        value = parameters[index+1]
-#        if key in self.params.keys():
-#            self.params[key] = value
-#            parameters[index] = ""
-#            parameters[index + 1] = ""
-#
-#    if self.okay_to_proceed() == True:
-#      print "Command-line parameters used:"
-#      print "\tReceptor:        " + self.params["receptor"]
-#      print "\tLigand:          " + self.params["ligand"]
-#      print "\tVina executable: " + self.params["vina_executable"] + "\n"
-#
-#    # make a list of all the command-line parameters not used
-#    error = ""
-#    for index in range(1,len(parameters)):
-#      item = parameters[index]
-#      if item != "": error = error + item + " "
-#
-#    if error != "":
-#      print "WARNING: The following command-line parameters were not used:"
-#      print "\t" + error + "\n"
-#
-#
-#    # do a check to make sure the autodock vina is version 1.1.2
-#    if self.params["check_vina_version"] == "TRUE":
-#      vina_version_output = ""
-#      if not os.path.exists(self.params['vina_executable']):
-#        vina_version_output = ""
-#      else:
-#        try:
-#          vina_version_output = getCommandOutput2(self.params['vina_executable'] + ' --version')
-#        except:
-#          vina_version_output = ""
-#
-#      if not " 1.1.2 " in vina_version_output:
-#        print "ERROR: NNScore 2.01 is designed to work with AutoDock
-#        Vina 1.1.2.\nOther versions of AutoDock may not work properly.
-#        Please download\nAutoDock Vina 1.1.2 from
-#        http://vina.scripps.edu/download.html.\n"
-#        print "Once this executable is downloaded, you can use the
-#        -vina_executable\ntag to indicate its location. Alternatively,
-#        you can simply modify\nthe vina_executable variable defined
-#        near the beginning of\nthe NNScore2.py file.\n"
-#        sys.exit(0)
-#
-#
-#  def okay_to_proceed(self):
-#      if self.params['receptor'] != '' and self.params['ligand'] != '' and self.params['vina_executable'] != '':
-#          return True
-#      else: return False
 
-#def score_to_kd(score):
-#  kd = math.pow(10,-score)
-#  if score <= 0: return "Kd = " + str(round(kd,2)) + " M"
-#  temp = kd * pow(10,3)
-#  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " mM"
-#  temp = temp * pow(10,3)
-#  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " uM"
-#  temp = temp * pow(10,3)
-#  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " nM"
-#  temp = temp * pow(10,3)
-#  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " pM"
-#  temp = temp * pow(10,3)
-#  #if temp >=1 and temp <1000:
-#  return "Kd = " + str(round(temp,2)) + " fM"
-#  #return "Kd = " + str(kd) + " M"
+def score_to_kd(score):
+  kd = math.pow(10,-score)
+  if score <= 0: return "Kd = " + str(round(kd,2)) + " M"
+  temp = kd * pow(10,3)
+  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " mM"
+  temp = temp * pow(10,3)
+  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " uM"
+  temp = temp * pow(10,3)
+  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " nM"
+  temp = temp * pow(10,3)
+  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " pM"
+  temp = temp * pow(10,3)
+  return "Kd = " + str(round(temp,2)) + " fM"
 
-#print "\nNNScore 2.01"
-#print "============\n"
-#
-#print textwrap.fill("NNScore 2.01 is released under the GNU General
-#Public License (see http://www.gnu.org/licenses/gpl.html). If you have
-#any questions, comments, or suggestions, please contact the author,
-#Jacob Durrant, at jdurrant [at] ucsd [dot] edu. If you use NNScore
-#2.01 in your work, please cite [REFERENCE HERE].")
-#
-#print ""
-#
-#print textwrap.fill("NNScore 2.01 is based in part on the ffnet python
-#package developed by Marek Wojciechowski
-#(http://ffnet.sourceforge.net/).")
-#print ""
-#
-#print "Use the -help command-line parameter for extended help.\n"
-#print "Example: python NNScore2.py -receptor myreceptor.pdbqt -ligand
-#myligand.pdbqt -vina_executable /PATH/TO/VINA/1.1.2/vina\n"
-#
-#cmd_params = command_line_parameters(sys.argv[:])
-#
-#if cmd_params.okay_to_proceed() == False:
-#    print "ERROR: You need to specify the ligand and receptor PDBQT
-#    files, as\nwell as the full path the the AutoDock Vina 1.1.2
-#    executable, using the\n-receptor, -ligand, and -vina_executable
-#    tags from the command line.\nThe -ligand tag can also specify an
-#    AutoDock Vina output file.\n"
-#    sys.exit(0)
-#
-#lig = cmd_params.params['ligand']
-#rec = cmd_params.params['receptor']
+def calculate_score(lig, rec, cmd_params,
+    actual_filename_if_lig_is_list="", actual_filename_if_rec_is_list="",
+    line_header = ""):
 
-#def calculate_score(lig, rec, cmd_params,
-#    actual_filename_if_lig_is_list="", actual_filename_if_rec_is_list="",
-#    line_header = ""):
-#
-#  d = binana(lig, rec, cmd_params, line_header,
-#      actual_filename_if_lig_is_list, actual_filename_if_rec_is_list)
-#
-#  # now load in neural networks
-#  scores = []
-#  total = 0.0
-#  nets = networks()
-#  for net_array in nets:
-#    try:
-#      net = ffnet()
-#      net.load(net_array)
-#
-#      val = net.normcall(d.input_vector)
-#      print (line_header + "Network #" + str(len(scores) + 1) + " gave
-#          a score of " + str( round(val,3)) + " (" + score_to_kd(val) +
-#          ")")
-#      scores.append(val)
-#      total = total + val
-#    except OverflowError:
-#      print (line_header + "The output of network #" +
-#          str(len(scores)) + 1 + " could not be determined because of an
-#          overflow error!" )
-#
-#  if len(scores) != 0:
-#    average = total / len(scores)
-#
-#     best_score = 0.0
-#     best_network = -1
-#     count = 1
-#    sum = 0.0
-#    for score in scores:
-#      if score > best_score:
-#          best_score = score
-#          best_network = count
-#          sum = sum + math.pow(score - average,2)
-#                      count = count + 1
-#    stdev = math.pow(sum / (len(scores)-1), 0.5)
-#
-#    print ""
-#
-#    print line_header + "Best Score:         ", round(best_score,3), "(" + score_to_kd(best_score) + ")"
-#    print line_header + "Average Score:      ", round(average,3), "(" + score_to_kd(average) + ")"
-#    print line_header + "Standard Deviation: ", round(stdev,3)
-#    print ""
-#
-#    return [average, stdev, best_score, best_network, scores]
-#  else:
-#    print (line_header + "Could not compute the score of this
-#    receptor-ligand complex because none of the networks returned a
-#    valid score.")
-#    return [0, 0, 0, 0, []]
-
-# load the rec into an array so you only have to load it from the disk once
-#print "\nLOADING THE RECEPTOR"
-#print "====================\n"
-#
-#receptor = PDB()
-#receptor.LoadPDB_from_file(rec)
-#receptor.OrigFileName = rec
-#
-#print "\nEVALUATING EACH OF THE POSES IN THE LIGAND FILE USING 20 TRAINED NEURAL NETWORKS"
-#print "================================================================================\n"
-#
-## determine if the ligand input file is a single pdbqt or an autodock
-## vina output file. Both are acceptable inputs.
-#
-#f = open(lig, 'r')
-#
-#lig_array = []
-#line = "NULL"
-#
-#scores = []
-#
-#model_id = 1
-#while len(line) != 0:
-#  line = f.readline()
-#  if line[:6] != "ENDMDL": lig_array.append(line)
-#  if line[:6] == "ENDMDL" or len(line) == 0:
-#    if len(lig_array) != 0 and lig_array != ['']:
-#      temp_filename = lig + ".MODEL_" + str(model_id) + ".pdbqt"
-#
-#      temp_f = open(temp_filename, 'w')
-#      for ln in lig_array: temp_f.write(ln)
-#      temp_f.close()
-#
-#      model_name = "MODEL " + str(model_id)
-#
-#      print model_name
-#
-#      score=calculate_score(lig_array, receptor, cmd_params, temp_filename, rec, "\t")
-#      scores.append([score[0], score[1], score[2], score[3], score[4], model_name])
-#
-#      os.remove(temp_filename)
-#
-#      lig_array = []
-#      model_id = model_id + 1
-#
-#f.close()
-#
-## now find the best score across all models, for each network
-#print "\nRANKED POSES AND SCORES WHEN EACH OF THE 20 NETWORKS IS CONSIDERED SEPARATELY"
-#print "=============================================================================\n"
-#
-#best_network_scores = []
-#for t in range(20):
-#  net_scores = []
-#  for score in scores:
-#      net_scores.append((score[4][t],score[5]))
-#  net_scores = sorted(net_scores,key=lambda net_score: net_score[0], reverse=True) # sort by score
-#  print ("USING NETWORK #" + str(t+1)).center(42," ")
-#  print " Rank | Pose     | Score | Predicted Kd "
-#  print "------+----------+-------+--------------"
-#  count = 1
-#  best_network_scores.append(net_scores[0])
-#  for net_score in net_scores:
-#    print str(count).center(6," ") + "|" + net_score[1].center(10," ") + "|" + str(round(net_score[0],3)).center(7," ") + "|" + score_to_kd(net_score[0]).replace("Kd = ","").center(14," ")
-#      count = count + 1
-#  print ""
-#
-#print "\nRANKED POSES AND SCORES WHEN A CONSENSUS OF NETWORK OUTPUTS ARE CONSIDERED"
-#print "==========================================================================\n"
-#
-## now get the best score of all vina output poses
-#best_scores = sorted(scores,key=lambda score: score[2], reverse=True) # sort by score
-#
-#best_best_score = best_scores[0]
-#
-#print "BEST SCORE OF ALL 20 NETWORKS, BY POSE".center(65," ")
-#print " Rank | Pose     | Average Score | Predicted Kd | Network"
-#print "------+----------+---------------+--------------+---------"
-#
-#count = 1
-#for score in best_scores:
-#  print str(count).center(6," ") + "|" + score[5].center(10," ") + "|" + str(round(score[2],3)).center(15," ") + "|" + score_to_kd(score[2]).replace("Kd = ","").center(14," ") + "|" + ("#" + str(score[3])).center(9," ")
-#  count = count + 1
-#
-#print ""
-#
-## now get the best average score of all vina output poses
-#average_scores = sorted(scores,key=lambda score: score[0], reverse=True) # sort by score
-#
-#best_of_average_scores = average_scores[0]
-#
-#print "AVERAGE SCORE OF ALL 20 NETWORKS, BY POSE".center(70," ")
-#print " Rank | Pose     | Average Score | Standard Deviation | Predicted Kd"
-#print "------+----------+---------------+--------------------+--------------"
-#
-#count = 1
-#for score in average_scores:
-#  print str(count).center(6," ") + "|" + score[5].center(10," ") + "|" + str(round(score[0],3)).center(15," ") + "|" + str(round(score[1],3)).center(20," ") + "|" + score_to_kd(score[0]).replace("Kd = ","").center(15," ")
-#  count = count + 1
-#
-#print ""
-#print "\nSUMMARY"
-#print "=======\n"
-#
-#count = 1
-#for best_network_score in best_network_scores:
-#  print textwrap.fill("Best pose scored by network #" + str(count) + ": " + best_network_score[1] + " (Score = " + str(round(best_network_score[0],3)) + " = " + score_to_kd(best_network_score[0]).replace("Kd = ","") + ")")
-#  count = count + 1
-#
-#print ""
-#
-#print textwrap.fill("When the poses were ranked by the best of the 20 network scores associated with each pose, the best-scoring pose was " + best_best_score[5] + " (Score = " + str(round(best_best_score[2],3)) + " = " + score_to_kd(best_best_score[2]).replace("Kd = ","") + ")")
-#print ""
-#print textwrap.fill("When the poses were ranked by the average of the 20 network scores associated with each pose, the best-scoring pose was " + best_of_average_scores[5] + " (Score = " + str(round(best_of_average_scores[0],3)) + " +/- " + str(round(best_of_average_scores[1],3)) + " = " + score_to_kd(best_of_average_scores[0]).replace("Kd = ","") + "). This is the recommended ranking/scoring metric.")
-#
-#print ""
+  d = binana(lig, rec, cmd_params, line_header,
+      actual_filename_if_lig_is_list, actual_filename_if_rec_is_list)

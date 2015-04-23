@@ -506,31 +506,31 @@ class PDB:
         connected_atoms.append(con_index)
     return connected_atoms
 
-#  def CheckProteinFormat(self):
-#    curr_res = ""
-#    first = True
-#    residue = []
-#
-#    for atom_index in self.AllAtoms:
-#      atom = self.AllAtoms[atom_index]
-#
-#      key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
-#
-#      if first == True:
-#        curr_res = key
-#        first = False
-#
-#      if key != curr_res:
-#
-#        self.CheckProteinFormatProcessResidue(residue, last_key)
-#
-#        residue = []
-#        curr_res = key
-#
-#      residue.append(atom.atomname.strip())
-#      last_key = key
-#
-#    self.CheckProteinFormatProcessResidue(residue, last_key)
+  def CheckProteinFormat(self):
+    curr_res = ""
+    first = True
+    residue = []
+
+    for atom_index in self.AllAtoms:
+      atom = self.AllAtoms[atom_index]
+
+      key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
+
+      if first == True:
+        curr_res = key
+        first = False
+
+      if key != curr_res:
+
+        self.CheckProteinFormatProcessResidue(residue, last_key)
+
+        residue = []
+        curr_res = key
+
+      residue.append(atom.atomname.strip())
+      last_key = key
+
+    self.CheckProteinFormatProcessResidue(residue, last_key)
 
   def PrintWarning(self, atom, residue, need):
     """
@@ -962,36 +962,36 @@ class PDB:
             self.charges.append(chrg)
 
 
-#  def AssignProteinCharges(self):
-#    """
-#    Assigns charges to atoms in charged residues.
-#    """
-#    # TODO(bramsundar): Is this comment meant to be here?
-#    # Now that you've found all the positive charges in non-protein
-#    # residues, it's time to look for aromatic rings in protein
-#    # residues
-#    curr_res = ""
-#    first = True
-#    residue = []
-#
-#    for atom_index in self.AllAtoms:
-#      atom = self.AllAtoms[atom_index]
-#      key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
-#
-#      if first == True:
-#        curr_res = key
-#        first = False
-#
-#      if key != curr_res:
-#
-#        self.AssignChargesFromProteinProcessResidue(residue, last_key)
-#        residue = []
-#        curr_res = key
-#
-#      residue.append(atom_index)
-#      last_key = key
-#
-#
+  def AssignProteinCharges(self):
+    """
+    Assigns charges to atoms in charged residues.
+    """
+    # TODO(bramsundar): Is this comment meant to be here?
+    # Now that you've found all the positive charges in non-protein
+    # residues, it's time to look for aromatic rings in protein
+    # residues
+    curr_res = ""
+    first = True
+    residue = []
+
+    for atom_index in self.AllAtoms:
+      atom = self.AllAtoms[atom_index]
+      key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
+
+      if first == True:
+        curr_res = key
+        first = False
+
+      if key != curr_res:
+
+        self.AssignChargesFromProteinProcessResidue(residue, last_key)
+        residue = []
+        curr_res = key
+
+      residue.append(atom_index)
+      last_key = key
+
+
 #    def AssignChargesFromProteinProcessResidue(self, residue, last_key):
 #      temp = last_key.strip().split("_")
 #      resname = temp[0]
@@ -1162,689 +1162,769 @@ class PDB:
 #    # Functions to identify aromatic rings
 #    # ====================================
 #
-#    def add_aromatic_marker(self, indices_of_ring):
-#        # first identify the center point
-#        points_list = []
-#        total = len(indices_of_ring)
-#        x_sum = 0.0
-#        y_sum = 0.0
-#        z_sum = 0.0
-#
-#        for index in indices_of_ring:
-#            atom = self.AllAtoms[index]
-#            points_list.append(atom.coordinates)
-#            x_sum = x_sum + atom.coordinates.x
-#            y_sum = y_sum + atom.coordinates.y
-#            z_sum = z_sum + atom.coordinates.z
-#
-#        if total == 0: return # to prevent errors in some cases
-#
-#        center = point(x_sum / total, y_sum / total, z_sum / total)
-#
-#        # now get the radius of the aromatic ring
-#        radius = 0.0
-#        for index in indices_of_ring:
-#            atom = self.AllAtoms[index]
-#            dist = center.dist_to(atom.coordinates)
-#            if dist > radius: radius = dist
-#
-#        # now get the plane that defines this ring
-#        if len(indices_of_ring) < 3:
-#          # to prevent an error in some cases. If there aren't three point, you can't define a plane
-#          return
-#        elif len(indices_of_ring) == 3:
-#            A = self.AllAtoms[indices_of_ring[0]].coordinates
-#            B = self.AllAtoms[indices_of_ring[1]].coordinates
-#            C = self.AllAtoms[indices_of_ring[2]].coordinates
-#        elif len(indices_of_ring) == 4:
-#            A = self.AllAtoms[indices_of_ring[0]].coordinates
-#            B = self.AllAtoms[indices_of_ring[1]].coordinates
-#            C = self.AllAtoms[indices_of_ring[3]].coordinates
-#        else: # best, for 5 and 6 member rings
-#            A = self.AllAtoms[indices_of_ring[0]].coordinates
-#            B = self.AllAtoms[indices_of_ring[2]].coordinates
-#            C = self.AllAtoms[indices_of_ring[4]].coordinates
-#
-#        AB = self.functions.vector_subtraction(B,A)
-#        AC = self.functions.vector_subtraction(C,A)
-#        ABXAC = self.functions.CrossProduct(AB,AC)
-#
-#        # formula for plane will be ax + by + cz = d
-#        x1 = self.AllAtoms[indices_of_ring[0]].coordinates.x
-#        y1 = self.AllAtoms[indices_of_ring[0]].coordinates.y
-#        z1 = self.AllAtoms[indices_of_ring[0]].coordinates.z
-#
-#        a = ABXAC.x
-#        b = ABXAC.y
-#        c = ABXAC.z
-#        d = a*x1 + b*y1 + c*z1
-#
-#        ar_ring = self.aromatic_ring(center, indices_of_ring, [a,b,c,d], radius)
-#        self.aromatic_rings.append(ar_ring)
-#
-#    class aromatic_ring():
-#      def __init__(self, center, indices, plane_coeff, radius):
-#        self.center = center
-#        self.indices = indices
-#        # a*x + b*y + c*z = dI think that
-#        self.plane_coeff = plane_coeff
-#        self.radius = radius
-#
-#    def assign_aromatic_rings(self):
-#      # Get all the rings containing each of the atoms in the ligand
-#      AllRings = []
-#      for atom_index in self.NonProteinAtoms:
-#        AllRings.extend(self.all_rings_containing_atom(atom_index))
-#
-#      for ring_index_1 in range(len(AllRings)):
-#        ring1 = AllRings[ring_index_1]
-#        if len(ring1) != 0:
-#          for ring_index_2 in range(len(AllRings)):
-#            if ring_index_1 != ring_index_2:
-#              ring2 = AllRings[ring_index_2]
-#              if len(ring2) != 0:
-#                if self.set1_is_subset_of_set2(ring1, ring2) == True:
-#                  AllRings[ring_index_2] = []
-#
-#      while [] in AllRings:
-#        AllRings.remove([])
-#
-#      # Now we need to figure out which of these ligands are aromatic
-#      # (planar)
-#
-#      for ring_index in range(len(AllRings)):
-#        ring = AllRings[ring_index]
-#        is_flat = True
-#        for t in range(-3, len(ring)-3):
-#          pt1 = self.NonProteinAtoms[ring[t]].coordinates
-#          pt2 = self.NonProteinAtoms[ring[t+1]].coordinates
-#          pt3 = self.NonProteinAtoms[ring[t+2]].coordinates
-#          pt4 = self.NonProteinAtoms[ring[t+3]].coordinates
-#
-#          # first, let's see if the last atom in this ring is a carbon
-#          # connected to four atoms. That would be a quick way of
-#          # telling this is not an aromatic ring
-#          cur_atom = self.NonProteinAtoms[ring[t+3]]
-#          if cur_atom.element == "C" and cur_atom.NumberOfNeighbors() == 4:
-#            is_flat = False
-#            break
-#
-#          # now check the dihedral between the ring atoms to see if
-#          # it's flat
-#          angle = self.functions.dihedral(pt1, pt2, pt3, pt4) * 180 / math.pi
-#          # 15 degress is the cutoff, ring[t], ring[t+1], ring[t+2],
-#          # ring[t+3] range of this function is -pi to pi
-#          if (angle > -165 and angle < -15) or (angle > 15 and angle < 165):
-#              is_flat = False
-#              break
-#
-#          # now check the dihedral between the ring atoms and an atom
-#          # connected to the current atom to see if that's flat too.
-#          for substituent_atom_index in cur_atom.IndicesOfAtomsConnecting:
-#              pt_sub = self.NonProteinAtoms[substituent_atom_index].coordinates
-#              angle = self.functions.dihedral(pt2, pt3, pt4, pt_sub) * 180 / math.pi
-#              # 15 degress is the cutoff, ring[t], ring[t+1], ring[t+2],
-#              # ring[t+3], range of this function is -pi to pi
-#              if (angle > -165 and angle < -15) or (angle > 15 and angle < 165):
-#                  is_flat = False
-#                  break
-#
-#        if is_flat == False: AllRings[ring_index] = []
-#        # While I'm at it, three and four member rings are not aromatic
-#        if len(ring) < 5: AllRings[ring_index] = []
-#        # TODO(bramsundar): What about 7-element rings.
-#        # While I'm at it, if the ring has more than 6, also throw it out. So
-#        # only 5 and 6 member rings are allowed.
-#        if len(ring) > 6: AllRings[ring_index] = []
-#
-#
-#
-#      while [] in AllRings: AllRings.remove([])
-#
-#      for ring in AllRings:
-#          self.add_aromatic_marker(ring)
-#
-#      # Now that you've found all the rings in non-protein residues,
-#      # it's time to look for aromatic rings in protein residues
-#      curr_res = ""
-#      first = True
-#      residue = []
-#
-#      for atom_index in self.AllAtoms:
-#        atom = self.AllAtoms[atom_index]
-#
-#        key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
-#
-#        if first == True:
-#          curr_res = key
-#          first = False
-#
-#        if key != curr_res:
-#
-#          self.assign_aromatic_rings_from_protein_process_residue(residue, last_key)
-#
-#          residue = []
-#          curr_res = key
-#
-#        residue.append(atom_index)
-#        last_key = key
-#
-#      self.assign_aromatic_rings_from_protein_process_residue(residue, last_key)
-#
-#    def assign_aromatic_rings_from_protein_process_residue(self, residue, last_key):
-#      temp = last_key.strip().split("_")
-#      resname = temp[0]
-#      real_resname = resname[-3:]
-#      resid = temp[1]
-#      chain = temp[2]
-#
-#      if real_resname == "PHE":
-#        indices_of_ring = []
-#
-#        # TODO(bramsundar): The comment about ordering is repeated
-#        # many times. Factor out.
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CG": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CD1": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CE1": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CZ": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
-#
-#        self.add_aromatic_marker(indices_of_ring)
-#
-#      if real_resname == "TYR":
-#        indices_of_ring = []
-#
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CG": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CD1": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CE1": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CZ": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
-#
-#        self.add_aromatic_marker(indices_of_ring)
-#
-#      if real_resname == "HIS" or real_resname == "HID" or real_resname == "HIE" or real_resname == "HIP":
-#        indices_of_ring = []
-#
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CG": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "ND1": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CE1": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "NE2": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
-#
-#        self.add_aromatic_marker(indices_of_ring)
-#
-#      if real_resname == "TRP":
-#        indices_of_ring = []
-#
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CG": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CD1": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "NE1": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
-#
-#        self.add_aromatic_marker(indices_of_ring)
-#
-#        indices_of_ring = []
-#
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CE3": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CZ3": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CH2": indices_of_ring.append(index)
-#        for index in residue: # written this way because order is important
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "CZ2": indices_of_ring.append(index)
-#
-#        self.add_aromatic_marker(indices_of_ring)
-#
-#    # TODO(bramsundar): This looks like it should be a standard
-#    # python function.
-#    def set1_is_subset_of_set2(self, set1, set2):
-#      is_subset = True
-#      for item in set1:
-#        if not item in set2:
-#          is_subset = False
-#          break
-#      return is_subset
-#
-#    def all_rings_containing_atom(self, index):
-#
-#      AllRings = []
-#
-#      atom = self.AllAtoms[index]
-#      for conneceted_atom in atom.IndicesOfAtomsConnecting:
-#        self.ring_recursive(conneceted_atom, [index], index, AllRings)
-#
-#      return AllRings
-#
-#    def ring_recursive(self, index, AlreadyCrossed, orig_atom, AllRings):
-#
-#      if len(AlreadyCrossed) > 6:
-#        # since you're only considering aromatic rings containing 5 or 6
-#        # members anyway, save yourself some time.
-#        return
-#
-#      atom = self.AllAtoms[index]
-#
-#      temp = AlreadyCrossed[:]
-#      temp.append(index)
-#
-#      for conneceted_atom in atom.IndicesOfAtomsConnecting:
-#        if not conneceted_atom in AlreadyCrossed:
-#          self.ring_recursive(conneceted_atom, temp, orig_atom, AllRings)
-#        if conneceted_atom == orig_atom and orig_atom != AlreadyCrossed[-1]:
-#          AllRings.append(temp)
-#
-#    # Functions to assign secondary structure to protein residues
-#    # ===========================================================
-#
-#    def assign_secondary_structure(self):
-#      # first, we need to know what resid's are available
-#      resids = []
-#      last_key = "-99999_Z"
-#      for atom_index in self.AllAtoms:
-#        atom = self.AllAtoms[atom_index]
-#        key = str(atom.resid) + "_" + atom.chain
-#        if key != last_key:
-#          last_key = key
-#          resids.append(last_key)
-#
-#      structure = {}
-#      for resid in resids:
-#        structure[resid] = "OTHER"
-#
-#      atoms = []
-#
-#      for atom_index in self.AllAtoms:
-#        atom = self.AllAtoms[atom_index]
-#        if atom.SideChainOrBackBone() == "BACKBONE":
-#          if len(atoms) < 8:
-#            atoms.append(atom)
-#          else:
-#            atoms.pop(0)
-#            atoms.append(atom)
-#
-#            # now make sure the first four all have the same resid and
-#            # the last four all have the same resid
-#            if (atoms[0].resid == atoms[1].resid
-#              and atoms[0].resid == atoms[2].resid
-#              and atoms[0].resid == atoms[3].resid
-#              and atoms[0] != atoms[4].resid
-#              and atoms[4].resid == atoms[5].resid
-#              and atoms[4].resid == atoms[6].resid
-#              and atoms[4].resid == atoms[7].resid
-#              and atoms[0].resid + 1 == atoms[7].resid
-#              and atoms[0].chain == atoms[7].chain):
-#
-#              resid1 = atoms[0].resid
-#              resid2 = atoms[7].resid
-#
-#              # Now give easier to use names to the atoms
-#              for atom in atoms:
-#                if atom.resid == resid1 and atom.atomname.strip() == "N": first_N = atom
-#                if atom.resid == resid1 and atom.atomname.strip() == "C": first_C = atom
-#                if atom.resid == resid1 and atom.atomname.strip() == "CA": first_CA = atom
-#
-#                if atom.resid == resid2 and atom.atomname.strip() == "N": second_N = atom
-#                if atom.resid == resid2 and atom.atomname.strip() == "C": second_C = atom
-#                if atom.resid == resid2 and atom.atomname.strip() == "CA": second_CA = atom
-#
-#              # Now compute the phi and psi dihedral angles
-#              phi = self.functions.dihedral(first_C.coordinates, second_N.coordinates, second_CA.coordinates, second_C.coordinates) * 180.0 / math.pi
-#              psi = self.functions.dihedral(first_N.coordinates, first_CA.coordinates, first_C.coordinates, second_N.coordinates) * 180.0 / math.pi
-#
-#              # Now use those angles to determine if it's alpha or beta
-#              if phi > -145 and phi < -35 and psi > -70 and psi < 50:
-#                  key1 = str(first_C.resid) + "_" + first_C.chain
-#                  key2 = str(second_C.resid) + "_" + second_C.chain
-#                  structure[key1] = "ALPHA"
-#                  structure[key2] = "ALPHA"
-#              # beta. This gets some loops (by my eye), but it's the best I could do.
-#              if ((phi >= -180 and phi < -40 and psi <= 180 and psi > 90)
-#                or (phi >= -180 and phi < -70 and psi <= -165)):
-#                  key1 = str(first_C.resid) + "_" + first_C.chain
-#                  key2 = str(second_C.resid) + "_" + second_C.chain
-#                  structure[key1] = "BETA"
-#                  structure[key2] = "BETA"
-#
-#      # Now update each of the atoms with this structural information
-#      for atom_index in self.AllAtoms:
-#        atom = self.AllAtoms[atom_index]
-#        key = str(atom.resid) + "_" + atom.chain
-#        atom.structure = structure[key]
-#
-#      # Some more post processing.
-#      CA_list = [] # first build a list of the indices of all the alpha carbons
-#      for atom_index in self.AllAtoms:
-#        atom = self.AllAtoms[atom_index]
-#        if (atom.residue.strip() in self.protein_resnames
-#          and atom.atomname.strip() == "CA"):
-#          CA_list.append(atom_index)
-#
-#      # some more post processing.
-#      change = True
-#      while change == True:
-#        change = False
-#
-#        # A residue of index i is only going to be in an alpha helix
-#        # its CA is within 6 A of the CA of the residue i + 3
-#        for CA_atom_index in CA_list:
-#          CA_atom = self.AllAtoms[CA_atom_index]
-#          if CA_atom.structure == "ALPHA":
-#            # so it's in an alpha helix
-#            another_alpha_is_close = False
-#            for other_CA_atom_index in CA_list:
-#              # so now compare that CA to all the other CA's
-#              other_CA_atom = self.AllAtoms[other_CA_atom_index]
-#              if other_CA_atom.structure == "ALPHA": # so it's also in an alpha helix
-#                if other_CA_atom.resid - 3 == CA_atom.resid or other_CA_atom.resid + 3 == CA_atom.resid:
-#                  # so this CA atom is one of the ones the first atom
-#                  # might hydrogen bond with
-#                  if other_CA_atom.coordinates.dist_to(CA_atom.coordinates) < 6.0:
-#                    # so these two CA atoms are close enough together
-#                    # that their residues are probably hydrogen bonded
-#                    another_alpha_is_close = True
-#                    break
-#            if another_alpha_is_close == False:
-#              self.set_structure_of_residue(CA_atom.chain, CA_atom.resid, "OTHER")
-#              change = True
-#
-#        # Alpha helices are only alpha helices if they span at least 4
-#        # residues (to wrap around and hydrogen bond). I'm going to
-#        # require them to span at least 5 residues, based on
-#        # examination of many structures.
-#        for index_in_list in range(len(CA_list)-5):
-#
-#          index_in_pdb1 = CA_list[index_in_list]
-#          index_in_pdb2 = CA_list[index_in_list+1]
-#          index_in_pdb3 = CA_list[index_in_list+2]
-#          index_in_pdb4 = CA_list[index_in_list+3]
-#          index_in_pdb5 = CA_list[index_in_list+4]
-#          index_in_pdb6 = CA_list[index_in_list+5]
-#
-#          atom1 = self.AllAtoms[index_in_pdb1]
-#          atom2 = self.AllAtoms[index_in_pdb2]
-#          atom3 = self.AllAtoms[index_in_pdb3]
-#          atom4 = self.AllAtoms[index_in_pdb4]
-#          atom5 = self.AllAtoms[index_in_pdb5]
-#          atom6 = self.AllAtoms[index_in_pdb6]
-#
-#          if (atom1.resid + 1 == atom2.resid
-#            and atom2.resid + 1 == atom3.resid
-#            and atom3.resid + 1 == atom4.resid
-#            and atom4.resid + 1 == atom5.resid
-#            and atom5.resid + 1 == atom6.resid): # so they are sequential
-#            if atom1.structure != "ALPHA" and atom2.structure == "ALPHA" and atom3.structure != "ALPHA":
-#              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
-#              change = True
-#            if atom2.structure != "ALPHA" and atom3.structure == "ALPHA" and atom4.structure != "ALPHA":
-#              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
-#              change = True
-#            if atom3.structure != "ALPHA" and atom4.structure == "ALPHA" and atom5.structure != "ALPHA":
-#              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
-#              change = True
-#            if atom4.structure != "ALPHA" and atom5.structure == "ALPHA" and atom6.structure != "ALPHA":
-#              self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
-#              change = True
-#
-#            if (atom1.structure != "ALPHA"
-#              and atom2.structure == "ALPHA"
-#              and atom3.structure == "ALPHA"
-#              and atom4.structure != "ALPHA"):
-#              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
-#              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
-#              change = True
-#            if atom2.structure != "ALPHA" and atom3.structure == "ALPHA" and atom4.structure == "ALPHA" and atom5.structure != "ALPHA":
-#              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
-#              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
-#              change = True
-#            if (atom3.structure != "ALPHA"
-#              and atom4.structure == "ALPHA"
-#              and atom5.structure == "ALPHA"
-#              and atom6.structure != "ALPHA"):
-#              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
-#              self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
-#              change = True
-#
-#            if (atom1.structure != "ALPHA"
-#              and atom2.structure == "ALPHA"
-#              and atom3.structure == "ALPHA"
-#              and atom4.structure == "ALPHA"
-#              and atom5.structure != "ALPHA"):
-#              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
-#              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
-#              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
-#              change = True
-#            if (atom2.structure != "ALPHA"
-#              and atom3.structure == "ALPHA"
-#              and atom4.structure == "ALPHA"
-#              and atom5.structure == "ALPHA"
-#              and atom6.structure != "ALPHA"):
-#              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
-#              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
-#              self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
-#              change = True
-#
-#            if (atom1.structure != "ALPHA"
-#              and atom2.structure == "ALPHA"
-#              and atom3.structure == "ALPHA"
-#              and atom4.structure == "ALPHA"
-#              and atom5.structure == "ALPHA"
-#              and atom6.structure != "ALPHA"):
-#              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
-#              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
-#              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
-#              self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
-#              change = True
-#
-#        # now go through each of the BETA CA atoms. A residue is only
-#        # going to be called a beta sheet if CA atom is within 6.0 A
-#        # of another CA beta, same chain, but index difference > 2.
-#        for CA_atom_index in CA_list:
-#            CA_atom = self.AllAtoms[CA_atom_index]
-#            if CA_atom.structure == "BETA":
-#              # so it's in a beta sheet
-#              another_beta_is_close = False
-#              for other_CA_atom_index in CA_list:
-#                if other_CA_atom_index != CA_atom_index:
-#                  # so not comparing an atom to itself
-#                  other_CA_atom = self.AllAtoms[other_CA_atom_index]
-#                  if other_CA_atom.structure == "BETA":
-#                    # so you're comparing it only to other BETA-sheet atoms
-#                    if other_CA_atom.chain == CA_atom.chain:
-#                      # so require them to be on the same chain. needed to indecies can be fairly compared
-#                      if math.fabs(other_CA_atom.resid - CA_atom.resid) > 2:
-#                        # so the two residues are not simply adjacent to each other on the chain
-#                        if CA_atom.coordinates.dist_to(other_CA_atom.coordinates) < 6.0:
-#                          # so these to atoms are close to each other
-#                          another_beta_is_close = True
-#                          break
-#              if another_beta_is_close == False:
-#                self.set_structure_of_residue(CA_atom.chain, CA_atom.resid, "OTHER")
-#                change = True
-#
-#        # Now some more post-processing needs to be done. Do this
-#        # again to clear up mess that may have just been created
-#        # (single residue beta strand, for example)
-#        # Beta sheets are usually at least 3 residues long
-#
-#        for index_in_list in range(len(CA_list)-3):
-#
-#          index_in_pdb1 = CA_list[index_in_list]
-#          index_in_pdb2 = CA_list[index_in_list+1]
-#          index_in_pdb3 = CA_list[index_in_list+2]
-#          index_in_pdb4 = CA_list[index_in_list+3]
-#
-#          atom1 = self.AllAtoms[index_in_pdb1]
-#          atom2 = self.AllAtoms[index_in_pdb2]
-#          atom3 = self.AllAtoms[index_in_pdb3]
-#          atom4 = self.AllAtoms[index_in_pdb4]
-#
-#          if (atom1.resid + 1 == atom2.resid and atom2.resid + 1 ==
-#            atom3.resid and atom3.resid + 1 == atom4.resid):
-#            # so they are sequential
-#
-#            if (atom1.structure != "BETA"
-#              and atom2.structure == "BETA"
-#              and atom3.structure != "BETA"):
-#              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
-#              change = True
-#            if (atom2.structure != "BETA"
-#              and atom3.structure == "BETA"
-#              and atom4.structure != "BETA"):
-#              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
-#              change = True
-#            if (atom1.structure != "BETA"
-#              and atom2.structure == "BETA"
-#              and atom3.structure == "BETA"
-#              and atom4.structure != "BETA"):
-#              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
-#              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
-#              change = True
-#
-#    def set_structure_of_residue(self, chain, resid, structure):
-#      for atom_index in self.AllAtoms:
-#        atom = self.AllAtoms[atom_index]
-#        if atom.chain == chain and atom.resid == resid:
-#          atom.structure = structure
+    def add_aromatic_marker(self, indices_of_ring):
+      """Identify aromatic markers.
+
+      Parameters
+      ----------
+      indices_of_ring: list
+      """
+      # first identify the center point
+      points_list = []
+      total = len(indices_of_ring)
+      x_sum = 0.0
+      y_sum = 0.0
+      z_sum = 0.0
+
+      for index in indices_of_ring:
+        atom = self.AllAtoms[index]
+        points_list.append(atom.coordinates)
+        x_sum = x_sum + atom.coordinates.x
+        y_sum = y_sum + atom.coordinates.y
+        z_sum = z_sum + atom.coordinates.z
+
+      if total == 0: 
+        return # to prevent errors in some cases
+
+      center = point(x_sum / total, y_sum / total, z_sum / total)
+
+      # now get the radius of the aromatic ring
+      radius = 0.0
+      for index in indices_of_ring:
+        atom = self.AllAtoms[index]
+        dist = center.dist_to(atom.coordinates)
+        if dist > radius: 
+          radius = dist
+
+      # now get the plane that defines this ring
+      if len(indices_of_ring) < 3:
+        # to prevent an error in some cases. If there aren't three point, you can't define a plane
+        return
+      elif len(indices_of_ring) == 3:
+        A = self.AllAtoms[indices_of_ring[0]].coordinates
+        B = self.AllAtoms[indices_of_ring[1]].coordinates
+        C = self.AllAtoms[indices_of_ring[2]].coordinates
+      elif len(indices_of_ring) == 4:
+        A = self.AllAtoms[indices_of_ring[0]].coordinates
+        B = self.AllAtoms[indices_of_ring[1]].coordinates
+        C = self.AllAtoms[indices_of_ring[3]].coordinates
+      else: # best, for 5 and 6 member rings
+        A = self.AllAtoms[indices_of_ring[0]].coordinates
+        B = self.AllAtoms[indices_of_ring[2]].coordinates
+        C = self.AllAtoms[indices_of_ring[4]].coordinates
+
+      AB = self.functions.vector_subtraction(B,A)
+      AC = self.functions.vector_subtraction(C,A)
+      ABXAC = self.functions.CrossProduct(AB,AC)
+
+      # formula for plane will be ax + by + cz = d
+      x1 = self.AllAtoms[indices_of_ring[0]].coordinates.x
+      y1 = self.AllAtoms[indices_of_ring[0]].coordinates.y
+      z1 = self.AllAtoms[indices_of_ring[0]].coordinates.z
+
+      a = ABXAC.x
+      b = ABXAC.y
+      c = ABXAC.z
+      d = a*x1 + b*y1 + c*z1
+
+      ar_ring = self.aromatic_ring(center, indices_of_ring, [a,b,c,d], radius)
+      self.aromatic_rings.append(ar_ring)
+
+    class aromatic_ring():
+      """A placeholder class that holds information about an aromatic."""
+      def __init__(self, center, indices, plane_coeff, radius):
+        """
+        Initializes an aromatic.
+
+        Parameters
+        ----------
+        center: float
+          Center of the ring.
+        indices: list
+          List of the atom indices for ring atoms.
+        plane_coeff: float
+          TODO(bramsundar): What is this?
+        radius: float
+          Ring radius from center.
+        """
+        self.center = center
+        self.indices = indices
+        # a*x + b*y + c*z = dI think that
+        self.plane_coeff = plane_coeff
+        self.radius = radius
+
+    def assign_aromatic_rings(self):
+      """Identifies aromatic rings in self."""
+      # Get all the rings containing each of the atoms in the ligand
+      AllRings = []
+      for atom_index in self.NonProteinAtoms:
+        AllRings.extend(self.all_rings_containing_atom(atom_index))
+
+      for ring_index_1 in range(len(AllRings)):
+        ring1 = AllRings[ring_index_1]
+        if len(ring1) != 0:
+          for ring_index_2 in range(len(AllRings)):
+            if ring_index_1 != ring_index_2:
+              ring2 = AllRings[ring_index_2]
+              if len(ring2) != 0:
+                if self.set1_is_subset_of_set2(ring1, ring2) == True:
+                  AllRings[ring_index_2] = []
+
+      while [] in AllRings:
+        AllRings.remove([])
+
+      # Now we need to figure out which of these ligands are aromatic
+      # (planar)
+      for ring_index in range(len(AllRings)):
+        ring = AllRings[ring_index]
+        is_flat = True
+        for t in range(-3, len(ring)-3):
+          pt1 = self.NonProteinAtoms[ring[t]].coordinates
+          pt2 = self.NonProteinAtoms[ring[t+1]].coordinates
+          pt3 = self.NonProteinAtoms[ring[t+2]].coordinates
+          pt4 = self.NonProteinAtoms[ring[t+3]].coordinates
+
+          # first, let's see if the last atom in this ring is a carbon
+          # connected to four atoms. That would be a quick way of
+          # telling this is not an aromatic ring
+          cur_atom = self.NonProteinAtoms[ring[t+3]]
+          if cur_atom.element == "C" and cur_atom.NumberOfNeighbors() == 4:
+            is_flat = False
+            break
+
+          # now check the dihedral between the ring atoms to see if
+          # it's flat
+          angle = self.functions.dihedral(pt1, pt2, pt3, pt4) * 180 / math.pi
+          # 15 degrees is the cutoff, ring[t], ring[t+1], ring[t+2],
+          # ring[t+3] range of this function is -pi to pi
+          if (angle > -165 and angle < -15) or (angle > 15 and angle < 165):
+              is_flat = False
+              break
+
+          # now check the dihedral between the ring atoms and an atom
+          # connected to the current atom to see if that's flat too.
+          for substituent_atom_index in cur_atom.IndicesOfAtomsConnecting:
+              pt_sub = self.NonProteinAtoms[substituent_atom_index].coordinates
+              angle = self.functions.dihedral(pt2, pt3, pt4, pt_sub) * 180 / math.pi
+              # 15 degress is the cutoff, ring[t], ring[t+1], ring[t+2],
+              # ring[t+3], range of this function is -pi to pi
+              if (angle > -165 and angle < -15) or (angle > 15 and angle < 165):
+                  is_flat = False
+                  break
+
+        if is_flat == False: 
+          AllRings[ring_index] = []
+        # While I'm at it, three and four member rings are not aromatic
+        if len(ring) < 5: 
+          AllRings[ring_index] = []
+        # TODO(bramsundar): What about 7-element rings.
+        # While I'm at it, if the ring has more than 6, also throw it out. So
+        # only 5 and 6 member rings are allowed.
+        if len(ring) > 6: 
+          AllRings[ring_index] = []
+
+      while [] in AllRings: 
+        AllRings.remove([])
+
+      for ring in AllRings:
+        self.add_aromatic_marker(ring)
+
+      # Now that you've found all the rings in non-protein residues,
+      # it's time to look for aromatic rings in protein residues
+      curr_res = ""
+      first = True
+      residue = []
+
+      for atom_index in self.AllAtoms:
+        atom = self.AllAtoms[atom_index]
+
+        key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
+
+        if first == True:
+          curr_res = key
+          first = False
+
+        if key != curr_res:
+
+          self.assign_aromatic_rings_from_protein_process_residue(residue, last_key)
+
+          residue = []
+          curr_res = key
+
+        residue.append(atom_index)
+        last_key = key
+
+      self.assign_aromatic_rings_from_protein_process_residue(residue, last_key)
+
+    def assign_aromatic_rings_from_protein_process_residue(self, residue, last_key):
+      """Find aromatic rings in protein residues.
+      Parameters
+      ---------
+      residue: list
+        List of atom indices for this residue. 
+      last_key: TODO(bramsundar)
+      """
+      resname = last_key.strip().split("_")[0]
+      real_resname = resname[-3:]
+      resid = temp[1]
+      chain = temp[2]
+
+      if real_resname == "PHE":
+        indices_of_ring = []
+
+        # Note that order is important in the following.
+        for index in residue: 
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CG": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CD1": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CE1": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CZ": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
+
+        self.add_aromatic_marker(indices_of_ring)
+
+      if real_resname == "TYR":
+        indices_of_ring = []
+
+        # Note that order is important in the following.
+        for index in residue: 
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CG": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CD1": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CE1": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CZ": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
+
+        self.add_aromatic_marker(indices_of_ring)
+
+      if (real_resname == "HIS" 
+        or real_resname == "HID" 
+        or real_resname == "HIE" 
+        or real_resname == "HIP"):
+        indices_of_ring = []
+
+        # Note that order is important in the following.
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CG": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "ND1": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CE1": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "NE2": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
+
+        self.add_aromatic_marker(indices_of_ring)
+
+      if real_resname == "TRP":
+        indices_of_ring = []
+
+        # Note that order is important in the following.
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CG": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CD1": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "NE1": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
+
+        self.add_aromatic_marker(indices_of_ring)
+
+        indices_of_ring = []
+
+        for index in residue: # written this way because order is important
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
+        for index in residue: # written this way because order is important
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
+        for index in residue: # written this way because order is important
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CE3": indices_of_ring.append(index)
+        for index in residue: # written this way because order is important
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CZ3": indices_of_ring.append(index)
+        for index in residue: # written this way because order is important
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CH2": indices_of_ring.append(index)
+        for index in residue: # written this way because order is important
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "CZ2": indices_of_ring.append(index)
+
+        self.add_aromatic_marker(indices_of_ring)
+
+    # TODO(bramsundar): This looks like it should be a standard
+    # python function.
+    def set1_is_subset_of_set2(self, set1, set2):
+      is_subset = True
+      for item in set1:
+        if not item in set2:
+          is_subset = False
+          break
+      return is_subset
+
+    def all_rings_containing_atom(self, index):
+      """Identify all rings that contain atom at index.
+
+      Parameters
+      ----------
+      index: int
+        Index of provided atom.
+      """
+
+      AllRings = []
+
+      atom = self.AllAtoms[index]
+      for connected_atom in atom.IndicesOfAtomsConnecting:
+        self.ring_recursive(connected_atom, [index], index, AllRings)
+
+      return AllRings
+
+    def ring_recursive(self, index, AlreadyCrossed, orig_atom, AllRings):
+      """Recursive helper function for ring identification.
+
+      Parameters
+      ----------
+      index: int
+        Index of specified atom.
+      AlreadyCrossed: TODO(bramsundar)
+      orig_atom: TODO(bramsundar)
+      AllRings: TODO(bramsundar)
+      """
+
+      if len(AlreadyCrossed) > 6:
+        # since you're only considering aromatic rings containing 5 or 6
+        # members anyway, save yourself some time.
+        return
+
+      atom = self.AllAtoms[index]
+
+      temp = AlreadyCrossed[:]
+      temp.append(index)
+
+      for connected_atom in atom.IndicesOfAtomsConnecting:
+        if not connected_atom in AlreadyCrossed:
+          self.ring_recursive(connected_atom, temp, orig_atom, AllRings)
+        if connected_atom == orig_atom and orig_atom != AlreadyCrossed[-1]:
+          AllRings.append(temp)
+
+    # Functions to assign secondary structure to protein residues
+    # ===========================================================
+
+    def assign_secondary_structure(self):
+      """Assign secondary structure labels (assuming self is a protein).
+
+      keys in this function have form RES_CHAIN where CHAIN is
+      (TODO(bramsundar)).
+      
+      TODO(bramsundar): This function is monolithic. Can we break it down?
+      """
+      # first, we need to know what resid's are available
+      resids = []
+      last_key = "-99999_Z"
+      for atom_index in self.AllAtoms:
+        atom = self.AllAtoms[atom_index]
+        key = str(atom.resid) + "_" + atom.chain
+        if key != last_key:
+          last_key = key
+          resids.append(last_key)
+
+      structure = {}
+      for resid in resids:
+        structure[resid] = "OTHER"
+
+      atoms = []
+
+      for atom_index in self.AllAtoms:
+        atom = self.AllAtoms[atom_index]
+        if atom.SideChainOrBackBone() == "BACKBONE":
+          if len(atoms) < 8:
+            atoms.append(atom)
+          else:
+            atoms.pop(0)
+            atoms.append(atom)
+
+            # now make sure the first four all have the same resid and
+            # the last four all have the same resid
+            if (atoms[0].resid == atoms[1].resid
+              and atoms[0].resid == atoms[2].resid
+              and atoms[0].resid == atoms[3].resid
+              and atoms[0] != atoms[4].resid
+              and atoms[4].resid == atoms[5].resid
+              and atoms[4].resid == atoms[6].resid
+              and atoms[4].resid == atoms[7].resid
+              and atoms[0].resid + 1 == atoms[7].resid
+              and atoms[0].chain == atoms[7].chain):
+
+              resid1 = atoms[0].resid
+              resid2 = atoms[7].resid
+
+              # Now give easier to use names to the atoms
+              for atom in atoms:
+                if atom.resid == resid1 and atom.atomname.strip() == "N": 
+                  first_N = atom
+                if atom.resid == resid1 and atom.atomname.strip() == "C": 
+                  first_C = atom
+                if atom.resid == resid1 and atom.atomname.strip() == "CA": 
+                  first_CA = atom
+
+                if atom.resid == resid2 and atom.atomname.strip() == "N": 
+                  second_N = atom
+                if atom.resid == resid2 and atom.atomname.strip() == "C": 
+                  second_C = atom
+                if atom.resid == resid2 and atom.atomname.strip() == "CA": 
+                  second_CA = atom
+
+              # Now compute the phi and psi dihedral angles
+              phi = self.functions.dihedral(first_C.coordinates, second_N.coordinates, 
+                  second_CA.coordinates, second_C.coordinates) * 180.0 / math.pi
+              psi = self.functions.dihedral(first_N.coordinates, first_CA.coordinates, 
+                  first_C.coordinates, second_N.coordinates) * 180.0 / math.pi
+
+              # Now use those angles to determine if it's alpha or beta
+              if phi > -145 and phi < -35 and psi > -70 and psi < 50:
+                key1 = str(first_C.resid) + "_" + first_C.chain
+                key2 = str(second_C.resid) + "_" + second_C.chain
+                structure[key1] = "ALPHA"
+                structure[key2] = "ALPHA"
+              # beta. This gets some loops (by my eye), but it's the best I could do.
+              if ((phi >= -180 and phi < -40 and psi <= 180 and psi > 90)
+                or (phi >= -180 and phi < -70 and psi <= -165)):
+                key1 = str(first_C.resid) + "_" + first_C.chain
+                key2 = str(second_C.resid) + "_" + second_C.chain
+                structure[key1] = "BETA"
+                structure[key2] = "BETA"
+
+      # Now update each of the atoms with this structural information
+      for atom_index in self.AllAtoms:
+        atom = self.AllAtoms[atom_index]
+        key = str(atom.resid) + "_" + atom.chain
+        atom.structure = structure[key]
+
+      # Some more post processing.
+      CA_list = [] # first build a list of the indices of all the alpha carbons
+      for atom_index in self.AllAtoms:
+        atom = self.AllAtoms[atom_index]
+        if (atom.residue.strip() in self.protein_resnames
+          and atom.atomname.strip() == "CA"):
+          CA_list.append(atom_index)
+
+      # some more post processing.
+      change = True
+      while change == True:
+        change = False
+
+        # A residue of index i is only going to be in an alpha helix
+        # its CA is within 6 A of the CA of the residue i + 3
+        for CA_atom_index in CA_list:
+          CA_atom = self.AllAtoms[CA_atom_index]
+          if CA_atom.structure == "ALPHA":
+            # so it's in an alpha helix
+            another_alpha_is_close = False
+            for other_CA_atom_index in CA_list:
+              # so now compare that CA to all the other CA's
+              other_CA_atom = self.AllAtoms[other_CA_atom_index]
+              if other_CA_atom.structure == "ALPHA": # so it's also in an alpha helix
+                if other_CA_atom.resid - 3 == CA_atom.resid or other_CA_atom.resid + 3 == CA_atom.resid:
+                  # so this CA atom is one of the ones the first atom
+                  # might hydrogen bond with
+                  if other_CA_atom.coordinates.dist_to(CA_atom.coordinates) < 6.0:
+                    # so these two CA atoms are close enough together
+                    # that their residues are probably hydrogen bonded
+                    another_alpha_is_close = True
+                    break
+            if another_alpha_is_close == False:
+              self.set_structure_of_residue(CA_atom.chain, CA_atom.resid, "OTHER")
+              change = True
+
+        # Alpha helices are only alpha helices if they span at least 4
+        # residues (to wrap around and hydrogen bond). I'm going to
+        # require them to span at least 5 residues, based on
+        # examination of many structures.
+        for index_in_list in range(len(CA_list)-5):
+
+          index_in_pdb1 = CA_list[index_in_list]
+          index_in_pdb2 = CA_list[index_in_list+1]
+          index_in_pdb3 = CA_list[index_in_list+2]
+          index_in_pdb4 = CA_list[index_in_list+3]
+          index_in_pdb5 = CA_list[index_in_list+4]
+          index_in_pdb6 = CA_list[index_in_list+5]
+
+          atom1 = self.AllAtoms[index_in_pdb1]
+          atom2 = self.AllAtoms[index_in_pdb2]
+          atom3 = self.AllAtoms[index_in_pdb3]
+          atom4 = self.AllAtoms[index_in_pdb4]
+          atom5 = self.AllAtoms[index_in_pdb5]
+          atom6 = self.AllAtoms[index_in_pdb6]
+
+          if (atom1.resid + 1 == atom2.resid
+            and atom2.resid + 1 == atom3.resid
+            and atom3.resid + 1 == atom4.resid
+            and atom4.resid + 1 == atom5.resid
+            and atom5.resid + 1 == atom6.resid): # so they are sequential
+            if (atom1.structure != "ALPHA" 
+              and atom2.structure == "ALPHA" 
+              and atom3.structure != "ALPHA"):
+              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
+              change = True
+            if (atom2.structure != "ALPHA" 
+              and atom3.structure == "ALPHA" 
+              and atom4.structure != "ALPHA"):
+              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
+              change = True
+            if (atom3.structure != "ALPHA" 
+              and atom4.structure == "ALPHA" 
+              and atom5.structure != "ALPHA"):
+              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
+              change = True
+            if (atom4.structure != "ALPHA" 
+              and atom5.structure == "ALPHA" 
+              and atom6.structure != "ALPHA"):
+              self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
+              change = True
+
+            if (atom1.structure != "ALPHA"
+              and atom2.structure == "ALPHA"
+              and atom3.structure == "ALPHA"
+              and atom4.structure != "ALPHA"):
+              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
+              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
+              change = True
+            if (atom2.structure != "ALPHA" 
+              and atom3.structure == "ALPHA" 
+              and atom4.structure == "ALPHA" 
+              and atom5.structure != "ALPHA"):
+              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
+              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
+              change = True
+            if (atom3.structure != "ALPHA"
+              and atom4.structure == "ALPHA"
+              and atom5.structure == "ALPHA"
+              and atom6.structure != "ALPHA"):
+              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
+              self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
+              change = True
+
+            if (atom1.structure != "ALPHA"
+              and atom2.structure == "ALPHA"
+              and atom3.structure == "ALPHA"
+              and atom4.structure == "ALPHA"
+              and atom5.structure != "ALPHA"):
+              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
+              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
+              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
+              change = True
+            if (atom2.structure != "ALPHA"
+              and atom3.structure == "ALPHA"
+              and atom4.structure == "ALPHA"
+              and atom5.structure == "ALPHA"
+              and atom6.structure != "ALPHA"):
+              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
+              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
+              self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
+              change = True
+
+            if (atom1.structure != "ALPHA"
+              and atom2.structure == "ALPHA"
+              and atom3.structure == "ALPHA"
+              and atom4.structure == "ALPHA"
+              and atom5.structure == "ALPHA"
+              and atom6.structure != "ALPHA"):
+              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
+              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
+              self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
+              self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
+              change = True
+
+        # now go through each of the BETA CA atoms. A residue is only
+        # going to be called a beta sheet if CA atom is within 6.0 A
+        # of another CA beta, same chain, but index difference > 2.
+        for CA_atom_index in CA_list:
+            CA_atom = self.AllAtoms[CA_atom_index]
+            if CA_atom.structure == "BETA":
+              # so it's in a beta sheet
+              another_beta_is_close = False
+              for other_CA_atom_index in CA_list:
+                if other_CA_atom_index != CA_atom_index:
+                  # so not comparing an atom to itself
+                  other_CA_atom = self.AllAtoms[other_CA_atom_index]
+                  if other_CA_atom.structure == "BETA":
+                    # so you're comparing it only to other BETA-sheet atoms
+                    if other_CA_atom.chain == CA_atom.chain:
+                      # so require them to be on the same chain. needed to indecies can be fairly compared
+                      if math.fabs(other_CA_atom.resid - CA_atom.resid) > 2:
+                        # so the two residues are not simply adjacent to each other on the chain
+                        if CA_atom.coordinates.dist_to(other_CA_atom.coordinates) < 6.0:
+                          # so these to atoms are close to each other
+                          another_beta_is_close = True
+                          break
+              if another_beta_is_close == False:
+                self.set_structure_of_residue(CA_atom.chain, CA_atom.resid, "OTHER")
+                change = True
+
+        # Now some more post-processing needs to be done. Do this
+        # again to clear up mess that may have just been created
+        # (single residue beta strand, for example)
+        # Beta sheets are usually at least 3 residues long
+
+        for index_in_list in range(len(CA_list)-3):
+
+          index_in_pdb1 = CA_list[index_in_list]
+          index_in_pdb2 = CA_list[index_in_list+1]
+          index_in_pdb3 = CA_list[index_in_list+2]
+          index_in_pdb4 = CA_list[index_in_list+3]
+
+          atom1 = self.AllAtoms[index_in_pdb1]
+          atom2 = self.AllAtoms[index_in_pdb2]
+          atom3 = self.AllAtoms[index_in_pdb3]
+          atom4 = self.AllAtoms[index_in_pdb4]
+
+          if (atom1.resid + 1 == atom2.resid and atom2.resid + 1 ==
+            atom3.resid and atom3.resid + 1 == atom4.resid):
+            # so they are sequential
+
+            if (atom1.structure != "BETA"
+              and atom2.structure == "BETA"
+              and atom3.structure != "BETA"):
+              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
+              change = True
+            if (atom2.structure != "BETA"
+              and atom3.structure == "BETA"
+              and atom4.structure != "BETA"):
+              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
+              change = True
+            if (atom1.structure != "BETA"
+              and atom2.structure == "BETA"
+              and atom3.structure == "BETA"
+              and atom4.structure != "BETA"):
+              self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
+              self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
+              change = True
+
+    def set_structure_of_residue(self, chain, resid, structure):
+      for atom_index in self.AllAtoms:
+        atom = self.AllAtoms[atom_index]
+        if atom.chain == chain and atom.resid == resid:
+          atom.structure = structure
 
 # TODO(bramsundar): Rework this to use numpy instead of custom
 # implementations.
 class MathFunctions:
 
-#  def vector_subtraction(self, vector1, vector2): # vector1 - vector2
-#    return point(vector1.x - vector2.x, vector1.y - vector2.y, vector1.z - vector2.z)
-#
-#  def CrossProduct(self, Pt1, Pt2): # never tested
-#    Response = point(0,0,0)
-#
-#    Response.x = Pt1.y * Pt2.z - Pt1.z * Pt2.y
-#    Response.y = Pt1.z * Pt2.x - Pt1.x * Pt2.z
-#    Response.z = Pt1.x * Pt2.y - Pt1.y * Pt2.x
-#
-#    return Response;
-#
-#  def vector_scalar_multiply(self, vector, scalar):
-#    return point(vector.x * scalar, vector.y * scalar, vector.z * scalar)
-#
-#  def dot_product(self, point1, point2):
-#    return point1.x * point2.x + point1.y * point2.y + point1.z * point2.z
-#
-#  def dihedral(self, point1, point2, point3, point4): # never tested
-#
-#    b1 = self.vector_subtraction(point2, point1)
-#    b2 = self.vector_subtraction(point3, point2)
-#    b3 = self.vector_subtraction(point4, point3)
-#
-#    b2Xb3 = self.CrossProduct(b2,b3)
-#    b1Xb2 = self.CrossProduct(b1,b2)
-#
-#    b1XMagb2 = self.vector_scalar_multiply(b1,b2.Magnitude())
-#    radians = math.atan2(self.dot_product(b1XMagb2,b2Xb3), self.dot_product(b1Xb2,b2Xb3))
-#    return radians
-#
-#  def angle_between_three_points(self, point1, point2, point3): # As in three connected atoms
-#    vector1 = self.vector_subtraction(point1, point2)
-#    vector2 = self.vector_subtraction(point3, point2)
-#    return self.angle_between_points(vector1, vector2)
-#
-#  def angle_between_points(self, point1, point2):
-#    new_point1 = self.return_normalized_vector(point1)
-#    new_point2 = self.return_normalized_vector(point2)
-#    dot_prod = self.dot_product(new_point1, new_point2)
-#    if dot_prod > 1.0: dot_prod = 1.0 # to prevent errors that can rarely occur
-#    if dot_prod < -1.0: dot_prod = -1.0
-#    return math.acos(dot_prod)
-#
-#  def return_normalized_vector(self, vector):
-#    dist = self.distance(point(0,0,0), vector)
-#    return point(vector.x/dist, vector.y/dist, vector.z/dist)
-#
+  def vector_subtraction(self, vector1, vector2): # vector1 - vector2
+    return point(vector1.x - vector2.x, vector1.y - vector2.y, vector1.z - vector2.z)
+
+  def CrossProduct(self, Pt1, Pt2): # never tested
+    Response = point(0,0,0)
+
+    Response.x = Pt1.y * Pt2.z - Pt1.z * Pt2.y
+    Response.y = Pt1.z * Pt2.x - Pt1.x * Pt2.z
+    Response.z = Pt1.x * Pt2.y - Pt1.y * Pt2.x
+
+    return Response;
+
+  def vector_scalar_multiply(self, vector, scalar):
+    return point(vector.x * scalar, vector.y * scalar, vector.z * scalar)
+
+  def dot_product(self, point1, point2):
+    return point1.x * point2.x + point1.y * point2.y + point1.z * point2.z
+
+  def dihedral(self, point1, point2, point3, point4): # never tested
+    """Compute dihedral angle between 4 points."""
+
+    b1 = self.vector_subtraction(point2, point1)
+    b2 = self.vector_subtraction(point3, point2)
+    b3 = self.vector_subtraction(point4, point3)
+
+    b2Xb3 = self.CrossProduct(b2,b3)
+    b1Xb2 = self.CrossProduct(b1,b2)
+
+    b1XMagb2 = self.vector_scalar_multiply(b1,b2.Magnitude())
+    radians = math.atan2(self.dot_product(b1XMagb2,b2Xb3), self.dot_product(b1Xb2,b2Xb3))
+    return radians
+
+  def angle_between_three_points(self, point1, point2, point3): # As in three connected atoms
+    vector1 = self.vector_subtraction(point1, point2)
+    vector2 = self.vector_subtraction(point3, point2)
+    return self.angle_between_points(vector1, vector2)
+
+  def angle_between_points(self, point1, point2):
+    new_point1 = self.return_normalized_vector(point1)
+    new_point2 = self.return_normalized_vector(point2)
+    dot_prod = self.dot_product(new_point1, new_point2)
+    if dot_prod > 1.0: dot_prod = 1.0 # to prevent errors that can rarely occur
+    if dot_prod < -1.0: dot_prod = -1.0
+    return math.acos(dot_prod)
+
+  def return_normalized_vector(self, vector):
+    dist = self.distance(point(0,0,0), vector)
+    return point(vector.x/dist, vector.y/dist, vector.z/dist)
+
   def distance(self, point1, point2):
     return point1.dist_to(point2)
-#
-#  def project_point_onto_plane(self, apoint, plane_coefficients):
-#    # essentially finds the point on the plane that is closest to the
-#    # specified point the plane_coefficients are [a,b,c,d], where the
-#    # plane is ax + by + cz = d
-#
-#    # First, define a plane using cooeficients a, b, c, d such that ax + by + cz = d
-#    a = plane_coefficients[0]
-#    b = plane_coefficients[1]
-#    c = plane_coefficients[2]
-#    d = plane_coefficients[3]
-#
-#    # Now, define a point in space (s,u,v)
-#    s = apoint.x
-#    u = apoint.y
-#    v = apoint.z
-#
-#    # the formula of a line perpendicular to the plan passing through (s,u,v) is:
-#    #x = s + at
-#    #y = u + bt
-#    #z = v + ct
-#
-#    t = (d - a*s - b*u - c*v) / (a*a + b*b + c*c)
-#
-#    # here's the point closest on the plane
-#    x = s + a*t
-#    y = u + b*t
-#    z = v + c*t
-#
-#    return point(x,y,z)
+
+  def project_point_onto_plane(self, apoint, plane_coefficients):
+    # essentially finds the point on the plane that is closest to the
+    # specified point the plane_coefficients are [a,b,c,d], where the
+    # plane is ax + by + cz = d
+
+    # First, define a plane using cooeficients a, b, c, d such that ax + by + cz = d
+    a = plane_coefficients[0]
+    b = plane_coefficients[1]
+    c = plane_coefficients[2]
+    d = plane_coefficients[3]
+
+    # Now, define a point in space (s,u,v)
+    s = apoint.x
+    u = apoint.y
+    v = apoint.z
+
+    # the formula of a line perpendicular to the plan passing through (s,u,v) is:
+    #x = s + at
+    #y = u + bt
+    #z = v + ct
+
+    t = (d - a*s - b*u - c*v) / (a*a + b*b + c*c)
+
+    # here's the point closest on the plane
+    x = s + a*t
+    y = u + b*t
+    z = v + c*t
+
+    return point(x,y,z)
