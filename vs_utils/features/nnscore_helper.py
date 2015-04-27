@@ -1,8 +1,12 @@
 """
-Helper Classes and Functions for NNScoreFingerprint Computation.
+Helper Classes and Functions for docking fingerprint computation.
 
-The code below is adopted from Jacob Durrant's NNScore 2.0.1. The
-following notive is copied from the original NNScore file:
+TODO(bramsundar): Most of the files below cannot be meaningfully tested
+with a body of PDBs that exhibit the various amino-acids in questions.
+Build up such a body of PDBs which we can use in the test work.
+
+The code below is a modified version of from Jacob Durrant's NNScore 2.0.1. The
+following notice is copied from the original NNScore file:
 # NNScore 2.01 is released under the GNU General Public License (see
 # http://www.gnu.org/licenses/gpl.html).
 # If you have any questions, comments, or suggestions, please don't
@@ -58,7 +62,7 @@ class point:
     Parameters
     ----------
     index: int
-      TODO(bramsundar): What is purpose of index?
+     Index of atom in molecule. 
     """
 
     output = "ATOM "
@@ -295,9 +299,6 @@ class charged():
 
 ## TODO(bramsundar): Uncomment this class once tests are written for
 ## classes above.
-# TODO(bramsundar): Other packages (mdtraj in particular) already
-# implement PDB handling. Can this class be reconstructed as a thin
-# wrapper around MDTraj or RDKit PDB handling?
 class PDB:
   """
   PDB file handler class.
@@ -507,6 +508,8 @@ class PDB:
     return connected_atoms
 
   def CheckProteinFormat(self):
+    """Check that loaded protein structure is self-consistent.
+    """
     curr_res = ""
     first = True
     residue = []
@@ -562,8 +565,8 @@ class PDB:
 
     Parameters
     ----------
-    residue: string 
-      Three letter name of residue (i.e., PHE, GLU, etc.) 
+    residue: list 
+      List of atom names in residue. 
 
     last_key: string
       Should be in format RESIDUENAME_RESIDUENUMBER_CHAIN
@@ -963,13 +966,8 @@ class PDB:
 
 
   def AssignProteinCharges(self):
+    """Assigns charges to atoms in charged residues.
     """
-    Assigns charges to atoms in charged residues.
-    """
-    # TODO(bramsundar): Is this comment meant to be here?
-    # Now that you've found all the positive charges in non-protein
-    # residues, it's time to look for aromatic rings in protein
-    # residues
     curr_res = ""
     first = True
     residue = []
@@ -992,176 +990,186 @@ class PDB:
       last_key = key
 
 
-#    def AssignChargesFromProteinProcessResidue(self, residue, last_key):
-#      temp = last_key.strip().split("_")
-#      resname = temp[0]
-#      real_resname = resname[-3:]
-#      resid = temp[1]
-#      chain = temp[2]
-#
-#      # regardless of protonation state, assume it's charged.
-#      if real_resname == "LYS" or real_resname == "LYN":
-#        for index in residue:
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "NZ":
-#
-#            # quickly go through the residue and get the hydrogens
-#            # attached to this nitrogen to include in the index list
-#            indexes = [index]
-#            for index2 in residue:
-#                atom2 = self.AllAtoms[index2]
-#                if atom2.atomname.strip() == "HZ1": indexes.append(index2)
-#                if atom2.atomname.strip() == "HZ2": indexes.append(index2)
-#                if atom2.atomname.strip() == "HZ3": indexes.append(index2)
-#
-#            chrg = charged(atom.coordinates, indexes, True)
-#            self.charges.append(chrg)
-#        break
-#
-#      if real_resname == "ARG":
-#        charge_pt = point(0.0,0.0,0.0)
-#        count = 0.0
-#        indices = []
-#        for index in residue:
-#          atom = self.AllAtoms[index]
-#          if atom.atomname.strip() == "NH1":
-#            chge_pt.x = charge_pt.x + atom.coordinates.x
-#            chge_pt.y = charge_pt.y + atom.coordinates.y
-#            chge_pt.z = charge_pt.z + atom.coordinates.z
-#            indices.append(index)
-#            count = count + 1.0
-#          if atom.atomname.strip() == "NH2":
-#            chge_pt.x = charge_pt.x + atom.coordinates.x
-#            chge_pt.y = charge_pt.y + atom.coordinates.y
-#            chge_pt.z = charge_pt.z + atom.coordinates.z
-#            indices.append(index)
-#            count = count + 1.0
-#          if atom.atomname.strip() == "2HH2": indices.append(index)
-#          if atom.atomname.strip() == "1HH2": indices.append(index)
-#          if atom.atomname.strip() == "CZ": indices.append(index)
-#          if atom.atomname.strip() == "2HH1": indices.append(index)
-#          if atom.atomname.strip() == "1HH1": indices.append(index)
-#
-#      # TODO(bramsundar): Formatting here was very messed up. Write a
-#      # test to ensure that this function behaves as advertised.
-#      if count != 0.0:
-#
-#        charge_pt.x = charge_pt.x / count
-#
-#        charge_pt.y = charge_pt.y / count
-#        charge_pt.z = charge_pt.z / count
-#
-#        if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
-#            chrg = charged(charge_pt, indices, True)
-#            self.charges.append(chrg)
-#
-#        if (real_resname == "HIS" or real_resname == "HID" or
-#          # regardless of protonation state, assume it's charged. This based on
-#          # "The Cation-Pi Interaction," which suggests protonated state would
-#          # be stabilized. But let's not consider HIS when doing salt bridges.
-#          real_resname == "HIE" or real_resname == "HIP"):
-#          charge_pt = point(0.0,0.0,0.0)
-#          count = 0.0
-#          indices = []
-#          for index in residue:
-#              atom = self.AllAtoms[index]
-#              if atom.atomname.strip() == "NE2":
-#                charge_pt.x = charge_pt.x + atom.coordinates.x
-#                charge_pt.y = charge_pt.y + atom.coordinates.y
-#                charge_pt.z = charge_pt.z + atom.coordinates.z
-#                indices.append(index)
-#                count = count + 1.0
-#      if atom.atomname.strip() == "ND1":
-#          charge_pt.x = charge_pt.x + atom.coordinates.x
-#          charge_pt.y = charge_pt.y + atom.coordinates.y
-#          charge_pt.z = charge_pt.z + atom.coordinates.z
-#          indices.append(index)
-#          count = count + 1.0
-#          if atom.atomname.strip() == "HE2": indices.append(index)
-#          if atom.atomname.strip() == "HD1": indices.append(index)
-#          if atom.atomname.strip() == "CE1": indices.append(index)
-#          if atom.atomname.strip() == "CD2": indices.append(index)
-#          if atom.atomname.strip() == "CG": indices.append(index)
-#
-#          if count != 0.0:
-#            charge_pt.x = charge_pt.x / count
-#            charge_pt.y = charge_pt.y / count
-#            charge_pt.z = charge_pt.z / count
-#            if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
-#              chrg = charged(charge_pt, indices, True)
-#              self.charges.append(chrg)
-#
-#        if real_resname == "GLU" or real_resname == "GLH" or real_resname == "GLX":
-#          # regardless of protonation state, assume it's charged. This based on
-#          # "The Cation-Pi Interaction," which suggests protonated state would
-#          # be stabilized.
-#          charge_pt = point(0.0,0.0,0.0)
-#          count = 0.0
-#          indices = []
-#          for index in residue:
-#              atom = self.AllAtoms[index]
-#              if atom.atomname.strip() == "OE1":
-#          charge_pt.x = charge_pt.x + atom.coordinates.x
-#          charge_pt.y = charge_pt.y + atom.coordinates.y
-#          charge_pt.z = charge_pt.z + atom.coordinates.z
-#          indices.append(index)
-#          count = count + 1.0
-#      if atom.atomname.strip() == "OE2":
-#        charge_pt.x = charge_pt.x + atom.coordinates.x
-#        charge_pt.y = charge_pt.y + atom.coordinates.y
-#        charge_pt.z = charge_pt.z + atom.coordinates.z
-#        indices.append(index)
-#        count = count + 1.0
-#        if atom.atomname.strip() == "CD": indices.append(index)
-#
-#        if count != 0.0:
-#          charge_pt.x = charge_pt.x / count
-#          charge_pt.y = charge_pt.y / count
-#          charge_pt.z = charge_pt.z / count
-#          if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
-#            chrg = charged(charge_pt, indices, False) # False because it's a negative charge
-#            self.charges.append(chrg)
-#
-#        # TODO(bramsundar): This comment about Cation-Pi interactions
-#        # is repeated in multiple places. Look into this interaction
-#        # and verify that it holds true for the residues in question.
-#        if (real_resname == "ASP" or real_resname == "ASH" or
-#          real_resname == "ASX"):
-#          # regardless of protonation state, assume it's charged. This based on
-#          # "The Cation-Pi Interaction," which suggests protonated state would
-#          # be stabilized.
-#          charge_pt = point(0.0,0.0,0.0)
-#           count = 0.0
-#           indices = []
-#           for index in residue:
-#             atom = self.AllAtoms[index]
-#             if atom.atomname.strip() == "OD1":
-#              charge_pt.x = charge_pt.x + atom.coordinates.x
-#              charge_pt.y = charge_pt.y + atom.coordinates.y
-#              charge_pt.z = charge_pt.z + atom.coordinates.z
-#              indices.append(index)
-#              count = count + 1.0
-#      if atom.atomname.strip() == "OD2":
-#        charge_pt.x = charge_pt.x + atom.coordinates.x
-#        charge_pt.y = charge_pt.y + atom.coordinates.y
-#        charge_pt.z = charge_pt.z + atom.coordinates.z
-#        indices.append(index)
-#        count = count + 1.0
-#        if atom.atomname.strip() == "CG": indices.append(index)
-#
-#        if count != 0.0:
-#            charge_pt.x = charge_pt.x / count
-#            charge_pt.y = charge_pt.y / count
-#            charge_pt.z = charge_pt.z / count
-#            if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
-#              # False because it's a negative charge
-#              chrg = charged(charge_pt, indices, False)
-#              self.charges.append(chrg)
-#
-#
-#    # Functions to identify aromatic rings
-#    # ====================================
-#
+  def AssignChargesFromProteinProcessResidue(self, residue, last_key):
+    """Assign charges to protein residues.
+
+    Parameters
+    ----------
+    residue: list
+      List of atom indices for this residue.
+    last_key: string
+      TODO(bramsundar): What is format of this key?
+    """
+    temp = last_key.strip().split("_")
+    resname = temp[0]
+    real_resname = resname[-3:]
+    resid = temp[1]
+    chain = temp[2]
+
+    # regardless of protonation state, assume it's charged.
+    if real_resname == "LYS" or real_resname == "LYN":
+      for index in residue:
+        atom = self.AllAtoms[index]
+        if atom.atomname.strip() == "NZ":
+
+          # quickly go through the residue and get the hydrogens
+          # attached to this nitrogen to include in the index list
+          indexes = [index]
+          for index2 in residue:
+              atom2 = self.AllAtoms[index2]
+              if atom2.atomname.strip() == "HZ1": indexes.append(index2)
+              if atom2.atomname.strip() == "HZ2": indexes.append(index2)
+              if atom2.atomname.strip() == "HZ3": indexes.append(index2)
+
+          chrg = charged(atom.coordinates, indexes, True)
+          self.charges.append(chrg)
+      # TODO(bramsundar): Is this break supposed to be here?
+      #break
+
+    if real_resname == "ARG":
+      charge_pt = point(0.0,0.0,0.0)
+      count = 0.0
+      indices = []
+      for index in residue:
+        atom = self.AllAtoms[index]
+        if atom.atomname.strip() == "NH1":
+          chge_pt.x = charge_pt.x + atom.coordinates.x
+          chge_pt.y = charge_pt.y + atom.coordinates.y
+          chge_pt.z = charge_pt.z + atom.coordinates.z
+          indices.append(index)
+          count = count + 1.0
+        if atom.atomname.strip() == "NH2":
+          chge_pt.x = charge_pt.x + atom.coordinates.x
+          chge_pt.y = charge_pt.y + atom.coordinates.y
+          chge_pt.z = charge_pt.z + atom.coordinates.z
+          indices.append(index)
+          count = count + 1.0
+        if atom.atomname.strip() == "2HH2": indices.append(index)
+        if atom.atomname.strip() == "1HH2": indices.append(index)
+        if atom.atomname.strip() == "CZ": indices.append(index)
+        if atom.atomname.strip() == "2HH1": indices.append(index)
+        if atom.atomname.strip() == "1HH1": indices.append(index)
+
+      # TODO(bramsundar): Formatting here was very messed up. Write a
+      # test to ensure that this function behaves as advertised.
+      if count != 0.0:
+
+        charge_pt.x = charge_pt.x / count
+
+        charge_pt.y = charge_pt.y / count
+        charge_pt.z = charge_pt.z / count
+
+        if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
+            chrg = charged(charge_pt, indices, True)
+            self.charges.append(chrg)
+
+    if (real_resname == "HIS" or real_resname == "HID" or
+      # regardless of protonation state, assume it's charged. This based on
+      # "The Cation-Pi Interaction," which suggests protonated state would
+      # be stabilized. But let's not consider HIS when doing salt bridges.
+      real_resname == "HIE" or real_resname == "HIP"):
+      charge_pt = point(0.0,0.0,0.0)
+      count = 0.0
+      indices = []
+      for index in residue:
+        atom = self.AllAtoms[index]
+        if atom.atomname.strip() == "NE2":
+          charge_pt.x = charge_pt.x + atom.coordinates.x
+          charge_pt.y = charge_pt.y + atom.coordinates.y
+          charge_pt.z = charge_pt.z + atom.coordinates.z
+          indices.append(index)
+          count = count + 1.0
+        if atom.atomname.strip() == "ND1":
+          charge_pt.x = charge_pt.x + atom.coordinates.x
+          charge_pt.y = charge_pt.y + atom.coordinates.y
+          charge_pt.z = charge_pt.z + atom.coordinates.z
+          indices.append(index)
+          count = count + 1.0
+        if atom.atomname.strip() == "HE2": indices.append(index)
+        if atom.atomname.strip() == "HD1": indices.append(index)
+        if atom.atomname.strip() == "CE1": indices.append(index)
+        if atom.atomname.strip() == "CD2": indices.append(index)
+        if atom.atomname.strip() == "CG": indices.append(index)
+
+      if count != 0.0:
+        charge_pt.x = charge_pt.x / count
+        charge_pt.y = charge_pt.y / count
+        charge_pt.z = charge_pt.z / count
+        if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
+          chrg = charged(charge_pt, indices, True)
+          self.charges.append(chrg)
+
+    if real_resname == "GLU" or real_resname == "GLH" or real_resname == "GLX":
+      # regardless of protonation state, assume it's charged. This based on
+      # "The Cation-Pi Interaction," which suggests protonated state would
+      # be stabilized.
+      charge_pt = point(0.0,0.0,0.0)
+      count = 0.0
+      indices = []
+      for index in residue:
+        atom = self.AllAtoms[index]
+        if atom.atomname.strip() == "OE1":
+          charge_pt.x = charge_pt.x + atom.coordinates.x
+          charge_pt.y = charge_pt.y + atom.coordinates.y
+          charge_pt.z = charge_pt.z + atom.coordinates.z
+          indices.append(index)
+          count = count + 1.0
+        if atom.atomname.strip() == "OE2":
+          charge_pt.x = charge_pt.x + atom.coordinates.x
+          charge_pt.y = charge_pt.y + atom.coordinates.y
+          charge_pt.z = charge_pt.z + atom.coordinates.z
+          indices.append(index)
+          count = count + 1.0
+        if atom.atomname.strip() == "CD": indices.append(index)
+
+      if count != 0.0:
+        charge_pt.x = charge_pt.x / count
+        charge_pt.y = charge_pt.y / count
+        charge_pt.z = charge_pt.z / count
+        if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
+          chrg = charged(charge_pt, indices, False) # False because it's a negative charge
+          self.charges.append(chrg)
+
+      # TODO(bramsundar): This comment about Cation-Pi interactions
+      # is repeated in multiple places. Look into this interaction
+      # and verify that it holds true for the residues in question.
+      if (real_resname == "ASP" or real_resname == "ASH" or
+        real_resname == "ASX"):
+        # regardless of protonation state, assume it's charged. This based on
+        # "The Cation-Pi Interaction," which suggests protonated state would
+        # be stabilized.
+        charge_pt = point(0.0,0.0,0.0)
+        count = 0.0
+        indices = []
+        for index in residue:
+          atom = self.AllAtoms[index]
+          if atom.atomname.strip() == "OD1":
+            charge_pt.x = charge_pt.x + atom.coordinates.x
+            charge_pt.y = charge_pt.y + atom.coordinates.y
+            charge_pt.z = charge_pt.z + atom.coordinates.z
+            indices.append(index)
+            count = count + 1.0
+          if atom.atomname.strip() == "OD2":
+            charge_pt.x = charge_pt.x + atom.coordinates.x
+            charge_pt.y = charge_pt.y + atom.coordinates.y
+            charge_pt.z = charge_pt.z + atom.coordinates.z
+            indices.append(index)
+            count = count + 1.0
+          if atom.atomname.strip() == "CG": indices.append(index)
+
+        if count != 0.0:
+          charge_pt.x = charge_pt.x / count
+          charge_pt.y = charge_pt.y / count
+          charge_pt.z = charge_pt.z / count
+          if charge_pt.x != 0.0 or charge_pt.y != 0.0 or charge_pt.z != 0.0:
+            # False because it's a negative charge
+            chrg = charged(charge_pt, indices, False)
+            self.charges.append(chrg)
+
+
+    # Functions to identify aromatic rings
+    # ====================================
+
     def add_aromatic_marker(self, indices_of_ring):
       """Identify aromatic markers.
 
@@ -1255,6 +1263,8 @@ class PDB:
 
     def assign_aromatic_rings(self):
       """Identifies aromatic rings in self."""
+      # Now that you've found all the positive charges in non-protein
+      # residues, it's time to look for aromatic rings in protein residues.
       # Get all the rings containing each of the atoms in the ligand
       AllRings = []
       for atom_index in self.NonProteinAtoms:

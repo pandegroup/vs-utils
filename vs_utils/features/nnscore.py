@@ -37,13 +37,6 @@ from vs_utils.features.nnscore_helper import PDB
 # that moving to a 3D-convnet might actually be necessary to remove
 # the high-degree of hand-tuning here.
 
-# TODO(bramsundar): Got lazy. Need to reformat some of the help
-# strings.
-
-# TODO(bramsundar): The binana feature vectors are organized around
-# series of hashes. These hashes aren't described in the comments.
-# Fix.
-
 ELECTROSTATIC_JOULE_PER_MOL = 138.94238460104697e4 # units?
 # O-H distance is 0.96 A, N-H is 1.01 A. See
 # http://www.science.uwaterloo.ca/~cchieh/cact/c120/bondel.html
@@ -101,19 +94,20 @@ def hashtable_entry_add_one(hashtable, key, toadd = 1):
     hashtable[key] = toadd
 
 
-def extend_list_by_dictionary(lst, dictionary):
-  # first, sort the dictionary by the key
-  keys = dictionary.keys()
-  keys.sort()
-
-  # now make a list of the values
-  vals = []
-  for key in keys:
-    vals.append(dictionary[key])
-
-  # now append vals to the list
+def extend_list_by_dictionaries(lst, dictionaries):
   newlist = lst[:]
-  newlist.extend(vals)
+  for dictionary in dictionaries:
+    # first, sort the dictionary by the key
+    keys = dictionary.keys()
+    keys.sort()
+
+    # now make a list of the values
+    vals = []
+    for key in keys:
+      vals.append(dictionary[key])
+
+    # now append vals to the list
+    newlist.extend(vals)
 
   # return the extended list
   return newlist
@@ -156,8 +150,6 @@ class binana:
        rotatable bonds.
   """
 
-  functions = MathFunctions()
-
   # supporting functions
   def get_vina_output(self):
     """Invoke vina on ligand and receptor."""
@@ -195,7 +187,7 @@ class binana:
     vina_output = [vina_affinity, vina_gauss_1, vina_gauss_2,
         vina_repulsion, vina_hydrophobic, vina_hydrogen]
 
-  def compute_hydrophobic_contact(self, ligand, receptor):
+  def compute_hydrophobic_contacts(self, ligand, receptor):
     """
     Compute possible hydrophobic contacts between ligand and atom.
 
@@ -210,14 +202,13 @@ class binana:
       A PDB Object describing the ligand molecule.
     receptor: PDB
       A PDB object describing the receptor protein.
-      
+
     """
     # Now see if there's hydrophobic contacts (C-C contacts)
     hydrophobics = {
       'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
       'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
       }
-    pdb_hydrophobic = PDB()
     for ligand_atom_index in ligand.AllAtoms:
       ligand_atom = ligand.AllAtoms[ligand_atom_index]
       for receptor_atom_index in receptor.AllAtoms:
@@ -225,11 +216,9 @@ class binana:
         if ligand_atom.element == "C" and receptor_atom.element == "C":
           hydrophobic_key = (receptor_atom.SideChainOrBackBone() +
               "_" + receptor_atom.structure)
-          pdb_hydrophobic.AddNewAtom(ligand_atom.copy_of())
-          pdb_hydrophobic.AddNewAtom(receptor_atom.copy_of())
 
           hashtable_entry_add_one(hydrophobics, hydrophobic_key)
-    return hydrophobics, pdb_hydrophobic
+    return hydrophobics
 
   def compute_electrostatic_energy(self, ligand, receptor):
     """
@@ -245,7 +234,7 @@ class binana:
       A PDB Object describing the ligand molecule.
     receptor: PDB
       A PDB object describing the receptor protein.
-      
+
     """
     ligand_receptor_electrostatics = {
         "A_MG": 0, "A_MN": 0, "BR_SA": 0, "CL_FE": 0, "CL_MG": 0,
@@ -298,7 +287,7 @@ class binana:
     Returns a dictionary whose keys are atompairs of type
     "${RESIDUETYPE}_${STRUCTURE}" where RESIDUETYPE is either "SIDECHAIN" or
     "BACKBONE" and STRUCTURE is either ALPHA, BETA, or OTHER and
-    corresponds to the protein secondary structure of the current residue. 
+    corresponds to the protein secondary structure of the current residue.
 
     Parameters
     ----------
@@ -306,7 +295,7 @@ class binana:
       A PDB Object describing the ligand molecule.
     receptor: PDB
       A PDB object describing the receptor protein.
-      
+
     """
     active_site_flexibility = {
       'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
@@ -421,10 +410,9 @@ class binana:
       hashtable_entry_add_one(ligand_atom_types, ligand_atom.atomtype)
     return ligand_atom_types
 
-  def compute_ligand_receptor_distances_and_charges(self, ligand, receptor):
+  def compute_ligand_receptor_contacts(self, ligand, receptor):
     """
-    Compute distance measurements and electrotstatics between ligand
-    and receptor.
+    Compute distance measurements.
     Parameters
     ----------
     ligand: TODO(bramsundar)
@@ -474,19 +462,13 @@ class binana:
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
         atomtypes = [ligand_atom.atomtype, receptor_atom.atomtype]
         atomstr = "_".join(sorted(atomtypes))
+        if dist < CONTACT_CUTOFF:
+          hashtable_entry_add_one(ligand_receptor_contacts,
+              atomstr)
         if dist < CLOSE_CONTACT_CUTOFF:
           hashtable_entry_add_one(ligand_receptor_close_contacts,
               atomstr)
-          pdb_close_contacts.AddNewAtom(ligand_atom.copy_of())
-          pdb_close_contacts.AddNewAtom(receptor_atom.copy_of())
-        elif dist < CONTACT_CUTOFF:
-          hashtable_entry_add_one(ligand_receptor_contacts,
-              atomstr)
-
-          #self.compute_electrostatic_energy(ligand_atom, receptor_atom)
-          #self.compute_active_site_flexibility(ligand_atom, receptor_atom)
-          #self.compute_hydrophobic_contact(ligand_atom, receptor_atom)
-          #self.compute_hydrogen_bond(ligand_atom, receptor_atom)
+    return ligand_receptor_close_contacts, ligand_receptor_contacts
 
   def compute_pi_pi_stacking(self, ligand, receptor):
     """
@@ -499,7 +481,7 @@ class binana:
     receptor: PDB Object
       protein to dock agains.
     """
-    PI_interactions = {}
+    pi_stacking = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
     for lig_aromatic in ligand.aromatic_rings:
       for rec_aromatic in receptor.aromatic_rings:
         dist = lig_aromatic.center.dist_to(rec_aromatic.center)
@@ -555,58 +537,73 @@ class binana:
                 key = "STACKING_" + structure
 
 
-                hashtable_entry_add_one(PI_interactions, key)
+                hashtable_entry_add_one(pi_stacking, key)
+    return pi_stacking
 
-          elif math.fabs(angle_between_planes-90) < 30.0 or math.fabs(angle_between_planes-270) < 30.0:
-            # so they're more or less perpendicular, it's probably a
-            # pi-edge interaction having looked at many structures, I
-            # noticed the algorithm was identifying T-pi reactions
-            # when the two rings were in fact quite distant, often
-            # with other atoms in between. Eye-balling it, requiring
-            # that at their closest they be at least 5 A apart seems
-            # to separate the good T's from the bad
-            min_dist = 100.0
-            for ligand_ind in lig_aromatic.indices:
-              ligand_at = ligand.AllAtoms[ligand_ind]
-              for receptor_ind in rec_aromatic.indices:
-                receptor_at = receptor.AllAtoms[receptor_ind]
-                dist = ligand_at.coordinates.dist_to(receptor_at.coordinates)
-                if dist < min_dist: min_dist = dist
+  def compute_pi_T(self, ligand, receptor):
+    """
+    Computes T-shaped pi-pi interactions.
 
-            if min_dist <= 5.0:
-              # so at their closest points, the two rings come within
-              # 5 A of each other.
+    Parameters
+    ----------
+    ligand: PDB Object.
+      small molecule to dock.
+    receptor: PDB Object
+      protein to dock agains.
+    """
+    pi_T = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
+    for lig_aromatic in ligand.aromatic_rings:
+      for rec_aromatic in receptor.aromatic_rings:
+        if math.fabs(angle_between_planes-90) < 30.0 or math.fabs(angle_between_planes-270) < 30.0:
+          # so they're more or less perpendicular, it's probably a
+          # pi-edge interaction having looked at many structures, I
+          # noticed the algorithm was identifying T-pi reactions
+          # when the two rings were in fact quite distant, often
+          # with other atoms in between. Eye-balling it, requiring
+          # that at their closest they be at least 5 A apart seems
+          # to separate the good T's from the bad
+          min_dist = 100.0
+          for ligand_ind in lig_aromatic.indices:
+            ligand_at = ligand.AllAtoms[ligand_ind]
+            for receptor_ind in rec_aromatic.indices:
+              receptor_at = receptor.AllAtoms[receptor_ind]
+              dist = ligand_at.coordinates.dist_to(receptor_at.coordinates)
+              if dist < min_dist: min_dist = dist
 
-              # okay, is the ligand pi pointing into the receptor
-              # pi, or the other way around?  first, project the
-              # center of the ligand pi onto the plane of the
-              # receptor pi, and vs. versa
+          if min_dist <= 5.0:
+            # so at their closest points, the two rings come within
+            # 5 A of each other.
 
-              # This could be directional somehow, like a hydrogen
-              # bond.
+            # okay, is the ligand pi pointing into the receptor
+            # pi, or the other way around?  first, project the
+            # center of the ligand pi onto the plane of the
+            # receptor pi, and vs. versa
 
-              pt_on_receptor_plane = self.functions.project_point_onto_plane(
-                  lig_aromatic.center, rec_aromatic.plane_coeff)
-              pt_on_ligand_plane = self.functions.project_point_onto_plane(
-                  rec_aromatic.center, lig_aromatic.plane_coeff)
+            # This could be directional somehow, like a hydrogen
+            # bond.
 
-              # now, if it's a true pi-T interaction, this projected
-              # point should fall within the ring whose plane it's
-              # been projected into.
-              if ((pt_on_receptor_plane.dist_to(rec_aromatic.center)
-                <= rec_aromatic.radius + PI_PADDING)
-                or (pt_on_ligand_plane.dist_to(lig_aromatic.center)
-                <= lig_aromatic.radius + PI_PADDING)):
+            pt_on_receptor_plane = self.functions.project_point_onto_plane(
+                lig_aromatic.center, rec_aromatic.plane_coeff)
+            pt_on_ligand_plane = self.functions.project_point_onto_plane(
+                rec_aromatic.center, lig_aromatic.plane_coeff)
 
-                # so it is in the ring on the projected plane.
-                structure = receptor.AllAtoms[rec_aromatic.indices[0]].structure
-                if structure == "":
-                  # since it could be interacting with a cofactor or something
-                  structure = "OTHER"
-                key = "T-SHAPED_" + structure
+            # now, if it's a true pi-T interaction, this projected
+            # point should fall within the ring whose plane it's
+            # been projected into.
+            if ((pt_on_receptor_plane.dist_to(rec_aromatic.center)
+              <= rec_aromatic.radius + PI_PADDING)
+              or (pt_on_ligand_plane.dist_to(lig_aromatic.center)
+              <= lig_aromatic.radius + PI_PADDING)):
 
-                hashtable_entry_add_one(PI_interactions, key)
-    return PI_interactions
+              # so it is in the ring on the projected plane.
+              structure = receptor.AllAtoms[rec_aromatic.indices[0]].structure
+              if structure == "":
+                # since it could be interacting with a cofactor or something
+                structure = "OTHER"
+              key = "T-SHAPED_" + structure
+
+              hashtable_entry_add_one(pi_T, key)
+    return pi_T
 
   def compute_pi_cation(self, ligand, receptor):
     """
@@ -639,11 +636,6 @@ class binana:
                 structure = "OTHER"
               key = "PI-CATION_LIGAND-CHARGED_" + structure
 
-              for index in aromatic.indices:
-                pdb_pi_cat.AddNewAtom(receptor.AllAtoms[index].copy_of())
-              for index in charged.indices:
-                pdb_pi_cat.AddNewAtom(ligand.AllAtoms[index].copy_of())
-
               hashtable_entry_add_one(pi_cation, key)
 
     for aromatic in ligand.aromatic_rings:
@@ -659,11 +651,6 @@ class binana:
                 # since it could be interacting with a cofactor or something
                 structure = "OTHER"
               key = "PI-CATION_RECEPTOR-CHARGED_" + structure
-
-              for index in aromatic.indices:
-                pdb_pi_cat.AddNewAtom(ligand.AllAtoms[index].copy_of())
-              for index in charged.indices:
-                pdb_pi_cat.AddNewAtom(receptor.AllAtoms[index].copy_of())
 
               hashtable_entry_add_one(pi_cation, key)
     return pi_cation
@@ -695,182 +682,77 @@ class binana:
             hashtable_entry_add_one(salt_bridges, key)
     return salt_bridges
 
-  def compute_data(self):
-    # now create a single descriptor object
-    data = {}
-    data['vina_output'] = self.get_vina_output()
-    data['ligand_receptor_close_contacts'] = (
-        ligand_receptor_close_contacts)
-    data['ligand_receptor_contacts'] = (
-        ligand_receptor_contacts)
-    data['ligand_atom_types'] = ligand_atom_types
-    data['ligand_receptor_electrostatics'] = (
-        ligand_receptor_electrostatics)
-    data['rotatable_bonds_count'] = ligand.rotatable_bonds_count
-    data['active_site_flexibility'] = active_site_flexibility
-    data['hbonds'] = hbonds
-    data['hydrophobics'] = hydrophobics
-    data['stacking'] = stacking
-    data['pi_cation'] = pi_cation
-    data['t_shaped'] = t_shaped
-    data['salt_bridges'] = salt_bridges
-    return data
+  def commpute_input_vector_from_files(self, ligand_pdbqt_filename,
+      receptor_pdbqt_filename, line_header):
+    """Computes feature vector for ligand-receptor pair.
 
-  def compute_input_vector(self):
-    # TODO(bramsundar): There is a ton of data copying in this
-    # function? Can I strip this out? It looks like a bunch of these
-    # terms are not used anywhere else in the file. Might be ok to
-    # just delete it. Ok, I do see one use. It looks like this step is
-    # used to provide padding so we have a fixed-length vector.
-    data = self.compute_data()
-    vina_output = data['vina_output']
-    rotatable_bonds_count = {'rot_bonds': data['rotatable_bonds_count']}
-
-    stacking_tmp = {}
-    for item in data['stacking']:
-      item = item.split("_")
-      stacking_tmp[item[1]] = int(item[2])
-    stacking = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
-    for key in stacking_tmp:
-      stacking[key] = stacking_tmp[key]
-
-    all = stacking['ALPHA'] + stacking['BETA'] + stacking['OTHER']
-    stacking_all = {'all': all}
-
-
-    t_shaped_tmp = {}
-    for item in data['t_shaped']:
-      item = item.split("_")
-      t_shaped_tmp[item[1]] = int(item[2])
-    t_shaped = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
-    for key in t_shaped_tmp:
-      t_shaped[key] = t_shaped_tmp[key]
-
-    input_vector = []
-    input_vector.extend(vina_output) # a list
-    input_vector = extend_list_by_dictionary(
-        input_vector, ligand_receptor_contacts)
-    input_vector = extend_list_by_dictionary(
-        input_vector, ligand_receptor_electrostatics)
-    input_vector = extend_list_by_dictionary(
-        input_vector, ligand_atom_types)
-    input_vector = extend_list_by_dictionary(
-        input_vector, ligand_receptor_close_contacts)
-    input_vector = extend_list_by_dictionary(
-        input_vector, hbonds)
-    input_vector = extend_list_by_dictionary(
-        input_vector, hydrophobics)
-    input_vector = extend_list_by_dictionary(
-        input_vector, stacking)
-    input_vector = extend_list_by_dictionary(
-        input_vector, pi_cation)
-    input_vector = extend_list_by_dictionary(
-        input_vector, t_shaped)
-    input_vector = extend_list_by_dictionary(
-        input_vector, active_site_flexibility)
-    input_vector = extend_list_by_dictionary(
-        input_vector, salt_bridges)
-    input_vector = extend_list_by_dictionary(
-        input_vector, rotatable_bonds_count)
-    return input_vector
-
-
-  def process_pi(self):
-    stacking = []
-    t_shaped = []
-    pi_cation = []
-    for key in PI_interactions:
-      value = PI_interactions[key]
-      together = key + "_" + str(value) # not that this is put together strangely!!!
-      if "STACKING" in together: stacking.append(together)
-      if "CATION" in together: pi_cation.append(together)
-      if "SHAPED" in together: t_shaped.append(together)
-
-
-  def __init__(self, ligand_pdbqt_filename, receptor, parameters, line_header):
-    """
     Parameters
     ----------
     ligand_pdbqt_filename: string
-      path to ligand's pdbqt file (generated by vina)
-    receptor: Object of type PDB for the receptor
-    parameters: Object of type command_line_parameters.
-      TODO(bramsundar): Having a featurizer accept a
-      command_line_parameters object seems like a failure of
-      abstraction.
+      path to ligand's pdbqt file.
+    receptor_pdbqt_filename: string
+      path to receptor pdbqt file.
     line_header: string
       TODO(bramsundar): line separator in PDB files (?)
     """
+    # Load receptor and ligand from file.
+    receptor = PDB()
+    receptor.LoadPDB_from_file(receptor_pdbqt_filename, line_header)
+    receptor.assign_secondary_structure()
+    ligand = PDB()
+    ligand.LoadPDB_from_file(ligand_pdbqt_filename, line_header)
+    self.compute_input_vector(ligand, pdb)
 
-   receptor_pdbqt_filename = receptor.OrigFileName
+  def compute_input_vector(self, ligand, receptor):
+    """Computes feature vector for ligand-receptor pair.
 
-   self.ligand = PDB()
-   self.ligand.LoadPDB_from_file(ligand_pdbqt_filename, line_header)
+    Parameters
+    ----------
+    ligand: PDB object
+      Contains loaded ligand.
+    receptor: PDB object
+      Contains loaded receptor.
+    """
 
-   receptor.assign_secondary_structure()
+    # Excluding vina output for now.
+    #vina_output = data['vina_output']
+    rotatable_bonds_count = {'rot_bonds': ligand.rotatable_bonds_count}
+    ligand_receptor_close_contacts, ligand_receptor_contacts = (
+      self.compute_ligand_receptor_contacts(ligand, receptor))
+    ligand_receptor_electrostatics = (
+      self.compute_electrostatic_energy(ligand, receptor))
+    ligand_atom_types = self.compute_ligand_atom_counts(ligand)
+    hbonds = self.compute_hydrogen_bonds(ligand, receptor)
+    hydrophobics = self.compute_hydrophobic_contacts(ligand, receptor)
+    stacking = self.compute_pi_pi_stacking(ligand, receptor)
+    pi_cation = self.compute_pi_cation(ligand, receptor)
+    t_shaped = self.compute_pi_T(ligand, receptor)
+    active_site_flexibility = (
+      self.compute_active_site_flexibility(ligand, receptor))
+    salt_bridges = self.compute_salt_bridges(ligand, receptor)
 
-   # Get distance measurements between protein and ligand atom types,
-   # as well as some other measurements
-   ligand.rotatable_bonds_count
-   functions = MathFunctions()
-
-   # These dictionaries are keyed by strings of atom-pairs (C_O for
-   # example)
-   ligand_receptor_close_contacts = {}
-   ligand_receptor_contacts = {}
-
-   pdb_close_contacts = PDB()
-
-   self.compute_ligand_receptor_distances_and_charges()
-
-   # Get the total number of each atom type in the ligand
-   ligand_atom_types = self.compute_ligand_atom_counts(
-       self.ligand)
-
-
-
-   # Count pi-pi stacking and pi-T stacking interactions
-   self.PI_interactions = {}
-
-   self.compute_pi_pi_stacking(self.ligand, self.receptor)
-
-   # Now identify pi-cation interactions
-   self.compute_pi_cation(self.ligand, self.receptor)
-   self.pdb_pi_cat = PDB()
+    input_vector = []
+    # Excluding vina output for now.
+    #input_vector.extend(vina_output) # a list
+    input_vector = extend_list_by_dictionaries(input_vector, [
+        ligand_receptor_contacts,
+        ligand_receptor_electrostatics,
+        ligand_atom_types,
+        ligand_receptor_close_contacts,
+        hbonds,
+        hydrophobics,
+        stacking,
+        pi_cation,
+        t_shaped,
+        active_site_flexibility,
+        salt_bridges,
+        rotatable_bonds_count])
+    return input_vector
 
 
-   # now count the number of salt bridges
-   self.salt_bridges = {}
-
-
-
-# TODO(bramsundar): I think vs_utils has a standard way of dealing
-# with command_line parameters. Check scripts.
-class command_line_parameters:
-
-  params = {}
-
-  def __init__(self, parameters):
-
-    global vina_executable
-
-def score_to_kd(score):
-  kd = math.pow(10,-score)
-  if score <= 0: return "Kd = " + str(round(kd,2)) + " M"
-  temp = kd * pow(10,3)
-  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " mM"
-  temp = temp * pow(10,3)
-  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " uM"
-  temp = temp * pow(10,3)
-  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " nM"
-  temp = temp * pow(10,3)
-  if temp >=1 and temp <1000: return "Kd = " + str(round(temp,2)) + " pM"
-  temp = temp * pow(10,3)
-  return "Kd = " + str(round(temp,2)) + " fM"
-
-def calculate_score(lig, rec, cmd_params,
-    actual_filename_if_lig_is_list="", actual_filename_if_rec_is_list="",
-    line_header = ""):
-
-  d = binana(lig, rec, cmd_params, line_header,
-      actual_filename_if_lig_is_list, actual_filename_if_rec_is_list)
+  def __init__(self):
+    """
+    Parameters
+    ----------
+    """
+    self.functions = MathFunctions()
