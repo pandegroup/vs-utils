@@ -104,10 +104,8 @@ class TestAtom(unittest.TestCase):
     """
     TestAtom: Verify that the number of neighbors is computed correctly.
     """
-    assert self.empty_atom.NumberOfNeighbors() == 0
-    assert self.trial_atom.NumberOfNeighbors() == 3
-
-  # TODO(bramsundar): Add more tests here.
+    assert self.empty_atom.number_of_neighbors() == 0
+    assert self.trial_atom.number_of_neighbors() == 3
 
 class TestPDB(unittest.TestCase):
   """"
@@ -184,6 +182,29 @@ class TestPDB(unittest.TestCase):
 
     connected_hydrogens = self.pdb.connected_atoms_of_given_element(1, "H")
     assert len(connected_hydrogens) == 1
+
+  def testLoadBondsFromPDBList(self):
+    """
+    TestPDB: Verifies that bonds can be loaded from PDB.
+    """
+    # Test that we can load CO2
+    carbon_atom = Atom(element="C")
+    oxygen_atom_1 = Atom(element="O")
+    oxygen_atom_2 = Atom(element="O")
+
+    self.pdb.add_new_atom(carbon_atom)
+    self.pdb.add_new_atom(oxygen_atom_1)
+    self.pdb.add_new_atom(oxygen_atom_2)
+    lines = [
+      "CONECT    1    2    3                                                 "
+      "CONECT    2                                                           "
+      "CONECT    3                                                           "
+    ]
+    self.pdb.load_bonds_from_PDB_list(lines)
+    assert len(carbon_atom.indices_of_atoms_connecting) == 2
+    assert len(oxygen_atom_1.indices_of_atoms_connecting) == 0
+    assert len(oxygen_atom_2.indices_of_atoms_connecting) == 0
+
 
   def testConnectedHeavyAtoms(self):
     """

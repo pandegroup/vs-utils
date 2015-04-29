@@ -178,20 +178,21 @@ class Atom:
     output = output + self.element.rjust(24)
     return output
 
-  def NumberOfNeighbors(self):
+  def number_of_neighbors(self):
     return len(self.indices_of_atoms_connecting)
 
-  def AddNeighborAtomIndex(self, index):
+  def add_neighbor_atom_indices(self, indices):
     """
-    Adds atom with PDB index provided as neighbor.
+    Adds atoms with provided PDB indices as neighbors.
 
     Parameters
     ----------
-    index: int
-      Index in PDB object.
+    index: list 
+      List of indices of neighbors in PDB object.
     """
-    if not (index in self.indices_of_atoms_connecting):
-      self.indices_of_atoms_connecting.append(index)
+    for index in indices:
+      if not (index in self.indices_of_atoms_connecting):
+        self.indices_of_atoms_connecting.append(index)
 
   def side_chain_or_backbone(self): # only really applies to proteins, assuming standard atom names
     if (self.atomname.strip() == "CA" or self.atomname.strip() == "C"
@@ -200,9 +201,11 @@ class Atom:
     else:
       return "SIDECHAIN"
 
-  def read_PDB_line(self, Line):
+  def read_atom_PDB_line(self, Line):
     """
-    Reads an ATOM line from PDB and instantiates fields.
+    Reads an ATOM or HETATM line from PDB and instantiates fields.
+
+    TODO(rbharath): Fill in spec definition here so this is less magical.
     """
     self.line = Line
     self.atomname = Line[11:16].strip()
@@ -329,17 +332,6 @@ class PDB:
 
   def load_PDB_from_file(self, filename, line_header=""):
     """
-    Sets fields of self by reading PDB file at path filename.
-    """
-
-    # Now load the file into a list
-    file = open(filename,"r")
-    lines = file.readlines()
-    file.close()
-    self._load_PDB_from_list(lines, line_header)
-
-  def _load_PDB_from_list(self, lines, line_header=""):
-    """
     Given a PDB file as a list of lines, loads fields into self.
 
     This function ueses keys of the following type to unique identify
@@ -352,53 +344,12 @@ class PDB:
     line_header: string
       The string header for PDB lines.  
     """
-
-    self.line_header = line_header
-    autoindex = 1
+    # Reset internal state
     self.__init__()
-    # going to keep track of atomname_resid_chain pairs, to make sure
-    # redundants aren't loaded.  This basically gets rid of rotomers,
-    # I think.
-    atom_already_loaded = []
-
-    for t in range(0, len(lines)):
-      line=lines[t]
-
-      if "between atoms" in line and " A " in line:
-        self.rotatable_bonds_count = self.rotatable_bonds_count + 1
-
-      if len(line) >= 7:
-        # Load atom data (coordinates, etc.)
-        if line[0:4]=="ATOM" or line[0:6]=="HETATM":
-          TempAtom = Atom()
-          TempAtom.read_PDB_line(line)
-
-          # this string unique identifies each atom
-          key = (TempAtom.atomname.strip() + "_" +
-            str(TempAtom.resid) + "_" + TempAtom.residue.strip() +
-            "_" + TempAtom.chain.strip())
-          # so this is a receptor atom that has already been loaded once
-          if (key in atom_already_loaded
-            and TempAtom.residue.strip() in self.protein_resnames):
-            print (line_header
-                + "WARNING: Duplicate receptor atom detected: \""
-                + TempAtom.line.strip() + "\". Not loading this duplicate.")
-
-          # so either the atom hasn't been loaded, or else it's a non-receptor
-          # atom so note that non-receptor atoms can have redundant names, but
-          # receptor atoms cannot.  This is because protein residues often
-          # contain rotamers
-          if (not key in atom_already_loaded 
-              or not TempAtom.residue.strip() in self.protein_resnames):
-            # so each atom can only be loaded once. No rotamers.
-            atom_already_loaded.append(key)
-            # So you're actually reindexing everything here.
-            self.all_atoms[autoindex] = TempAtom
-            if (not TempAtom.residue[-3:] in self.protein_resnames):
-              self.non_protein_atoms[autoindex] = TempAtom
-
-            autoindex = autoindex + 1
-
+    # Now load the file into a list
+    with open(filename,"r") as f:
+      lines = f.readlines()
+    self.load_atoms_from_PDB_list(lines)
     self.check_protein_format()
     # only for the ligand, because bonds can be inferred based on
     # atomnames from PDB
@@ -406,6 +357,111 @@ class PDB:
     self.assign_aromatic_rings()
     self.assign_non_protein_charges()
     self.assign_protein_charges()
+
+
+  def load_atoms_from_PDB_list(self, lines):
+    """
+    Loads atoms from a list of PDB file lines.
+
+    Parameters
+    ----------
+    lines: list
+      List of strings, one per line in original PDB file.
+    """
+    autoindex = 1
+    # going to keep track of atomname_resid_chain pairs, to make sure
+    # redundants aren't loaded.  This basically gets rid of rotomers,
+    # I think.
+    atom_already_loaded = []
+
+    for line in lines:
+      if "between atoms" in line and " A " in line:
+        self.rotatable_bonds_count = self.rotatable_bonds_count + 1
+
+      if len(line) >= 7:
+        # Load atom data (coordinates, etc.)
+        if line[0:4]=="ATOM" or line[0:6]=="HETATM":
+          cur_atom = Atom()
+          cur_atom.read_atom_PDB_line(line)
+
+          # this string unique identifies each atom
+          key = (cur_atom.atomname.strip() + "_" +
+            str(cur_atom.resid) + "_" + cur_atom.residue.strip() +
+            "_" + cur_atom.chain.strip())
+          # so this is a receptor atom that has already been loaded once
+          if (key in atom_already_loaded
+            and cur_atom.residue.strip() in self.protein_resnames):
+            print (line_header
+                + "WARNING: Duplicate receptor atom detected: \""
+                + cur_atom.line.strip() + "\". Not loading this duplicate.")
+
+          # so either the atom hasn't been loaded, or else it's a non-receptor
+          # atom so note that non-receptor atoms can have redundant names, but
+          # receptor atoms cannot.  This is because protein residues often
+          # contain rotamers
+          if (not key in atom_already_loaded 
+              or not cur_atom.residue.strip() in self.protein_resnames):
+            # so each atom can only be loaded once. No rotamers.
+            atom_already_loaded.append(key)
+            # So you're actually reindexing everything here.
+            self.all_atoms[autoindex] = cur_atom
+            if (not cur_atom.residue[-3:] in self.protein_resnames):
+              self.non_protein_atoms[autoindex] = cur_atom
+
+            autoindex = autoindex + 1
+
+  def load_bonds_from_PDB_list(self, lines):
+    """
+    Loads bonds from list of PDB file lines.
+
+    Bonds in PDBs are represented by CONECT statements. These lines follow
+    the following record format:
+
+    (see ftp://ftp.wwpdb.org/pub/pdb/doc/format_descriptions/Format_v33_Letter.pdf)
+
+    Columns    DataType    Definition
+    ---------------------------------
+    1  - 6      String          -
+    7  - 11     Int         Atom index.
+    12 - 16     Int         Index of bonded atom.
+    17 - 21     Int         Index of bonded atom.
+    22 - 26     Int         Index of bonded atom.
+    27 - 31     Int         Index of bonded atom.
+
+    If more than 4 bonded atoms are present, then a second CONECT record
+    must be specified.
+
+    Parameters
+    ----------
+    lines: List
+      List of strings, one per line in original PDB file.
+    Raises
+    ------
+    ValueError: On improperly formatted input.
+    """
+    for line in lines:
+      if "CONECT" in line:
+        if len(line) < 31:
+          raise ValueError("Bad PDB! "
+              "Improperly formatted CONECT line (too short)")
+        atom_index = int(line[6:11].strip())
+        if atom_index not in self.all_atoms:
+          raise ValueError("Bad PDB! "
+              "Improper CONECT line: (atom index not loaded)")
+        bonded_atoms = []
+        ranges = [(11,16), (16,21), (21,26), (26,31)]
+        for (lower, upper) in ranges:
+          # Check that the range is nonempty.
+          if line[lower:upper].strip():
+            index = int(line[lower:upper])
+            if index not in self.all_atoms:
+              raise ValueError("Bad PDB! "
+                  "Improper CONECT line: (bonded atom not loaded)")
+            bonded_atoms.append(index)
+        atom = self.all_atoms[atom_index]
+        atom.add_neighbor_atom_indices(bonded_atoms)
+
+
 
   def save_PDB(self, filename):
     """
@@ -688,6 +744,8 @@ class PDB:
   def create_non_protein_atom_bonds_by_distance(self):
     """
     Creates bonds between non-protein atoms close to each other in PDB.
+
+    This function is only approximate! Avoid using if possible.
     """
     for AtomIndex1 in self.non_protein_atoms:
       atom1 = self.non_protein_atoms[AtomIndex1]
@@ -698,10 +756,8 @@ class PDB:
             if not atom2.residue[-3:] in self.protein_resnames: # so it's not a protein residue
               dist = self.functions.distance(atom1.coordinates, atom2.coordinates)
               print "Distance between %d and %d is %f" % (AtomIndex1, AtomIndex2, dist)
-
               if (dist < self.bond_length(atom1.element, atom2.element) * 1.2):
-                atom1.AddNeighborAtomIndex(AtomIndex2)
-                atom2.AddNeighborAtomIndex(AtomIndex1)
+                atom1.add_neighbor_atom_indices([AtomIndex1, AtomIndex2])
 
   def bond_length(self, element1, element2):
     """
@@ -820,7 +876,7 @@ class PDB:
       # charged (think NH4+).
       if atom.element == "N":
         # a quartenary amine, so it's easy
-        if atom.NumberOfNeighbors() == 4:
+        if atom.number_of_neighbors() == 4:
           indexes = [atom_index]
           indexes.extend(atom.indices_of_atoms_connecting)
           # so the indices stored is just the index of the nitrogen and any attached atoms
@@ -831,7 +887,7 @@ class PDB:
         # charge would be stabilized. This situation can arise with
         # lone-pair electron nitrogen compounds like pyrrolidine
         # (http://www.chem.ucla.edu/harding/tutorials/lone_pair.pdf)
-        elif atom.NumberOfNeighbors() == 3:
+        elif atom.number_of_neighbors() == 3:
           nitrogen = atom
           atom1 = self.all_atoms[atom.indices_of_atoms_connecting[0]]
           atom2 = self.all_atoms[atom.indices_of_atoms_connecting[1]]
@@ -859,7 +915,7 @@ class PDB:
       # where not CN3.)
       if atom.element == "C":
         # if the carbon has only three atoms connected to it
-        if atom.NumberOfNeighbors() == 3:
+        if atom.number_of_neighbors() == 3:
           nitrogens = self.connected_atoms_of_given_element(atom_index, "N")
           # if true, carbon is connected to at least two nitrogens now,
           # so we need to count the number of nitrogens that are only
@@ -889,9 +945,9 @@ class PDB:
               # now you need to make sure not_isolated atom is sp3 hybridized
               not_isolated_atom = self.all_atoms[not_isolated]
               if ((not_isolated_atom.element == "C" and
-                  not_isolated_atom.NumberOfNeighbors() == 4)
+                  not_isolated_atom.number_of_neighbors() == 4)
                 or (not_isolated_atom.element == "O"
-                  and not_isolated_atom.NumberOfNeighbors() == 2)
+                  and not_isolated_atom.number_of_neighbors() == 2)
                 or not_isolated_atom.element == "N"
                 or not_isolated_atom.element == "S"
                 or not_isolated_atom.element == "P"):
@@ -914,7 +970,7 @@ class PDB:
 
       if atom.element == "C": # let's check for a carboxylate
           # a carboxylate carbon will have three items connected to it.
-          if atom.NumberOfNeighbors() == 3:
+          if atom.number_of_neighbors() == 3:
             oxygens = self.connected_atoms_of_given_element(atom_index, "O")
             # a carboxylate will have two oxygens connected to
             # it. Now, each of the oxygens should be connected
@@ -1290,7 +1346,7 @@ class PDB:
         # connected to four atoms. That would be a quick way of
         # telling this is not an aromatic ring
         cur_atom = self.non_protein_atoms[ring[t+3]]
-        if cur_atom.element == "C" and cur_atom.NumberOfNeighbors() == 4:
+        if cur_atom.element == "C" and cur_atom.number_of_neighbors() == 4:
           is_flat = False
           break
 
