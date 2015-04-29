@@ -274,8 +274,10 @@ class TestPDB(unittest.TestCase):
         "ammonium_sulfate.pdb")
     ammonium_sulfate_pdb.load_PDB_from_file(
         ammonium_sulfate_pdb_path)
-    nitrogen_charges = ammonium_sulfate_pdb.identify_nitrogen_charges()
+    nitrogen_charges = ammonium_sulfate_pdb.identify_nitrogen_group_charges()
     assert len(nitrogen_charges) == 2
+    assert nitrogen_charges[0].positive  # Should be positive
+    assert nitrogen_charges[1].positive  # Should be positive
 
     # Test pyrrolidine (CH2)4NH. The nitrogen here should be sp3
     # hybridized, so is likely to pick up an extra proton to its nitrogen
@@ -284,8 +286,9 @@ class TestPDB(unittest.TestCase):
     pyrrolidine_pdb_path = os.path.join(data_dir(),
         "pyrrolidine.pdb")
     pyrrolidine_pdb.load_PDB_from_file(pyrrolidine_pdb_path)
-    nitrogen_charges = pyrrolidine_pdb.identify_nitrogen_charges()
+    nitrogen_charges = pyrrolidine_pdb.identify_nitrogen_group_charges()
     assert len(nitrogen_charges) == 1
+    assert nitrogen_charges[0].positive  # Should be positive
 
   def testIdentifyCarbonCharges(self):
     """
@@ -295,15 +298,33 @@ class TestPDB(unittest.TestCase):
     guanidine_pdb = PDB()
     guanidine_pdb_path = os.path.join(data_dir(),
         "guanidine.pdb")
-    print "Loading pdb"
     guanidine_pdb.load_PDB_from_file(
         guanidine_pdb_path)
-    print
-    print "Looking for charged carbons"
-    carbon_charges = guanidine_pdb.identify_carbon_charges()
-    print carbon_charges
+    carbon_charges = guanidine_pdb.identify_carbon_group_charges()
     assert len(carbon_charges) == 1
-    
+    assert carbon_charges[0].positive  # Should be positive
+
+    # sulfaguanidine contains a guanidine group that is likely to be
+    # positively protonated at physiological pH
+    sulfaguanidine_pdb = PDB()
+    sulfaguanidine_pdb_path = os.path.join(data_dir(),
+        "sulfaguanidine.pdb")
+    sulfaguanidine_pdb.load_PDB_from_file(
+        sulfaguanidine_pdb_path)
+    carbon_charges = sulfaguanidine_pdb.identify_carbon_group_charges()
+    assert len(carbon_charges) == 1
+    assert carbon_charges[0].positive  # Should be positive
+
+    # Formic acid is a carboxylic acid, which
+    formic_acid_pdb = PDB()
+    formic_acid_pdb_path = os.path.join(data_dir(),
+        "formic_acid.pdb")
+    formic_acid_pdb.load_PDB_from_file(
+        formic_acid_pdb_path)
+    carbon_charges = formic_acid_pdb.identify_carbon_group_charges()
+    assert len(carbon_charges) == 1
+    assert not carbon_charges[0].positive  # Should be negatively charged.
+
 
   def testLigandAssignAromaticRings(self):
     """

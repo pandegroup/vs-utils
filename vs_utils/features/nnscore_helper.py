@@ -38,7 +38,7 @@ class AromaticRing():
       List of the atom indices for ring atoms.
     plane_coeff: list
       A list of elements [a, b, c, d] that define a plane by equation
-      a x + b y + c z = d. 
+      a x + b y + c z = d.
     radius: float
       Ring radius from center.
     """
@@ -121,7 +121,7 @@ class Atom:
     coordinate: point
       A point object (x, y, z are in Angstroms).
     PDBIndex: string
-      Index of the atom in source PDB file. 
+      Index of the atom in source PDB file.
     line: string
       The line in the PDB file which specifies this atom.
     atomtype: string
@@ -134,13 +134,13 @@ class Atom:
       The residue number in the receptor (listing the protein as a chain from
       N-Terminus to C-Terminus). Assumes this is a protein atom.
     chain: string
-      Chain identifier for molecule. See PDB spec. 
+      Chain identifier for molecule. See PDB spec.
     structure: string
       One of ALPHA, BETA, or OTHER for the type of protein secondary
       structure this atom resides in (assuming this is a receptor atom).
     comment: string
       Either LIGAND or RECEPTOR depending on whether this is a ligand or
-      receptor atom. 
+      receptor atom.
     """
     self.atomname = atomname
     self.residue = residue
@@ -204,7 +204,7 @@ class Atom:
 
     Parameters
     ----------
-    index: list 
+    index: list
       List of indices of neighbors in PDB object.
     """
     for index in indices:
@@ -316,7 +316,7 @@ class Charged():
       Contains boolean true or false entries for self and neighbors to
       specify if positive or negative charge
     positive: bool
-      Whether this atom is positive or negative. 
+      Whether this atom is positive or negative.
     """
     self.coordinates = coordinates
     self.indices = indices
@@ -362,7 +362,7 @@ class PDB:
     lines: list
       List of PDB file lines.
     line_header: string
-      The string header for PDB lines.  
+      The string header for PDB lines.
     impute_bonds: bool
       Attempt to guess missing bonds between atoms.
     """
@@ -421,7 +421,7 @@ class PDB:
           # atom so note that non-receptor atoms can have redundant names, but
           # receptor atoms cannot.  This is because protein residues often
           # contain rotamers
-          if (not key in atom_already_loaded 
+          if (not key in atom_already_loaded
               or not cur_atom.residue.strip() in self.protein_resnames):
             # so each atom can only be loaded once. No rotamers.
             atom_already_loaded.append(key)
@@ -635,7 +635,7 @@ class PDB:
     need: string
       Description of need for this atom in residue.
     """
-    text = ('WARNING: There is no atom named "%s"' % atom 
+    text = ('WARNING: There is no atom named "%s"' % atom
         + 'in the protein residue ' + last_key + '.'
         + ' Please use standard naming conventions for all'
         + ' protein residues. This atom is needed to determine'
@@ -652,8 +652,8 @@ class PDB:
 
     Parameters
     ----------
-    residue: list 
-      List of atom names in residue. 
+    residue: list
+      List of atom names in residue.
     last_key: string
       Should be in format RESNAME_RESNUMBER_CHAIN
     """
@@ -842,7 +842,7 @@ class PDB:
       ("P", "F"): 1.495,
       ("P", "I"): 2.490,
       # estimate based on eye balling Handbook of Chemistry and Physics
-      ("P", "O"): 1.6, 
+      ("P", "O"): 1.6,
 
 
       ("SI", "BR"): 2.284,
@@ -869,7 +869,7 @@ class PDB:
 
   def identify_metallic_charges(self):
     """Assign charges to metallic ions.
-    
+
     Returns
     -------
     charges: list
@@ -887,9 +887,9 @@ class PDB:
         charges.append(chrg)
     return charges
 
-  def identify_nitrogen_charges(self):
-    """Assign charges to nitrogen atoms where necessary.
-    
+  def identify_nitrogen_group_charges(self):
+    """Assign charges to nitrogen groups where necessary.
+
     Returns
     -------
     charges: list
@@ -939,10 +939,42 @@ class PDB:
             charges.append(chrg)
     return charges
 
-  def identify_carbon_charges(self):
-    """Assign charges to carbon atoms where necessary.
+  def identify_phosphorus_group_charges(self):
+    """Assign charges to phosphorus groups where necessary.
+    
+    Returns
+    -------
+    charges: list
+      Contains a Charge object for every charged phosphorus group.
+    """
+    charges = []
+    for atom_index in self.non_protein_atoms:
+      atom = self.non_protein_atoms[atom_index]
+      # let's check for a phosphate or anything where a phosphorus is bound
+      # to two oxygens, where both oxygens are bound to only one heavy atom
+      # (the phosphorus). I think this will get several phosphorus
+      # substances.
+      if atom.element == "P":
+        oxygens = self.connected_atoms_of_given_element(atom_index,"O")
+        if len(oxygens) >=2: # the phosphorus is bound to at least two oxygens
+          # now count the number of oxygens that are only bound to the phosphorus
+          count = 0
+          for oxygen_index in oxygens:
+            if len(self.connected_heavy_atoms(oxygen_index)) == 1: count = count + 1
+          if count >=2: # so there are at least two oxygens that are only bound to the phosphorus
+            indexes = [atom_index]
+            indexes.extend(oxygens)
+            chrg = Charged(atom.coordinates, indexes, False)
+            charges.append(chrg)
+    return charges
+
+  def identify_carbon_group_charges(self):
+    """Assign charges to carbon groups where necessary.
 
     Checks for guanidino-like groups and carboxylates.
+
+    TODO(rbharath): This function is monolithic and very special-purpose.
+    Can some more general design be created here?
 
     Returns
     -------
@@ -966,48 +998,52 @@ class PDB:
 
             nitrogens_to_use = []
             all_connected = atom.indices_of_atoms_connecting[:]
-            not_isolated = -1
+            # Index of atom that connects this charged group to
+            # the rest of the molecule, ultimately to make sure
+            # it's sp3 hybridized. Remains -1 if no such atom exists.
+            connector_ind = -1
 
             for atmindex in nitrogens:
               if len(self.connected_heavy_atoms(atmindex)) == 1:
                 nitrogens_to_use.append(atmindex)
                 all_connected.remove(atmindex)
 
+            # TODO(rbharath): Is picking the first non-nitrogen atom
+            # correct here?
             if len(all_connected) > 0:
-              # get the atom that connects this charged group to
-              # the rest of the molecule, ultimately to make sure
-              # it's sp3 hybridized
-              not_isolated = all_connected[0]
+              connector_ind = all_connected[0]
 
-            # so there are at two nitrogens that are only
-            # connected to the carbon (and probably some
-            # hydrogens)
-            if len(nitrogens_to_use) == 2 and not_isolated != -1:
+            # Handle case of guanidinium cation
+            if len(nitrogens_to_use) == 3 and connector_ind == -1:
+              pt = atom.coordinates.copy_of()
+              charges.append(Charged(pt, [atom_index], True))
+            elif len(nitrogens_to_use) == 2 and connector_ind != -1:
+              # so there are at two nitrogens that are only
+              # connected to the carbon (and probably some
+              # hydrogens)
 
-              # now you need to make sure not_isolated atom is sp3 hybridized
-              not_isolated_atom = self.all_atoms[not_isolated]
-              if ((not_isolated_atom.element == "C" and
-                  not_isolated_atom.number_of_neighbors() == 4)
-                or (not_isolated_atom.element == "O"
-                  and not_isolated_atom.number_of_neighbors() == 2)
-                or not_isolated_atom.element == "N"
-                or not_isolated_atom.element == "S"
-                or not_isolated_atom.element == "P"):
+              # now you need to make sure connector_ind atom is sp3 hybridized
+              connector_atom = self.all_atoms[connector_ind]
+              if ((connector_atom.element == "C" and
+                  connector_atom.number_of_neighbors() == 4)
+                or (connector_atom.element == "O"
+                  and connector_atom.number_of_neighbors() == 2)
+                or connector_atom.element == "N"
+                or connector_atom.element == "S"
+                or connector_atom.element == "P"):
 
-                pt = self.all_atoms[nitrogens_to_use[0]].coordinates.copy_of()
-                pt.x = pt.x + self.all_atoms[nitrogens_to_use[1]].coordinates.x
-                pt.y = pt.y + self.all_atoms[nitrogens_to_use[1]].coordinates.y
-                pt.z = pt.z + self.all_atoms[nitrogens_to_use[1]].coordinates.z
-                pt.x = pt.x / 2.0
-                pt.y = pt.y / 2.0
-                pt.z = pt.z / 2.0
+                # There are only two "guanidino" nitrogens. Assume the
+                # negative charge is spread equally between the two.
+                avg_pt = average_point(
+                    self.all_atoms[nitrogens_to_use[0]].coordinates,
+                    self.all_atoms[nitrogens_to_use[1]].coordinates)
 
                 indexes = [atom_index]
                 indexes.extend(nitrogens_to_use)
                 indexes.extend(self.connected_atoms_of_given_element(nitrogens_to_use[0],"H"))
                 indexes.extend(self.connected_atoms_of_given_element(nitrogens_to_use[1],"H"))
 
-                charges.append(Charged(pt, indexes, True)) # True because it's positive
+                charges.append(Charged(avg_pt, indexes, True)) # True because it's positive
 
       if atom.element == "C": # let's check for a carboxylate
           # a carboxylate carbon will have three items connected to it.
@@ -1021,19 +1057,17 @@ class PDB:
               if (len(self.connected_heavy_atoms(oxygens[0])) == 1
                 and len(self.connected_heavy_atoms(oxygens[1])) == 1):
                 # so it's a carboxylate! Add a negative charge.
-                pt = self.all_atoms[oxygens[0]].coordinates.copy_of()
-                pt.x = pt.x + self.all_atoms[oxygens[1]].coordinates.x
-                pt.y = pt.y + self.all_atoms[oxygens[1]].coordinates.y
-                pt.z = pt.z + self.all_atoms[oxygens[1]].coordinates.z
-                pt.x = pt.x / 2.0
-                pt.y = pt.y / 2.0
-                pt.z = pt.z / 2.0
-                chrg = Charged(pt, [oxygens[0],
-                    atom_index, oxygens[1]], False)
+
+                # Assume negative charge is centered between the two
+                # oxygens.
+                avg_pt = average_point(
+                    self.all_atoms[oxygens[0]].coordinates,
+                    self.all_atoms[oxygens[1]].coordinates)
+                chrg = Charged(avg_pt,
+                    [oxygens[0], atom_index, oxygens[1]], False)
                 charges.append(chrg)
     return charges
 
-      
 
   def assign_non_protein_charges(self):
     """
@@ -1051,29 +1085,11 @@ class PDB:
       7) Charged Residues (in helper function)
     """
     self.charges += self.identify_metallic_charges()
-    self.charges += self.identify_nitrogen_charges()
-    self.charges += self.identify_carbon_charges()
+    self.charges += self.identify_nitrogen_group_charges()
+    self.charges += self.identify_carbon_group_charges()
+    self.charges += self.identify_phosphorus_group_charges()
     for atom_index in self.non_protein_atoms:
       atom = self.non_protein_atoms[atom_index]
-
-
-      # let's check for a phosphate or anything where a phosphorus is bound
-      # to two oxygens where both oxygens are bound to only one heavy atom
-      # (the phosphorus). I think this will get several phosphorus
-      # substances.
-      if atom.element == "P":
-        oxygens = self.connected_atoms_of_given_element(atom_index,"O")
-        if len(oxygens) >=2: # the phosphorus is bound to at least two oxygens
-          # now count the number of oxygens that are only bound to the phosphorus
-          count = 0
-          for oxygen_index in oxygens:
-            if len(self.connected_heavy_atoms(oxygen_index)) == 1: count = count + 1
-          if count >=2: # so there are at least two oxygens that are only bound to the phosphorus
-            indexes = [atom_index]
-            indexes.extend(oxygens)
-            chrg = Charged(atom.coordinates, indexes, False)
-            self.charges.append(chrg)
-
       # let's check for a sulfonate or anything where a sulfur is
       # bound to at least three oxygens and at least three are
       # bound to only the sulfur (or the sulfur and a hydrogen).
@@ -1319,7 +1335,7 @@ class PDB:
       y_sum = y_sum + atom.coordinates.y
       z_sum = z_sum + atom.coordinates.z
 
-    if total == 0: 
+    if total == 0:
       return # to prevent errors in some cases
 
     center = Point(x_sum / total, y_sum / total, z_sum / total)
@@ -1329,7 +1345,7 @@ class PDB:
     for index in indices_of_ring:
       atom = self.all_atoms[index]
       dist = center.dist_to(atom.coordinates)
-      if dist > radius: 
+      if dist > radius:
         radius = dist
 
     # now get the plane that defines this ring
@@ -1436,17 +1452,17 @@ class PDB:
             is_flat = False
             break
 
-      if is_flat == False: 
+      if is_flat == False:
         all_rings[ring_index] = []
       # While I'm at it, three and four member rings are not aromatic
-      if len(ring) < 5: 
+      if len(ring) < 5:
         all_rings[ring_index] = []
       # While I'm at it, if the ring has more than 6, also throw it out. So
       # only 5 and 6 member rings are allowed.
-      if len(ring) > 6: 
+      if len(ring) > 6:
         all_rings[ring_index] = []
 
-    while [] in all_rings: 
+    while [] in all_rings:
       all_rings.remove([])
 
     for ring in all_rings:
@@ -1477,11 +1493,11 @@ class PDB:
     index: int
       Index of specified atom.
     already_crossed: list
-      TODO(rbharath) 
+      TODO(rbharath)
     orig_atom: int
-      Index of the original atom in ring. 
+      Index of the original atom in ring.
     all_rings: list
-      Used to recursively build up ring structure. 
+      Used to recursively build up ring structure.
     """
 
     if len(already_crossed) > 6:
@@ -1534,9 +1550,9 @@ class PDB:
     Parameters
     ---------
     residue: list
-      List of atom indices for this residue. 
+      List of atom indices for this residue.
     last_key: string
-      keys have format RESNAME_RESNUMBER_CHAIN 
+      keys have format RESNAME_RESNUMBER_CHAIN
     """
     resname, resid, chain = last_key.strip().split("_")
     real_resname = resname[-3:]
@@ -1545,7 +1561,7 @@ class PDB:
       indices_of_ring = []
 
       # Note that order is important in the following.
-      for index in residue: 
+      for index in residue:
         atom = self.all_atoms[index]
         if atom.atomname.strip() == "CG": indices_of_ring.append(index)
       for index in residue:
@@ -1570,7 +1586,7 @@ class PDB:
       indices_of_ring = []
 
       # Note that order is important in the following.
-      for index in residue: 
+      for index in residue:
         atom = self.all_atoms[index]
         if atom.atomname.strip() == "CG": indices_of_ring.append(index)
       for index in residue:
@@ -1591,9 +1607,9 @@ class PDB:
 
       self.add_aromatic_marker(indices_of_ring)
 
-    if (real_resname == "HIS" 
-      or real_resname == "HID" 
-      or real_resname == "HIE" 
+    if (real_resname == "HIS"
+      or real_resname == "HID"
+      or real_resname == "HIE"
       or real_resname == "HIP"):
       indices_of_ring = []
 
@@ -1679,7 +1695,7 @@ class PDB:
 
     keys in this function have form RESNUMBER_CHAIN where CHAIN is
     the chain identifier for this molecule.
-    
+
     TODO(bramsundar): This function is monolithic. Can we break it down?
     """
     # first, we need to know what resid's are available
@@ -1724,24 +1740,24 @@ class PDB:
 
             # Now give easier to use names to the atoms
             for atom in atoms:
-              if atom.resid == resid1 and atom.atomname.strip() == "N": 
+              if atom.resid == resid1 and atom.atomname.strip() == "N":
                 first_N = atom
-              if atom.resid == resid1 and atom.atomname.strip() == "C": 
+              if atom.resid == resid1 and atom.atomname.strip() == "C":
                 first_C = atom
-              if atom.resid == resid1 and atom.atomname.strip() == "CA": 
+              if atom.resid == resid1 and atom.atomname.strip() == "CA":
                 first_CA = atom
 
-              if atom.resid == resid2 and atom.atomname.strip() == "N": 
+              if atom.resid == resid2 and atom.atomname.strip() == "N":
                 second_N = atom
-              if atom.resid == resid2 and atom.atomname.strip() == "C": 
+              if atom.resid == resid2 and atom.atomname.strip() == "C":
                 second_C = atom
-              if atom.resid == resid2 and atom.atomname.strip() == "CA": 
+              if atom.resid == resid2 and atom.atomname.strip() == "CA":
                 second_CA = atom
 
             # Now compute the phi and psi dihedral angles
-            phi = self.functions.dihedral(first_C.coordinates, second_N.coordinates, 
+            phi = self.functions.dihedral(first_C.coordinates, second_N.coordinates,
                 second_CA.coordinates, second_C.coordinates) * 180.0 / math.pi
-            psi = self.functions.dihedral(first_N.coordinates, first_CA.coordinates, 
+            psi = self.functions.dihedral(first_N.coordinates, first_CA.coordinates,
                 first_C.coordinates, second_N.coordinates) * 180.0 / math.pi
 
             # Now use those angles to determine if it's alpha or beta
@@ -1825,23 +1841,23 @@ class PDB:
           and atom3.resid + 1 == atom4.resid
           and atom4.resid + 1 == atom5.resid
           and atom5.resid + 1 == atom6.resid): # so they are sequential
-          if (atom1.structure != "ALPHA" 
-            and atom2.structure == "ALPHA" 
+          if (atom1.structure != "ALPHA"
+            and atom2.structure == "ALPHA"
             and atom3.structure != "ALPHA"):
             self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
             change = True
-          if (atom2.structure != "ALPHA" 
-            and atom3.structure == "ALPHA" 
+          if (atom2.structure != "ALPHA"
+            and atom3.structure == "ALPHA"
             and atom4.structure != "ALPHA"):
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             change = True
-          if (atom3.structure != "ALPHA" 
-            and atom4.structure == "ALPHA" 
+          if (atom3.structure != "ALPHA"
+            and atom4.structure == "ALPHA"
             and atom5.structure != "ALPHA"):
             self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
             change = True
-          if (atom4.structure != "ALPHA" 
-            and atom5.structure == "ALPHA" 
+          if (atom4.structure != "ALPHA"
+            and atom5.structure == "ALPHA"
             and atom6.structure != "ALPHA"):
             self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
             change = True
@@ -1853,9 +1869,9 @@ class PDB:
             self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             change = True
-          if (atom2.structure != "ALPHA" 
-            and atom3.structure == "ALPHA" 
-            and atom4.structure == "ALPHA" 
+          if (atom2.structure != "ALPHA"
+            and atom3.structure == "ALPHA"
+            and atom4.structure == "ALPHA"
             and atom5.structure != "ALPHA"):
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
