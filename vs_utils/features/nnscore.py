@@ -682,7 +682,7 @@ class binana:
             hashtable_entry_add_one(salt_bridges, key)
     return salt_bridges
 
-  def commpute_input_vector_from_files(self, ligand_pdbqt_filename,
+  def compute_input_vector_from_files(self, ligand_pdbqt_filename,
       receptor_pdbqt_filename, line_header):
     """Computes feature vector for ligand-receptor pair.
 
@@ -697,10 +697,10 @@ class binana:
     """
     # Load receptor and ligand from file.
     receptor = PDB()
-    receptor.LoadPDB_from_file(receptor_pdbqt_filename, line_header)
+    receptor.load_PDB_from_file(receptor_pdbqt_filename, line_header)
     receptor.assign_secondary_structure()
     ligand = PDB()
-    ligand.LoadPDB_from_file(ligand_pdbqt_filename, line_header)
+    ligand.load_PDB_from_file(ligand_pdbqt_filename, line_header)
     self.compute_input_vector(ligand, pdb)
 
   def compute_input_vector(self, ligand, receptor):

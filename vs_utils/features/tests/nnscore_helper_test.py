@@ -1,12 +1,19 @@
 """
 Test NNScore Helper Classes
 """
+import os
 import tempfile
 import shutil
 import unittest
 import numpy as np
 
-from vs_utils.features.nnscore_helper import point, atom, PDB
+from vs_utils.features.nnscore_helper import Point, Atom, PDB
+from vs_utils.features.tests import __file__ as test_directory
+
+
+def data_dir():
+  """Get location of data directory."""
+  return os.path.join(os.path.dirname(test_directory), "data")
 
 
 class TestPoint(unittest.TestCase):
@@ -17,8 +24,8 @@ class TestPoint(unittest.TestCase):
     """
     Instantiate local points for tests.
     """
-    self.point_a = point(1,2,3)
-    self.point_b = point(-1,-2,-3)
+    self.point_a = Point(1,2,3)
+    self.point_b = Point(-1,-2,-3)
 
   def testCopyOf(self):
     """
@@ -46,17 +53,8 @@ class TestPoint(unittest.TestCase):
     ## || (1, 2, 3) ||_2 = || (-1, -2, -3) ||_2
     ##                   = sqrt(1 + 4 + 9)
     ##                   = sqrt(14)
-    assert self.point_a.Magnitude() == np.sqrt(14)
-    assert self.point_b.Magnitude() == np.sqrt(14)
-
-  def testCreatePDBLine(self):
-    """
-    TestPoint: Verify that PDB Line is in correct format.
-    """
-    # TODO(bramsundar): Add a more nontrivial test after looking into
-    # PDB standard.
-    line = self.point_a.CreatePDBLine(1)
-    assert type(line) == str
+    assert self.point_a.magnitude() == np.sqrt(14)
+    assert self.point_b.magnitude() == np.sqrt(14)
 
 class TestAtom(unittest.TestCase):
   """
@@ -67,16 +65,16 @@ class TestAtom(unittest.TestCase):
     """
     Instantiates a pair of atom objects for tests.
     """
-    self.empty_atom = atom()
-    self.trial_atom = atom()
+    self.empty_atom = Atom()
+    self.trial_atom = Atom()
     self.trial_atom.atomname = "C"
-    self.trial_atom.coordinates = point(1,2,3)
+    self.trial_atom.coordinates = Point(1,2,3)
     self.trial_atom.charge = 0.
     self.trial_atom.element = "C"
     self.trial_atom.residue = "CYS"
     # TODO(bramsundar): Fill in a non-junk value for chain.
     self.trial_atom.chain = "FF"
-    self.trial_atom.IndicesOfAtomsConnecting = [4, 5, 6]
+    self.trial_atom.indices_of_atoms_connecting = [4, 5, 6]
 
   def testCopyOf(self):
     """
@@ -91,7 +89,7 @@ class TestAtom(unittest.TestCase):
     assert copy_atom.element == "C"
     assert copy_atom.residue == "CYS"
     assert copy_atom.chain == "FF"
-    assert copy_atom.IndicesOfAtomsConnecting == [4, 5, 6]
+    assert copy_atom.indices_of_atoms_connecting == [4, 5, 6]
 
   def testCreatePDBLine(self):
     """
@@ -99,7 +97,7 @@ class TestAtom(unittest.TestCase):
     """
     # TODO(bramsundar): Add a more nontrivial test after looking into
     # PDB standard.
-    line = self.trial_atom.CreatePDBLine(1)
+    line = self.trial_atom.create_PDB_line(1)
     assert type(line) == str
 
   def testNumberOfNeighors(self):
@@ -123,8 +121,16 @@ class TestPDB(unittest.TestCase):
     self.temp_dir = tempfile.mkdtemp()
     self.pdb = PDB()
 
-    _, self.pdb_filename = tempfile.mkstemp(suffix='.pdb',
+    _, self.pdb_filename = tempfile.mkstemp(suffix=".pdb",
         dir=self.temp_dir)
+
+    self.prgr_pdb = PDB()
+    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
+    self.prgr_pdb.load_PDB_from_file(prgr_pdb_path)
+
+    self.benzene_pdb = PDB()
+    benzene_pdb_path = os.path.join(data_dir(), "benzene.pdb")
+    self.benzene_pdb.load_PDB_from_file(benzene_pdb_path)
 
   def tearDown(self):
     """
@@ -136,47 +142,47 @@ class TestPDB(unittest.TestCase):
     """
     TestPDB: Saves dummy PDB to file and verifies that it can be reloaded.
     """
-    self.pdb.SavePDB(self.pdb_filename)
+    self.pdb.save_PDB(self.pdb_filename)
     empty_pdb = PDB()
     with open(self.pdb_filename) as pdb_file:
       for line in pdb_file:
         print line
-    empty_pdb.LoadPDB_from_file(self.pdb_filename)
+    empty_pdb.load_PDB_from_file(self.pdb_filename)
 
   def testAddNewAtom(self):
     """
     TestPDB: Verifies that new atoms can be added.
     """
     # Verify that no atoms are present when we start.
-    assert len(self.pdb.AllAtoms.keys()) == 0
-    empty_atom = atom()
-    self.pdb.AddNewAtom(empty_atom)
+    assert len(self.pdb.all_atoms.keys()) == 0
+    empty_atom = Atom()
+    self.pdb.add_new_atom(empty_atom)
     # Verify that we now have one atom
-    assert len(self.pdb.AllAtoms.keys()) == 1
+    assert len(self.pdb.all_atoms.keys()) == 1
 
   def testConnectedAtomsOfGivenElement(self):
     """
     TestPDB: Verifies that connected atom retrieval works.
     """
     # Verify that no atoms are present when we start.
-    assert len(self.pdb.AllAtoms.keys()) == 0
-    carbon_atom = atom(element="C")
-    oxygen_atom = atom(element="O")
-    hydrogen_atom = atom(element="H")
+    assert len(self.pdb.all_atoms.keys()) == 0
+    carbon_atom = Atom(element="C")
+    oxygen_atom = Atom(element="O")
+    hydrogen_atom = Atom(element="H")
 
-    self.pdb.AddNewAtom(carbon_atom)
-    self.pdb.AddNewAtom(oxygen_atom)
-    self.pdb.AddNewAtom(hydrogen_atom)
+    self.pdb.add_new_atom(carbon_atom)
+    self.pdb.add_new_atom(oxygen_atom)
+    self.pdb.add_new_atom(hydrogen_atom)
 
     # We want a carboxyl, so C connects O and H
-    carbon_atom.IndicesOfAtomsConnecting = [2,3]
-    oxygen_atom.IndicesOfAtomsConnecting = [1]
-    hydrogen_atom.IndicesOfAtomsConnecting = [1]
+    carbon_atom.indices_of_atoms_connecting = [2,3]
+    oxygen_atom.indices_of_atoms_connecting = [1]
+    hydrogen_atom.indices_of_atoms_connecting = [1]
 
-    connected_oxygens = self.pdb.ConnectedAtomsOfGivenElement(1, "O")
+    connected_oxygens = self.pdb.connected_atoms_of_given_element(1, "O")
     assert len(connected_oxygens) == 1
 
-    connected_hydrogens = self.pdb.ConnectedAtomsOfGivenElement(1, "H")
+    connected_hydrogens = self.pdb.connected_atoms_of_given_element(1, "H")
     assert len(connected_hydrogens) == 1
 
   def testConnectedHeavyAtoms(self):
@@ -184,21 +190,21 @@ class TestPDB(unittest.TestCase):
     TestPDB: Verifies retrieval of connected heavy atoms.
     """
     # Verify that no atoms are present when we start.
-    assert len(self.pdb.AllAtoms.keys()) == 0
-    carbon_atom = atom(element="C")
-    oxygen_atom = atom(element="O")
-    hydrogen_atom = atom(element="H")
+    assert len(self.pdb.all_atoms.keys()) == 0
+    carbon_atom = Atom(element="C")
+    oxygen_atom = Atom(element="O")
+    hydrogen_atom = Atom(element="H")
 
-    self.pdb.AddNewAtom(carbon_atom)
-    self.pdb.AddNewAtom(oxygen_atom)
-    self.pdb.AddNewAtom(hydrogen_atom)
+    self.pdb.add_new_atom(carbon_atom)
+    self.pdb.add_new_atom(oxygen_atom)
+    self.pdb.add_new_atom(hydrogen_atom)
 
     # We want a carboxyl, so C connects O and H
-    carbon_atom.IndicesOfAtomsConnecting = [2,3]
-    oxygen_atom.IndicesOfAtomsConnecting = [1]
-    hydrogen_atom.IndicesOfAtomsConnecting = [1]
+    carbon_atom.indices_of_atoms_connecting = [2,3]
+    oxygen_atom.indices_of_atoms_connecting = [1]
+    hydrogen_atom.indices_of_atoms_connecting = [1]
 
-    connected_heavy_atoms = self.pdb.ConnectedHeavyAtoms(1)
+    connected_heavy_atoms = self.pdb.connected_heavy_atoms(1)
     assert len(connected_heavy_atoms) == 1
     assert connected_heavy_atoms[0] == 2
 
@@ -206,15 +212,27 @@ class TestPDB(unittest.TestCase):
     """
     TestPDB: Verifies creation of bonds.
     """
-    carbon_atom = atom(element="C", coordinates=point(0,0,1))
-    oxygen_atom = atom(element="O", coordinates=point(0,0,2))
+    # First test a toy example
+    carbon_atom = Atom(element="C", coordinates=Point(0,0,1))
+    oxygen_atom = Atom(element="O", coordinates=Point(0,0,2))
 
-    self.pdb.AddNewNonProteinAtom(carbon_atom)
-    self.pdb.AddNewNonProteinAtom(oxygen_atom)
+    self.pdb.add_new_non_protein_atom(carbon_atom)
+    self.pdb.add_new_non_protein_atom(oxygen_atom)
 
-    self.pdb.CreateNonProteinAtomBondsByDistance()
-    assert len(carbon_atom.IndicesOfAtomsConnecting) == 1
-    assert len(oxygen_atom.IndicesOfAtomsConnecting) == 1
+    self.pdb.create_non_protein_atom_bonds_by_distance()
+    assert len(carbon_atom.indices_of_atoms_connecting) == 1
+    assert len(oxygen_atom.indices_of_atoms_connecting) == 1
+
+    # Test that all bonds in benzene are created
+    assert (len(self.benzene_pdb.all_atoms.keys())
+         == len(self.benzene_pdb.non_protein_atoms.keys()))
+
+    for atom_ind in self.benzene_pdb.non_protein_atoms:
+      print "Atom %d" % atom_ind
+      atom_obj = self.benzene_pdb.non_protein_atoms[atom_ind]
+      print "Connected to Atoms: " + str(atom_obj.indices_of_atoms_connecting)
+
+    assert 0 == 1
 
   def testAssignNonProteinCharges(self):
     """
@@ -223,9 +241,9 @@ class TestPDB(unittest.TestCase):
     # Test metallic ion charge.
     self.pdb = PDB()
     assert len(self.pdb.charges) == 0
-    magnesium_atom = atom(element="MG", coordinates=point(0,0,0))
-    self.pdb.AddNewNonProteinAtom(magnesium_atom)
-    self.pdb.AssignNonProteinCharges()
+    magnesium_atom = Atom(element="MG", coordinates=Point(0,0,0))
+    self.pdb.add_new_non_protein_atom(magnesium_atom)
+    self.pdb.assign_non_protein_charges()
     assert len(self.pdb.charges) == 1
 
     # Test ammonium
@@ -233,21 +251,25 @@ class TestPDB(unittest.TestCase):
     assert len(self.pdb.charges) == 0
     # We assign the coordinates to form a tetrahedron; see
     # http://en.wikipedia.org/wiki/Tetrahedron#Formulas_for_a_regular_tetrahedron
-    nitrogen_atom = atom(element="N", coordinates=point(0,0,0))
-    hydrogen_atom1 = atom(element="H", coordinates=point(1,0,-1./np.sqrt(2)))
-    hydrogen_atom2 = atom(element="H", coordinates=point(-1,0,-1./np.sqrt(2)))
-    hydrogen_atom3 = atom(element="H", coordinates=point(0,1,1./np.sqrt(2)))
-    hydrogen_atom4 = atom(element="H", coordinates=point(0,-1,1./np.sqrt(2)))
-    self.pdb.AddNewNonProteinAtom(nitrogen_atom)
-    self.pdb.AddNewNonProteinAtom(hydrogen_atom1)
-    self.pdb.AddNewNonProteinAtom(hydrogen_atom2)
-    self.pdb.AddNewNonProteinAtom(hydrogen_atom3)
-    self.pdb.AddNewNonProteinAtom(hydrogen_atom4)
-    nitrogen_atom.IndicesOfAtomsConnecting = [2, 3, 4, 5]
-    self.pdb.AssignNonProteinCharges()
+    nitrogen_atom = Atom(element="N", coordinates=Point(0,0,0))
+    hydrogen_atom1 = Atom(element="H", coordinates=Point(1,0,-1./np.sqrt(2)))
+    hydrogen_atom2 = Atom(element="H", coordinates=Point(-1,0,-1./np.sqrt(2)))
+    hydrogen_atom3 = Atom(element="H", coordinates=Point(0,1,1./np.sqrt(2)))
+    hydrogen_atom4 = Atom(element="H", coordinates=Point(0,-1,1./np.sqrt(2)))
+    self.pdb.add_new_non_protein_atom(nitrogen_atom)
+    self.pdb.add_new_non_protein_atom(hydrogen_atom1)
+    self.pdb.add_new_non_protein_atom(hydrogen_atom2)
+    self.pdb.add_new_non_protein_atom(hydrogen_atom3)
+    self.pdb.add_new_non_protein_atom(hydrogen_atom4)
+    nitrogen_atom.indices_of_atoms_connecting = [2, 3, 4, 5]
+    self.pdb.assign_non_protein_charges()
     assert len(self.pdb.charges) == 1
 
-    # TODO(bramsundar): Figure out how to add more tests here. The issue is
-    # that it becomes challenging to specify complicated geometries in the
-    # test scripts. Maybe have a collection of data PDBs for tests?
-
+  def testLigandAssignAromaticRings(self):
+    """
+    TestPDB: Verify that aromatic rings in ligands are identified.
+    """
+    # A benzene should have exactly one aromatic ring.
+    #print ("len(self.benzene_pdb.aromatic_rings): "
+    #  + str(len(self.benzene_pdb.aromatic_rings)))
+    #assert len(self.benzene_pdb.aromatic_rings) == 1
