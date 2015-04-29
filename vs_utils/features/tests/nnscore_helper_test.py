@@ -7,7 +7,10 @@ import shutil
 import unittest
 import numpy as np
 
-from vs_utils.features.nnscore_helper import Point, Atom, PDB
+from vs_utils.features.nnscore_helper import Point
+from vs_utils.features.nnscore_helper import Atom
+from vs_utils.features.nnscore_helper import PDB
+from vs_utils.features.nnscore_helper import average_point
 from vs_utils.features.tests import __file__ as test_directory
 
 
@@ -35,6 +38,12 @@ class TestPoint(unittest.TestCase):
     assert copy_point.x == 1
     assert copy_point.y == 2
     assert copy_point.z == 3
+
+  def testAveragePoint(self):
+    avg_point = average_point(self.point_a, self.point_b)
+    assert avg_point.x == 0
+    assert avg_point.y == 0
+    assert avg_point.z == 0
 
   def testDistTo(self):
     """
@@ -125,10 +134,6 @@ class TestPDB(unittest.TestCase):
     self.prgr_pdb = PDB()
     prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
     self.prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-
-    self.benzene_pdb = PDB()
-    benzene_pdb_path = os.path.join(data_dir(), "benzene.pdb")
-    self.benzene_pdb.load_PDB_from_file(benzene_pdb_path)
 
   def tearDown(self):
     """
@@ -244,53 +249,72 @@ class TestPDB(unittest.TestCase):
     assert len(carbon_atom.indices_of_atoms_connecting) == 1
     assert len(oxygen_atom.indices_of_atoms_connecting) == 1
 
-    # Test that all bonds in benzene are created
-    assert (len(self.benzene_pdb.all_atoms.keys())
-         == len(self.benzene_pdb.non_protein_atoms.keys()))
-
-    for atom_ind in self.benzene_pdb.non_protein_atoms:
-      print "Atom %d" % atom_ind
-      atom_obj = self.benzene_pdb.non_protein_atoms[atom_ind]
-      print "Connected to Atoms: " + str(atom_obj.indices_of_atoms_connecting)
-
-    assert 0 == 1
-
   def testAssignNonProteinCharges(self):
     """
     TestPDB: Verify that non-protein charges are assigned properly.
     """
     # Test metallic ion charge.
-    self.pdb = PDB()
-    assert len(self.pdb.charges) == 0
+    magnesium_pdb = PDB()
+    assert len(magnesium_pdb.charges) == 0
     magnesium_atom = Atom(element="MG", coordinates=Point(0,0,0))
-    self.pdb.add_new_non_protein_atom(magnesium_atom)
-    self.pdb.assign_non_protein_charges()
-    assert len(self.pdb.charges) == 1
+    magnesium_pdb.add_new_non_protein_atom(magnesium_atom)
+    magnesium_pdb.assign_non_protein_charges()
+    assert len(magnesium_pdb.charges) == 1
 
-    # Test ammonium
-    self.pdb = PDB()
-    assert len(self.pdb.charges) == 0
-    # We assign the coordinates to form a tetrahedron; see
-    # http://en.wikipedia.org/wiki/Tetrahedron#Formulas_for_a_regular_tetrahedron
-    nitrogen_atom = Atom(element="N", coordinates=Point(0,0,0))
-    hydrogen_atom1 = Atom(element="H", coordinates=Point(1,0,-1./np.sqrt(2)))
-    hydrogen_atom2 = Atom(element="H", coordinates=Point(-1,0,-1./np.sqrt(2)))
-    hydrogen_atom3 = Atom(element="H", coordinates=Point(0,1,1./np.sqrt(2)))
-    hydrogen_atom4 = Atom(element="H", coordinates=Point(0,-1,1./np.sqrt(2)))
-    self.pdb.add_new_non_protein_atom(nitrogen_atom)
-    self.pdb.add_new_non_protein_atom(hydrogen_atom1)
-    self.pdb.add_new_non_protein_atom(hydrogen_atom2)
-    self.pdb.add_new_non_protein_atom(hydrogen_atom3)
-    self.pdb.add_new_non_protein_atom(hydrogen_atom4)
-    nitrogen_atom.indices_of_atoms_connecting = [2, 3, 4, 5]
-    self.pdb.assign_non_protein_charges()
-    assert len(self.pdb.charges) == 1
+
+  def testIdentifyNitrogenCharges(self):
+    """
+    TestPDB: Verify that nitrogen groups are charged correctly.
+    """
+    # Test ammonium sulfate: (NH4)+(NH4)+(SO4)(2-)
+    # The labeling should pick up 2 charged nitrogen groups for two
+    # ammoniums.
+    ammonium_sulfate_pdb = PDB()
+    ammonium_sulfate_pdb_path = os.path.join(data_dir(),
+        "ammonium_sulfate.pdb")
+    ammonium_sulfate_pdb.load_PDB_from_file(
+        ammonium_sulfate_pdb_path)
+    nitrogen_charges = ammonium_sulfate_pdb.identify_nitrogen_charges()
+    assert len(nitrogen_charges) == 2
+
+    # Test pyrrolidine (CH2)4NH. The nitrogen here should be sp3
+    # hybridized, so is likely to pick up an extra proton to its nitrogen
+    # at physiological pH.
+    pyrrolidine_pdb = PDB()
+    pyrrolidine_pdb_path = os.path.join(data_dir(),
+        "pyrrolidine.pdb")
+    pyrrolidine_pdb.load_PDB_from_file(pyrrolidine_pdb_path)
+    nitrogen_charges = pyrrolidine_pdb.identify_nitrogen_charges()
+    assert len(nitrogen_charges) == 1
+
+  def testIdentifyCarbonCharges(self):
+    """
+    TestPDB: Verify that carbon groups are charged correctly.
+    """
+    # Guanidine is positively charged at physiological pH
+    guanidine_pdb = PDB()
+    guanidine_pdb_path = os.path.join(data_dir(),
+        "guanidine.pdb")
+    print "Loading pdb"
+    guanidine_pdb.load_PDB_from_file(
+        guanidine_pdb_path)
+    print
+    print "Looking for charged carbons"
+    carbon_charges = guanidine_pdb.identify_carbon_charges()
+    print carbon_charges
+    assert len(carbon_charges) == 1
+    
 
   def testLigandAssignAromaticRings(self):
     """
     TestPDB: Verify that aromatic rings in ligands are identified.
     """
+    benzene_pdb = PDB()
+    benzene_pdb_path = os.path.join(data_dir(), "benzene.pdb")
+    benzene_pdb.load_PDB_from_file(benzene_pdb_path)
+
     # A benzene should have exactly one aromatic ring.
-    #print ("len(self.benzene_pdb.aromatic_rings): "
-    #  + str(len(self.benzene_pdb.aromatic_rings)))
-    #assert len(self.benzene_pdb.aromatic_rings) == 1
+    assert len(benzene_pdb.aromatic_rings) == 1
+    # The first 6 atoms in the benzene pdb form the aromatic ring.
+    assert (set(benzene_pdb.aromatic_rings[0].indices)
+         == set([1,2,3,4,5,6]))

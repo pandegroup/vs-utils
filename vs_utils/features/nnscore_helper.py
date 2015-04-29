@@ -16,14 +16,12 @@ file:
 # HERE].
 """
 
-# TODO(bramsundar): Should I make these classes have capital names to
-# maintain consistency with other source files?
-
 __author__ = "Bharath Ramsundar"
 __license__ = "GNU General Public License"
 
 import math
 import textwrap
+import numpy as np
 
 
 class AromaticRing():
@@ -51,11 +49,27 @@ class AromaticRing():
     self.radius = radius
 
 
+def average_point(p1, p2):
+  """Returns the point with averaged coordinates of arguments.
+
+  Parameters
+  ----------
+  p1: Point object
+  p2: Point object
+  Returns
+  -------
+  pavg: Point object
+    Has coordinates the arithmetic average of those of p1 and p2.
+  """
+  x = (p1.x + p2.x)/2.0
+  y = (p1.y + p2.y)/2.0
+  z = (p1.z + p2.z)/2.0
+  return Point(x, y, z)
+
+
 class Point:
   """
   Simple implementation for a point in 3-space.
-
-  TODO(bramsundar): Rework this implementation to use numpy vectors.
   """
   x=99999.0
   y=99999.0
@@ -92,6 +106,8 @@ class Atom:
     """
     Initializes an atom.
 
+    Assumes that atom is loaded from a PDB file.
+
     Parameters
     ----------
     atomname: string
@@ -105,7 +121,7 @@ class Atom:
     coordinate: point
       A point object (x, y, z are in Angstroms).
     PDBIndex: string
-      TODO(bramsundar): What does this do?
+      Index of the atom in source PDB file. 
     line: string
       The line in the PDB file which specifies this atom.
     atomtype: string
@@ -179,6 +195,7 @@ class Atom:
     return output
 
   def number_of_neighbors(self):
+    """Reports number of neighboring atoms."""
     return len(self.indices_of_atoms_connecting)
 
   def add_neighbor_atom_indices(self, indices):
@@ -205,7 +222,28 @@ class Atom:
     """
     Reads an ATOM or HETATM line from PDB and instantiates fields.
 
-    TODO(rbharath): Fill in spec definition here so this is less magical.
+    Atoms in PDBs are represented by ATOM or HETATM statements. ATOM and
+    HETATM statements follow the following record format:
+
+    (see ftp://ftp.wwpdb.org/pub/pdb/doc/format_descriptions/Format_v33_Letter.pdf)
+
+    COLUMNS   DATA TYPE       FIELD             DEFINITION
+    -------------------------------------------------------------------------------------
+    1 - 6     Record name     "ATOM "/"HETATM"
+    7 - 11    Integer         serial            Atom serial number.
+    13 - 16   Atom            name              Atom name.
+    17        Character       altLoc            Alternate location indicator.
+    18 - 20   Residue name    resName           Residue name.
+    22        Character       chainID           Chain identifier.
+    23 - 26   Integer         resSeq            Residue sequence number.
+    27        AChar           iCode             Code for insertion of residues.
+    31 - 38   Real(8.3)       x                 Orthogonal coordinates for X in Angstroms.
+    39 - 46   Real(8.3)       y                 Orthogonal coordinates for Y in Angstroms.
+    47 - 54   Real(8.3)       z                 Orthogonal coordinates for Z in Angstroms.
+    55 - 60   Real(6.2)       occupancy         Occupancy.
+    61 - 66   Real(6.2)       tempFactor        Temperature factor.
+    77 - 78   LString(2)      element           Element symbol, right-justified.
+    79 - 80   LString(2)      charge            Charge on the atom.
     """
     self.line = Line
     self.atomname = Line[11:16].strip()
@@ -231,30 +269,10 @@ class Atom:
 
     if self.element == "": # try to guess at element from name
       two_letters = self.atomname[0:2].strip().upper()
-      if two_letters=='BR':
-        self.element='BR'
-      elif two_letters=='CL':
-        self.element='CL'
-      elif two_letters=='BI':
-        self.element='BI'
-      elif two_letters=='AS':
-        self.element='AS'
-      elif two_letters=='AG':
-        self.element='AG'
-      elif two_letters=='LI':
-        self.element='LI'
-      elif two_letters=='HG':
-        self.element='HG'
-      elif two_letters=='MG':
-        self.element='MG'
-      elif two_letters=='MN':
-        self.element='MN'
-      elif two_letters=='RH':
-        self.element='RH'
-      elif two_letters=='ZN':
-        self.element='ZN'
-      elif two_letters=='FE':
-        self.element='FE'
+      valid_two_letters = ["BR", "CL", "BI", "AS", "AG", "LI",
+          "HG", "MG", "MN", "RH", "ZN", "FE"]
+      if two_letters in valid_two_letters:
+        self.element = two_letters
       else: #So, just assume it's the first letter.
         # Any number needs to be removed from the element name
         self.element = self.atomname
@@ -308,8 +326,10 @@ class PDB:
   """
   PDB file handler class.
 
-  TODO(bramsundar): Add a a short summary of actual PDB handling
-  methodology here.
+  Provides functionality for loading PDB files. Performs a number of
+  clean-up and annotation steps (filling in missing bonds, identifying
+  aromatic rings, charged groups, and protein secondary structure
+  assignation).
   """
 
   def __init__(self):
@@ -330,11 +350,11 @@ class PDB:
     self.aromatic_rings = []
     self.charges = [] # a list of objects of type charge (defined below)
 
-  def load_PDB_from_file(self, filename, line_header=""):
+  def load_PDB_from_file(self, filename, line_header="", impute_bonds=False):
     """
     Given a PDB file as a list of lines, loads fields into self.
 
-    This function ueses keys of the following type to unique identify
+    This function ueses keys of the following type to uniquely identify
     atoms: ATOMNAME_RESNUMBER_RESNAME_CHAIN.
 
     Parameters
@@ -343,6 +363,8 @@ class PDB:
       List of PDB file lines.
     line_header: string
       The string header for PDB lines.  
+    impute_bonds: bool
+      Attempt to guess missing bonds between atoms.
     """
     # Reset internal state
     self.__init__()
@@ -350,10 +372,10 @@ class PDB:
     with open(filename,"r") as f:
       lines = f.readlines()
     self.load_atoms_from_PDB_list(lines)
+    self.load_bonds_from_PDB_list(lines)
     self.check_protein_format()
-    # only for the ligand, because bonds can be inferred based on
-    # atomnames from PDB
-    self.create_non_protein_atom_bonds_by_distance()
+    if impute_bonds:
+      self.create_non_protein_atom_bonds_by_distance()
     self.assign_aromatic_rings()
     self.assign_non_protein_charges()
     self.assign_protein_charges()
@@ -755,9 +777,11 @@ class PDB:
             atom2 = self.non_protein_atoms[AtomIndex2]
             if not atom2.residue[-3:] in self.protein_resnames: # so it's not a protein residue
               dist = self.functions.distance(atom1.coordinates, atom2.coordinates)
-              print "Distance between %d and %d is %f" % (AtomIndex1, AtomIndex2, dist)
               if (dist < self.bond_length(atom1.element, atom2.element) * 1.2):
-                atom1.add_neighbor_atom_indices([AtomIndex1, AtomIndex2])
+                print "Adding bond between %d and %d" % (AtomIndex1, AtomIndex2)
+                print "Distance between %d and %d is %f" % (AtomIndex1, AtomIndex2, dist)
+                atom1.add_neighbor_atom_indices([AtomIndex2])
+                atom2.add_neighbor_atom_indices([AtomIndex1])
 
   def bond_length(self, element1, element2):
     """
@@ -843,32 +867,37 @@ class PDB:
   # Functions to identify positive charges
   # ======================================
 
-  def assign_non_protein_charges(self):
+  def identify_metallic_charges(self):
+    """Assign charges to metallic ions.
+    
+    Returns
+    -------
+    charges: list
+      Contains a Charge object for every metallic cation.
     """
-    Assign positive and negative charges to non-protein atoms.
-
-    This function handles the following cases:
-
-      1) Metallic ions (assumed to be cations)
-      2) Quartenary amines (such as NH4+)
-      2) sp3 hybridized nitrogen (such as pyrrolidine)
-      3) Carboxylates (RCOO-)
-      4) Guanidino Groups (NHC(=NH)NH2)
-      5) Phosphates (PO4(3-))
-      6) Sulfonate (RSO2O-)
-      7) Charged Residues (in helper function)
-    """
-    AllCharged = []
+    # Metallic atoms are assumed to be cations.
+    charges = []
     for atom_index in self.non_protein_atoms:
       atom = self.non_protein_atoms[atom_index]
-      # Metallic atoms are assumed to be cations.
       if (atom.element == "MG" or atom.element == "MN" or
           atom.element == "RH" or atom.element == "ZN" or
           atom.element == "FE" or atom.element == "BI" or
           atom.element == "AS" or atom.element == "AG"):
         chrg = Charged(atom.coordinates, [atom_index], True)
-        self.charges.append(chrg)
+        charges.append(chrg)
+    return charges
 
+  def identify_nitrogen_charges(self):
+    """Assign charges to nitrogen atoms where necessary.
+    
+    Returns
+    -------
+    charges: list
+      Contains a Charge object for every charged nitrogen.
+    """
+    charges = []
+    for atom_index in self.non_protein_atoms:
+      atom = self.non_protein_atoms[atom_index]
       # Get all the quartenary amines on non-protein residues (these are the
       # only non-protein groups that will be identified as positively
       # charged). Note that nitrogen has only 5 valence electrons (out of 8
@@ -879,9 +908,10 @@ class PDB:
         if atom.number_of_neighbors() == 4:
           indexes = [atom_index]
           indexes.extend(atom.indices_of_atoms_connecting)
-          # so the indices stored is just the index of the nitrogen and any attached atoms
+          # so the indices stored is just the index of the nitrogen and any
+          # attached atoms
           chrg = Charged(atom.coordinates, indexes, True)
-          self.charges.append(chrg)
+          charges.append(chrg)
         # maybe you only have two hydrogens added, but they're sp3 hybridized.
         # Just count this as a quartenary amine, since I think the positive
         # charge would be stabilized. This situation can arise with
@@ -893,14 +923,11 @@ class PDB:
           atom2 = self.all_atoms[atom.indices_of_atoms_connecting[1]]
           atom3 = self.all_atoms[atom.indices_of_atoms_connecting[2]]
           angle1 = (self.functions.angle_between_three_points(atom1.coordinates,
-            nitrogen.coordinates, atom2.coordinates) * 180.0 /
-            math.pi)
+            nitrogen.coordinates, atom2.coordinates) * 180.0 / math.pi)
           angle2 = (self.functions.angle_between_three_points(atom1.coordinates,
-            nitrogen.coordinates, atom3.coordinates) * 180.0 /
-            math.pi)
+            nitrogen.coordinates, atom3.coordinates) * 180.0 / math.pi)
           angle3 = (self.functions.angle_between_three_points(atom2.coordinates,
-            nitrogen.coordinates, atom3.coordinates) * 180.0 /
-            math.pi)
+            nitrogen.coordinates, atom3.coordinates) * 180.0 / math.pi)
           average_angle = (angle1 + angle2 + angle3) / 3
           # Test that the angles approximately match the tetrahedral 109
           # degrees
@@ -909,8 +936,22 @@ class PDB:
             indexes.extend(atom.indices_of_atoms_connecting)
             # so indexes added are the nitrogen and any attached atoms.
             chrg = Charged(nitrogen.coordinates, indexes, True)
-            self.charges.append(chrg)
+            charges.append(chrg)
+    return charges
 
+  def identify_carbon_charges(self):
+    """Assign charges to carbon atoms where necessary.
+
+    Checks for guanidino-like groups and carboxylates.
+
+    Returns
+    -------
+    charges: list
+      Contains a Charge object for every charged carbon.
+    """
+    charges = []
+    for atom_index in self.non_protein_atoms:
+      atom = self.non_protein_atoms[atom_index]
       # let's check for guanidino-like groups (actually H2N-C-NH2,
       # where not CN3.)
       if atom.element == "C":
@@ -921,6 +962,7 @@ class PDB:
           # so we need to count the number of nitrogens that are only
           # connected to one heavy atom (the carbon)
           if len(nitrogens) >= 2:
+            print "Found carbon with two nitrogens attached!"
 
             nitrogens_to_use = []
             all_connected = atom.indices_of_atoms_connecting[:]
@@ -965,8 +1007,7 @@ class PDB:
                 indexes.extend(self.connected_atoms_of_given_element(nitrogens_to_use[0],"H"))
                 indexes.extend(self.connected_atoms_of_given_element(nitrogens_to_use[1],"H"))
 
-                chrg = Charged(pt, indexes, True) # True because it's positive
-                self.charges.append(chrg)
+                charges.append(Charged(pt, indexes, True)) # True because it's positive
 
       if atom.element == "C": # let's check for a carboxylate
           # a carboxylate carbon will have three items connected to it.
@@ -989,7 +1030,32 @@ class PDB:
                 pt.z = pt.z / 2.0
                 chrg = Charged(pt, [oxygens[0],
                     atom_index, oxygens[1]], False)
-                self.charges.append(chrg)
+                charges.append(chrg)
+    return charges
+
+      
+
+  def assign_non_protein_charges(self):
+    """
+    Assign positive and negative charges to non-protein atoms.
+
+    This function handles the following cases:
+
+      1) Metallic ions (assumed to be cations)
+      2) Quartenary amines (such as NH4+)
+      2) sp3 hybridized nitrogen (such as pyrrolidine)
+      3) Carboxylates (RCOO-)
+      4) Guanidino Groups (NHC(=NH)NH2)
+      5) Phosphates (PO4(3-))
+      6) Sulfonate (RSO2O-)
+      7) Charged Residues (in helper function)
+    """
+    self.charges += self.identify_metallic_charges()
+    self.charges += self.identify_nitrogen_charges()
+    self.charges += self.identify_carbon_charges()
+    for atom_index in self.non_protein_atoms:
+      atom = self.non_protein_atoms[atom_index]
+
 
       # let's check for a phosphate or anything where a phosphorus is bound
       # to two oxygens where both oxygens are bound to only one heavy atom
