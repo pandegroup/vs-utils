@@ -131,9 +131,6 @@ class TestPDB(unittest.TestCase):
     _, self.pdb_filename = tempfile.mkstemp(suffix=".pdb",
         dir=self.temp_dir)
 
-    self.prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    self.prgr_pdb.load_PDB_from_file(prgr_pdb_path)
 
   def tearDown(self):
     """
@@ -162,6 +159,17 @@ class TestPDB(unittest.TestCase):
     self.pdb.add_new_atom(empty_atom)
     # Verify that we now have one atom
     assert len(self.pdb.all_atoms.keys()) == 1
+
+  def testAssignProteinCharges(self):
+    """
+    TestPDB: Assigns charges to residues.
+    """
+    # TODO(rbharath): This test is just a stub. Break out unit tests for
+    # each of the specific residues to actually get meaningful coverage
+    # here.
+    prgr_pdb = PDB()
+    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
+    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
 
   def testConnectedAtomsOfGivenElement(self):
     """
@@ -251,18 +259,38 @@ class TestPDB(unittest.TestCase):
 
   def testAssignNonProteinCharges(self):
     """
+    TestPDB: Verify that charges are properly added to ligands.
+    """
+    # Test ammonium sulfate: (NH4)+(NH4)+(SO4)(2-)
+    # There should be 3 charged groups, two positive, one negative
+    ammonium_sulfate_pdb = PDB()
+    ammonium_sulfate_pdb_path = os.path.join(data_dir(),
+        "ammonium_sulfate.pdb")
+    # Notice that load automatically identifies non-protein charges.
+    ammonium_sulfate_pdb.load_PDB_from_file(
+        ammonium_sulfate_pdb_path)
+    assert len(ammonium_sulfate_pdb.charges) == 3
+    num_pos, num_neg = 0, 0
+    for charge in ammonium_sulfate_pdb.charges:
+      if charge.positive:
+        num_pos += 1
+      else:
+        num_neg += 1
+    assert num_pos == 2
+    assert num_neg == 1
+
+  def testIdentifyMetallicCharges(self):
+    """
     TestPDB: Verify that non-protein charges are assigned properly.
     """
     # Test metallic ion charge.
     magnesium_pdb = PDB()
-    assert len(magnesium_pdb.charges) == 0
     magnesium_atom = Atom(element="MG", coordinates=Point(0,0,0))
     magnesium_pdb.add_new_non_protein_atom(magnesium_atom)
-    magnesium_pdb.assign_non_protein_charges()
-    assert len(magnesium_pdb.charges) == 1
+    metallic_charges = magnesium_pdb.identify_metallic_charges()
+    assert len(metallic_charges) == 1
 
-
-  def testIdentifyNitrogenCharges(self):
+  def testIdentifyNitrogenGroupCharges(self):
     """
     TestPDB: Verify that nitrogen groups are charged correctly.
     """
@@ -290,7 +318,7 @@ class TestPDB(unittest.TestCase):
     assert len(nitrogen_charges) == 1
     assert nitrogen_charges[0].positive  # Should be positive
 
-  def testIdentifyCarbonCharges(self):
+  def testIdentifyCarbonGroupCharges(self):
     """
     TestPDB: Verify that carbon groups are charged correctly.
     """
@@ -325,6 +353,35 @@ class TestPDB(unittest.TestCase):
     assert len(carbon_charges) == 1
     assert not carbon_charges[0].positive  # Should be negatively charged.
 
+  def testIdentifyPhosphorusGroupCharges(self):
+    """
+    TestPDB: Verify that Phosphorus groups are charged correctly.
+    """
+    # CID82671 contains a phosphate between two aromatic groups.
+    phosphate_pdb = PDB()
+    phosphate_pdb_path = os.path.join(data_dir(),
+      "82671.pdb")
+    phosphate_pdb.load_PDB_from_file(
+        phosphate_pdb_path)
+    phosphorus_charges = phosphate_pdb.identify_phosphorus_group_charges()
+    assert len(phosphorus_charges) == 1
+    assert not phosphorus_charges[0].positive  # Should be negatively charged.
+
+
+  def testIdentifySulfurGroupCharges(self):
+    """
+    TestPDB: Verify that sulfur groups are charged correctly.
+    """
+    trifluoromethanesulfonic_acid_pdb = PDB()
+    trifluoromethanesulfonic_acid_pdb_path = os.path.join(data_dir(),
+      "trifluoromethanesulfonic_acid.pdb")
+    trifluoromethanesulfonic_acid_pdb.load_PDB_from_file(
+      trifluoromethanesulfonic_acid_pdb_path)
+    sulfur_charges = (
+        trifluoromethanesulfonic_acid_pdb.identify_sulfur_group_charges())
+    assert len(sulfur_charges) == 1
+    assert not sulfur_charges[0].positive  # Should be negatively charged.
+
 
   def testLigandAssignAromaticRings(self):
     """
@@ -339,3 +396,16 @@ class TestPDB(unittest.TestCase):
     # The first 6 atoms in the benzene pdb form the aromatic ring.
     assert (set(benzene_pdb.aromatic_rings[0].indices)
          == set([1,2,3,4,5,6]))
+
+  def testAssignSecondaryStructure(self):
+    """
+    TestPDB: Verify that secondary structure is assigned meaningfully.
+    """
+    # TODO(rbharath): This test is just a stub. Add a more realistic test
+    # that checks that nontrivial secondary structure is computed correctly
+    # here.
+    prgr_pdb = PDB()
+    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
+    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
+    prgr_pdb.assign_secondary_structure()
+    

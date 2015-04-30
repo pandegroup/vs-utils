@@ -220,6 +220,9 @@ class Atom:
 
   def read_atom_PDB_line(self, Line):
     """
+    TODO(rbharath): This method probably belongs in the PDB class, and not
+    in the Atom class.
+
     Reads an ATOM or HETATM line from PDB and instantiates fields.
 
     Atoms in PDBs are represented by ATOM or HETATM statements. ATOM and
@@ -354,9 +357,6 @@ class PDB:
     """
     Given a PDB file as a list of lines, loads fields into self.
 
-    This function ueses keys of the following type to uniquely identify
-    atoms: ATOMNAME_RESNUMBER_RESNAME_CHAIN.
-
     Parameters
     ----------
     lines: list
@@ -364,7 +364,7 @@ class PDB:
     line_header: string
       The string header for PDB lines.
     impute_bonds: bool
-      Attempt to guess missing bonds between atoms.
+      Attempt to guess missing bonds between ligand atoms.
     """
     # Reset internal state
     self.__init__()
@@ -376,8 +376,9 @@ class PDB:
     self.check_protein_format()
     if impute_bonds:
       self.create_non_protein_atom_bonds_by_distance()
-    self.assign_aromatic_rings()
-    self.assign_non_protein_charges()
+    self.assign_ligand_aromatic_rings()
+    self.assign_protein_aromatic_rings()
+    self.assign_ligand_charges()
     self.assign_protein_charges()
 
 
@@ -893,7 +894,7 @@ class PDB:
     Returns
     -------
     charges: list
-      Contains a Charge object for every charged nitrogen.
+      Contains a Charge object for every charged nitrogen group.
     """
     charges = []
     for atom_index in self.non_protein_atoms:
@@ -941,6 +942,8 @@ class PDB:
 
   def identify_phosphorus_group_charges(self):
     """Assign charges to phosphorus groups where necessary.
+
+    Searches for phosphate-like groups and assigns charges.
     
     Returns
     -------
@@ -979,7 +982,7 @@ class PDB:
     Returns
     -------
     charges: list
-      Contains a Charge object for every charged carbon.
+      Contains a Charge object for every charged carbon group.
     """
     charges = []
     for atom_index in self.non_protein_atoms:
@@ -1068,26 +1071,17 @@ class PDB:
                 charges.append(chrg)
     return charges
 
+  def identify_sulfur_group_charges(self):
+    """Assigns charges to sulfur groups.
 
-  def assign_non_protein_charges(self):
+    Searches for Sulfonates.
+
+    Returns
+    -------
+    charges: list
+      Contains a Charge object for every charged sulfur group.
     """
-    Assign positive and negative charges to non-protein atoms.
-
-    This function handles the following cases:
-
-      1) Metallic ions (assumed to be cations)
-      2) Quartenary amines (such as NH4+)
-      2) sp3 hybridized nitrogen (such as pyrrolidine)
-      3) Carboxylates (RCOO-)
-      4) Guanidino Groups (NHC(=NH)NH2)
-      5) Phosphates (PO4(3-))
-      6) Sulfonate (RSO2O-)
-      7) Charged Residues (in helper function)
-    """
-    self.charges += self.identify_metallic_charges()
-    self.charges += self.identify_nitrogen_group_charges()
-    self.charges += self.identify_carbon_group_charges()
-    self.charges += self.identify_phosphorus_group_charges()
+    charges = []
     for atom_index in self.non_protein_atoms:
       atom = self.non_protein_atoms[atom_index]
       # let's check for a sulfonate or anything where a sulfur is
@@ -1108,11 +1102,36 @@ class PDB:
             indexes = [atom_index]
             indexes.extend(oxygens)
             chrg = Charged(atom.coordinates, indexes, False)
-            self.charges.append(chrg)
+            charges.append(chrg)
+    return charges
+
+
+  def assign_ligand_charges(self):
+    """
+    Assign positive and negative charges to non-protein atoms.
+
+    This function handles the following cases:
+
+      1) Metallic ions (assumed to be cations)
+      2) Quartenary amines (such as NH4+)
+      2) sp3 hybridized nitrogen (such as pyrrolidine)
+      3) Carboxylates (RCOO-)
+      4) Guanidino Groups (NHC(=NH)NH2)
+      5) Phosphates (PO4(3-))
+      6) Sulfonate (RSO2O-)
+    """
+    self.charges += self.identify_metallic_charges()
+    self.charges += self.identify_nitrogen_group_charges()
+    self.charges += self.identify_carbon_group_charges()
+    self.charges += self.identify_phosphorus_group_charges()
+    self.charges += self.identify_sulfur_group_charges()
 
 
   def assign_protein_charges(self):
     """Assigns charges to atoms in charged residues.
+
+    This function ueses keys of the following type to uniquely identify
+    protein residues: RESNAME_RESNUMBER_CHAIN.
     """
     curr_res = ""
     first = True
@@ -1120,14 +1139,16 @@ class PDB:
 
     for atom_index in self.all_atoms:
       atom = self.all_atoms[atom_index]
+      # Assign each atom a residue key.
       key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
 
+      # If first residue, save state
       if first == True:
         curr_res = key
         first = False
 
+      # If key doesn't match curr_res, assign charges and update curr_res.
       if key != curr_res:
-
         self.assign_charges_from_protein_process_residue(residue, last_key)
         residue = []
         curr_res = key
@@ -1136,20 +1157,22 @@ class PDB:
       last_key = key
 
 
-  def assign_charges_from_protein_process_residue(self, residue, last_key):
+  def assign_charges_from_protein_process_residue(self, residue, res_ident):
     """Assign charges to protein residues.
 
     Parameters
     ----------
     residue: list
       List of atom indices for this residue.
-    last_key: string
-      last_key is of format RESNAME_RESNUMBER_CHAIN
+    res_ident: string
+      res_ident is of format RESNAME_RESNUMBER_CHAIN
     """
-    resname, resid, chain = last_key.strip().split("_")
+    resname, resid, chain = res_ident.strip().split("_")
     real_resname = resname[-3:]
 
     # regardless of protonation state, assume it's charged.
+    # see
+    # http://www.cgl.ucsf.edu/chimera/docs/ContributedSoftware/addh/addh.html
     if real_resname == "LYS" or real_resname == "LYN":
       for index in residue:
         atom = self.all_atoms[index]
@@ -1160,6 +1183,7 @@ class PDB:
           indexes = [index]
           for index2 in residue:
             atom2 = self.all_atoms[index2]
+            # TODO(rbharath): Probably want HNZ1 as well
             if atom2.atomname.strip() == "HZ1": indexes.append(index2)
             if atom2.atomname.strip() == "HZ2": indexes.append(index2)
             if atom2.atomname.strip() == "HZ3": indexes.append(index2)
@@ -1242,6 +1266,10 @@ class PDB:
           chrg = Charged(charge_pt, indices, True)
           self.charges.append(chrg)
 
+    # see
+    # http://aria.pasteur.fr/documentation/use-aria/version-2.2/non-standard-atom-or-residue-definitions
+    # or 
+    # http://www.ncbi.nlm.nih.gov/Class/MLACourse/Modules/MolBioReview/iupac_aa_abbreviations.html
     if real_resname == "GLU" or real_resname == "GLH" or real_resname == "GLX":
       # regardless of protonation state, assume it's charged. This based on
       # "The Cation-Pi Interaction," which suggests protonated state would
@@ -1382,12 +1410,6 @@ class PDB:
     ar_ring = AromaticRing(center, indices_of_ring, [a,b,c,d], radius)
     self.aromatic_rings.append(ar_ring)
 
-  def assign_aromatic_rings(self):
-    """Identifies all aromatic rings.
-    """
-    self.assign_ligand_aromatic_rings()
-    self.assign_protein_aromatic_rings()
-
   def assign_ligand_aromatic_rings(self):
     """Identifies aromatic rings in ligand atoms.
 
@@ -1517,6 +1539,10 @@ class PDB:
         all_rings.append(temp)
 
 
+  # TODO(rbharath): Refactor a function extract_residue_list that extracts
+  # a list of residues present in a protein. Would be a much cleaner, and
+  # would avoid the duplicate code present in here and
+  # assign_protein_charges.
   def assign_protein_aromatic_rings(self):
     """Identifies aromatic rings in protein residues.
     """
