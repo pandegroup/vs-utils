@@ -171,6 +171,55 @@ class TestPDB(unittest.TestCase):
     prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
     prgr_pdb.load_PDB_from_file(prgr_pdb_path)
 
+  def testGetResidues(self):
+    """
+    TestPDB: Tests that all residues in PDB are identified.
+    """
+    prgr_pdb = PDB()
+    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
+    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
+    residues = prgr_pdb.get_residues()
+    # prgr.pdb has 280 unique residues
+    assert len(residues) == 280
+    prgr_residues = ["LEU", "ILE", "ASN", "LEU", "LEU", "MET", "SER",
+        "ILE", "GLU", "PRO", "ASP", "VAL", "ILE", "TYR", "ALA", "GLY", "HIS",
+        "ASP", "THR", "SER", "SER", "SER", "LEU", "LEU", "THR", "SER", "LEU",
+        "ASN", "GLN", "LEU", "GLY", "GLU", "ARG", "GLN", "LEU", "LEU", "SER",
+        "VAL", "VAL", "LYS", "TRP", "SER", "LYS", "SER", "LEU", "PRO", "GLY",
+        "PHE", "ARG", "LEU", "HIS", "ILE", "ASP", "ASP", "GLN", "ILE", "THR",
+        "LEU", "ILE", "GLN", "TYR", "SER", "TRP", "MET", "SER", "LEU", "MET",
+        "VAL", "PHE", "GLY", "LEU", "GLY", "TRP", "ARG", "SER", "TYR", "LYS",
+        "HIS", "VAL", "SER", "GLY", "GLN", "MET", "LEU", "TYR", "PHE", "ALA",
+        "PRO", "ASP", "LEU", "ILE", "LEU", "ASN", "GLU", "GLN", "ARG", "MET",
+        "LYS", "GLU", "PHE", "TYR", "SER", "LEU", "CYS", "LEU", "THR", "MET",
+        "TRP", "GLN", "ILE", "PRO", "GLN", "GLU", "PHE", "VAL", "LYS", "LEU",
+        "GLN", "VAL", "SER", "GLN", "GLU", "GLU", "PHE", "LEU", "CYS", "MET",
+        "LYS", "VAL", "LEU", "LEU", "LEU", "LEU", "ASN", "THR", "ILE", "PRO",
+        "LEU", "GLU", "GLY", "LEU", "PHE", "MET", "ARG", "TYR", "ILE", "GLU",
+        "LEU", "ALA", "ILE", "ARG", "ARG", "PHE", "TYR", "GLN", "LEU", "THR",
+        "LYS", "LEU", "LEU", "ASP", "ASN", "LEU", "HIS", "ASP", "LEU", "VAL",
+        "LYS", "GLN", "LEU", "HIS", "LEU", "TYR", "CYS", "LEU", "ASN", "THR",
+        "PHE", "ILE", "GLN", "SER", "ARG", "ALA", "LEU", "SER", "VAL", "GLU",
+        "PHE", "PRO", "GLU", "MET", "MET", "SER", "GLU", "VAL", "ILE", "ALA",
+        "ALA", "GLN", "LEU", "PRO", "LYS", "ILE", "LEU", "ALA", "GLY", "MET",
+        "VAL", "LYS", "PRO", "LEU", "LEU", "PHE", "HIS", "LYS", "ASN", "LEU",
+        "ASP", "ASP", "ILE", "THR", "LEU", "ILE", "GLN", "TYR", "SER", "TRP",
+        "MET", "THR", "ILE", "PRO", "LEU", "GLU", "GLY", "LEU", "ARG", "VAL",
+        "LYS", "GLN", "LEU", "HIS", "LEU", "TYR", "CYS", "LEU", "ASN", "THR",
+        "PHE", "ILE", "GLN", "SER", "ARG", "ALA", "LEU", "SER", "VAL", "GLU",
+        "PHE", "PRO", "GLU", "MET", "MET", "SER", "GLU", "VAL", "ILE", "ALA",
+        "ALA", "GLN", "LEU", "PRO", "LYS", "ILE", "LEU", "ALA", "GLY", "MET",
+        "VAL", "LYS", "PRO"]
+    # Recall the keys have format RESNAME_RESNUMBER_CHAIN
+    resnames = [reskey.split("_")[0].strip() for (reskey, _) in residues]
+    assert resnames == prgr_residues
+    # prgr.pdb has 2749 unique atoms.
+    atom_count = 0
+    for (_, atom_indices) in residues:
+      atom_count += len(atom_indices)
+    assert atom_count == 2749
+
+
   def testConnectedAtomsOfGivenElement(self):
     """
     TestPDB: Verifies that connected atom retrieval works.

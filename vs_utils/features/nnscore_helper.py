@@ -376,9 +376,9 @@ class PDB:
     self.check_protein_format()
     if impute_bonds:
       self.create_non_protein_atom_bonds_by_distance()
-    self.assign_ligand_aromatic_rings()
+    self.assign_non_protein_aromatic_rings()
     self.assign_protein_aromatic_rings()
-    self.assign_ligand_charges()
+    self.assign_non_protein_charges()
     self.assign_protein_charges()
 
 
@@ -1106,7 +1106,7 @@ class PDB:
     return charges
 
 
-  def assign_ligand_charges(self):
+  def assign_non_protein_charges(self):
     """
     Assign positive and negative charges to non-protein atoms.
 
@@ -1126,11 +1126,47 @@ class PDB:
     self.charges += self.identify_phosphorus_group_charges()
     self.charges += self.identify_sulfur_group_charges()
 
+  def get_residues(self):
+    """Returns a list of all residues in this protein.
+
+    This function uses keys of the following type to uniquely identify
+    protein residues: RESNAME_RESNUMBER_CHAIN.
+
+    Returns
+    -------
+    residues: list
+      Each list element is a tuple whose first element is a key (of type
+      defined above) and whose second element is a list of the atom-indices
+      that make up this residue.
+    """
+    keys = []
+    cur_key = None
+    cur_res = []
+    residues = []
+    for atom_index in self.all_atoms:
+      atom = self.all_atoms[atom_index]
+      # Assign each atom a residue key.
+      key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
+      if not cur_key:
+        cur_key = key
+
+      if key != cur_key:
+        keys.append(cur_key)
+        residues.append(cur_res)
+        cur_key = key
+        cur_res = []
+
+      cur_res.append(atom_index)
+    # Handle edge case of last residue.
+    keys.append(cur_key)
+    residues.append(cur_res)
+    return zip(keys, residues)
+      
 
   def assign_protein_charges(self):
     """Assigns charges to atoms in charged residues.
 
-    This function ueses keys of the following type to uniquely identify
+    This function uses keys of the following type to uniquely identify
     protein residues: RESNAME_RESNUMBER_CHAIN.
     """
     curr_res = ""
@@ -1410,7 +1446,7 @@ class PDB:
     ar_ring = AromaticRing(center, indices_of_ring, [a,b,c,d], radius)
     self.aromatic_rings.append(ar_ring)
 
-  def assign_ligand_aromatic_rings(self):
+  def assign_non_protein_aromatic_rings(self):
     """Identifies aromatic rings in ligand atoms.
 
     TODO(rbharath): This function is still monolithic. Better refactoring?
