@@ -49,22 +49,27 @@ class AromaticRing():
     self.radius = radius
 
 
-def average_point(p1, p2):
+def average_point(points):
   """Returns the point with averaged coordinates of arguments.
 
   Parameters
   ----------
-  p1: Point object
-  p2: Point object
+  points: list
+    List of point objects. 
   Returns
   -------
   pavg: Point object
     Has coordinates the arithmetic average of those of p1 and p2.
   """
-  x = (p1.x + p2.x)/2.0
-  y = (p1.y + p2.y)/2.0
-  z = (p1.z + p2.z)/2.0
-  return Point(x, y, z)
+  coords = np.array([0, 0, 0])
+  for point in points:
+    coords[0] += point.x
+    coords[1] += point.y
+    coords[2] += point.z
+  if len(points) > 0:
+    return Point(coords=coords/len(points))
+  else:
+    return Point(coords=coords)
 
 
 class Point:
@@ -75,14 +80,35 @@ class Point:
   y=99999.0
   z=99999.0
 
-  def __init__ (self, x, y ,z):
-    self.x = x
-    self.y = y
-    self.z = z
+  def __init__(self, x=None, y=None, z=None, coords=None):
+    """
+    Inputs can be specified either by explicitly providing x, y, z coords
+    or by providing a numpy array of length 3.
+
+    Parameters
+    ----------
+    x: float
+      X-coord.
+    y: float
+      Y-coord.
+    z: float
+      Z-coord.
+    coords: np.ndarray
+      Should be of length 3 in format np.array([x, y, z])
+    Raises
+    ------
+    ValueError: If no arguments are provided.
+    """
+    if x and y and z:
+      self.x, self.y, self.z = x, y, z 
+    elif coords is not None:  # Implicit eval doesn't work on numpy arrays.
+      self.x, self.y, self.z = coords[0], coords[1], coords[2]
+    else:
+      raise ValueError("Must specify coordinates for Point!")
 
   # TODO(bramsundar): Should this be __copy__?
   def copy_of(self):
-    return Point(self.x, self.y, self.z)
+    return Point(coords=np.array([self.x, self.y, self.z]))
 
   def dist_to(self, apoint):
     return (math.sqrt(math.pow(self.x - apoint.x,2)
@@ -90,7 +116,7 @@ class Point:
                     + math.pow(self.z - apoint.z,2)))
 
   def magnitude(self):
-    return self.dist_to(Point(0,0,0))
+    return self.dist_to(Point(coords=np.array([0, 0, 0])))
 
 class Atom:
   """
@@ -260,7 +286,8 @@ class Atom:
       # the PDB would have this line commented out
       self.atomname = self.atomname + " "
 
-    self.coordinates = Point(float(Line[30:38]), float(Line[38:46]), float(Line[46:54]))
+    self.coordinates = Point(coords=np.array([float(Line[30:38]),
+        float(Line[38:46]), float(Line[46:54])]))
 
     # now atom type (for pdbqt)
     self.atomtype = Line[77:79].strip().upper()
@@ -1036,8 +1063,8 @@ class PDB:
                 # There are only two "guanidino" nitrogens. Assume the
                 # negative charge is spread equally between the two.
                 avg_pt = average_point(
-                    self.all_atoms[nitrogens_to_use[0]].coordinates,
-                    self.all_atoms[nitrogens_to_use[1]].coordinates)
+                    [self.all_atoms[nitrogen].coordinates for nitrogen in
+                     nitrogens_to_use])
 
                 indexes = [atom_index]
                 indexes.extend(nitrogens_to_use)
@@ -1062,8 +1089,8 @@ class PDB:
                 # Assume negative charge is centered between the two
                 # oxygens.
                 avg_pt = average_point(
-                    self.all_atoms[oxygens[0]].coordinates,
-                    self.all_atoms[oxygens[1]].coordinates)
+                    [self.all_atoms[oxygen].coordinates for oxygen in
+                    oxygens])
                 chrg = Charged(avg_pt,
                     [oxygens[0], atom_index, oxygens[1]], False)
                 charges.append(chrg)
@@ -1175,7 +1202,7 @@ class PDB:
     self.charges += self.get_aspartic_acid_charges(res_list)
 
   def get_residue_charges(self, res_list, resnames, atomnames,
-      charged_atomnames):
+      charged_atomnames, positive=True):
     """Assign charges to specified residue.
 
     Regardless of protonation state, we assume below that residues are
@@ -1194,30 +1221,35 @@ class PDB:
       List of names of atoms in charged group.
     charged_atomnames: list
       List of atoms which will be averaged to yield charge location.
+    positive: bool
+      Whether charge is positive or not.
     Returns
     -------
     aromatics: list
       List of Aromatic objects.
     """
     charges = []
+    num_matches = 0
     for key, res in res_list:
       resname, resid, chain = key.strip().split("_")
       real_resname = resname[-3:]
       if real_resname in resnames:
+        num_matches += 1
         indices = []
-        charged_atoms = None  # The terminal nitrogen holds charge.
+        charged_atoms = [] # The terminal nitrogen holds charge.
         for index in res:
           atom = self.all_atoms[index]
           atomname = atom.atomname.strip()
           if atomname in atomnames:
             indices.append(index)
-          if atom in charged_atomnames:
+          if atomname in charged_atomnames:
             charged_atoms.append(atom)
         if len(charged_atoms) == len(charged_atomnames):
-          avg_pt = average_point(*[n.coordinates for n in
+          avg_pt = average_point([n.coordinates for n in
               charged_atoms])
           if avg_pt.magnitude() != 0:
-            charges.append(Charged(avg_pt, indices, True))
+            charges.append(Charged(avg_pt, indices, positive))
+    print "NUM_MATCHES = %d" % num_matches
     return charges
 
   def get_lysine_charges(self, res_list):
@@ -1269,39 +1301,42 @@ class PDB:
     res_list: list
       List of tuples output by get_residue_list
     """
-    charges = []
-    for key, res in res_list:
-      resname, _, _ = key.strip().split("_")
-      real_resname = resname[-3:]
-      if real_resname == "ARG":
-        indices = []
-        charged_nitrogens = []
-        for index in res:
-          atom = self.all_atoms[index]
-          atomname = atom.atomname.strip()
-          if atomname == "NH1":
-            charged_nitrogens.append(atom)
-            indices.append(index)
-          if atomname == "NH2":
-            charged_nitrogens.append(atom)
-            indices.append(index)
-          if atomname == "2HH2" or atomname == "HN22":
-            indices.append(index)
-          if atomname == "1HH2" or atomname == "HN12":
-            indices.append(index)
-          if atomname == "CZ":
-            indices.append(index)
-          if atomname == "2HH1" or atomname == "HN21":
-            indices.append(index)
-          if atomname == "1HH1" or atomname == "HN11":
-            indices.append(index)
+    return self.get_residue_charges(res_list, ["ARG"],
+        ["NH1", "NH2", "2HH2", "HN22", "1HH2", "HN12", "2HH1", "HN21",
+        "1HH1", "HN11"], ["NH1", "NH2"])
+    #charges = []
+    #for key, res in res_list:
+    #  resname, _, _ = key.strip().split("_")
+    #  real_resname = resname[-3:]
+    #  if real_resname == "ARG":
+    #    indices = []
+    #    charged_nitrogens = []
+    #    for index in res:
+    #      atom = self.all_atoms[index]
+    #      atomname = atom.atomname.strip()
+    #      if atomname == "NH1":
+    #        charged_nitrogens.append(atom)
+    #        indices.append(index)
+    #      if atomname == "NH2":
+    #        charged_nitrogens.append(atom)
+    #        indices.append(index)
+    #      if atomname == "2HH2" or atomname == "HN22":
+    #        indices.append(index)
+    #      if atomname == "1HH2" or atomname == "HN12":
+    #        indices.append(index)
+    #      if atomname == "CZ":
+    #        indices.append(index)
+    #      if atomname == "2HH1" or atomname == "HN21":
+    #        indices.append(index)
+    #      if atomname == "1HH1" or atomname == "HN11":
+    #        indices.append(index)
 
-        if len(charged_nitrogens) == 2:
-          avg_pt = average_point(*[n.coordinates for n in
-              charged_nitrogens])
-          if avg_pt.magnitude() != 0:
-            charges.append(Charged(avg_pt, indices, True))
-    return charges
+    #    if len(charged_nitrogens) == 2:
+    #      avg_pt = average_point([n.coordinates for n in
+    #          charged_nitrogens])
+    #      if avg_pt.magnitude() != 0:
+    #        charges.append(Charged(avg_pt, indices, True))
+    #return charges
 
   def get_histidine_charges(self, res_list):
     """Assign charges to histidine residues.
@@ -1321,34 +1356,37 @@ class PDB:
     res_list: list
       List of tuples output by get_residue_list
     """
-    charges = []
-    for key, res in res_list:
-      resname, _, _ = key.strip().split("_")
-      real_resname = resname[-3:]
-      if (real_resname == "HIS" or real_resname == "HID" or
-        real_resname == "HIE" or real_resname == "HIP"):
-        indices = []
-        charged_nitrogens = []
-        for index in res:
-          atom = self.all_atoms[index]
-          atomname = atom.atomname.strip()
-          if atomname == "NE2":
-            charged_nitrogens.append(atom)
-            indices.append(index)
-          if atomname == "ND1":
-            charged_nitrogens.append(atom)
-            indices.append(index)
-          if (atomname == "HE2" or atomname == "HD1"
-           or atomname == "CE1" or atomname == "CD2"
-           or atomname == "CG"):
-            indices.append(index)
+    return self.get_residue_charges(res_list, ["HIS", "HID", "HIE", "HIP"],
+        ["NE2", "ND1", "HE2", "HD1", "CE1", "CD2", "CG"],
+        ["NE2", "ND1"])
+    #charges = []
+    #for key, res in res_list:
+    #  resname, _, _ = key.strip().split("_")
+    #  real_resname = resname[-3:]
+    #  if (real_resname == "HIS" or real_resname == "HID" or
+    #    real_resname == "HIE" or real_resname == "HIP"):
+    #    indices = []
+    #    charged_nitrogens = []
+    #    for index in res:
+    #      atom = self.all_atoms[index]
+    #      atomname = atom.atomname.strip()
+    #      if atomname == "NE2":
+    #        charged_nitrogens.append(atom)
+    #        indices.append(index)
+    #      if atomname == "ND1":
+    #        charged_nitrogens.append(atom)
+    #        indices.append(index)
+    #      if (atomname == "HE2" or atomname == "HD1"
+    #       or atomname == "CE1" or atomname == "CD2"
+    #       or atomname == "CG"):
+    #        indices.append(index)
 
-        if len(charged_nitrogens) == 2:
-          avg_pt = average_point(*[n.coordinates for n in
-              charged_nitrogens])
-          if avg_pt.magnitude() != 0:
-            charges.append(Charged(avg_pt, indices, True))
-    return charges
+    #    if len(charged_nitrogens) == 2:
+    #      avg_pt = average_point([n.coordinates for n in
+    #          charged_nitrogens])
+    #      if avg_pt.magnitude() != 0:
+    #        charges.append(Charged(avg_pt, indices, True))
+    #return charges
 
   def get_glutamic_acid_charges(self, res_list):
     """Assign charges to histidine residues.
@@ -1373,33 +1411,35 @@ class PDB:
     res_list: list
       List of tuples output by get_residue_list
     """
-    charges = []
-    for key, res in res_list:
-      resname, _, _ = key.strip().split("_")
-      real_resname = resname[-3:]
-      if real_resname == "GLU" or real_resname == "GLH" or real_resname == "GLX":
-        # regardless of protonation state, assume it's charged. This based on
-        # "The Cation-Pi Interaction," which suggests protonated state would
-        # be stabilized.
-        indices = []
-        charged_oxygens = []
-        for index in res:
-          atom = self.all_atoms[index]
-          atomname = atom.atomname.strip()
-          if atomname == "OE1":
-            charged_oxygens.append(atom)
-            indices.append(index)
-          if atomname == "OE2":
-            charged_oxygens.append(atom)
-            indices.append(index)
-          if atomname == "CD":
-            indices.append(index)
+    return self.get_residue_charges(res_list, ["GLU", "GLH", "GLX"],
+        ["OE1", "OE2", "CD"], ["OE1", "OE2"], positive=False)
+    #charges = []
+    #for key, res in res_list:
+    #  resname, _, _ = key.strip().split("_")
+    #  real_resname = resname[-3:]
+    #  if real_resname == "GLU" or real_resname == "GLH" or real_resname == "GLX":
+    #    # regardless of protonation state, assume it's charged. This based on
+    #    # "The Cation-Pi Interaction," which suggests protonated state would
+    #    # be stabilized.
+    #    indices = []
+    #    charged_oxygens = []
+    #    for index in res:
+    #      atom = self.all_atoms[index]
+    #      atomname = atom.atomname.strip()
+    #      if atomname == "OE1":
+    #        charged_oxygens.append(atom)
+    #        indices.append(index)
+    #      if atomname == "OE2":
+    #        charged_oxygens.append(atom)
+    #        indices.append(index)
+    #      if atomname == "CD":
+    #        indices.append(index)
 
-        if len(charged_oxygens) == 2:
-          avg_pt = average_point(*[n.coordinates for n in charged_oxygens])
-          if avg_pt.magnitude() != 0:
-            charges.append(Charged(avg_pt, indices, False))
-    return charges
+    #    if len(charged_oxygens) == 2:
+    #      avg_pt = average_point([n.coordinates for n in charged_oxygens])
+    #      if avg_pt.magnitude() != 0:
+    #        charges.append(Charged(avg_pt, indices, False))
+    #return charges
 
 
   def get_aspartic_acid_charges(self, res_list):
@@ -1419,35 +1459,37 @@ class PDB:
     res_list: list
       List of tuples output by get_residue_list
     """
-    charges = []
-    for key, res in res_list:
-      resname, resid, chain = key.strip().split("_")
-      real_resname = resname[-3:]
+    return self.get_residue_charges(res_list, ["ASP", "ASH", "ASX"],
+        ["OD1", "OD2", "CG"], ["OD1", "OD2"], positive=False)
+    #charges = []
+    #for key, res in res_list:
+    #  resname, resid, chain = key.strip().split("_")
+    #  real_resname = resname[-3:]
 
-      # TODO(bramsundar): This comment about Cation-Pi interactions
-      # is repeated in multiple places. Look into this interaction
-      # and verify that it holds true for the residues in question.
-      if (real_resname == "ASP" or real_resname == "ASH" or
-        real_resname == "ASX"):
-        charge_pt = Point(0.0,0.0,0.0)
-        count = 0.0
-        indices = []
-        charged_oxygens = []
-        for index in res:
-          atom = self.all_atoms[index]
-          if atom.atomname.strip() == "OD1":
-            charged_oxygens.append(atom)
-            indices.append(index)
-          if atom.atomname.strip() == "OD2":
-            charged_oxygens.append(atom)
-            indices.append(index)
-          if atom.atomname.strip() == "CG": indices.append(index)
+    #  # TODO(bramsundar): This comment about Cation-Pi interactions
+    #  # is repeated in multiple places. Look into this interaction
+    #  # and verify that it holds true for the residues in question.
+    #  if (real_resname == "ASP" or real_resname == "ASH" or
+    #    real_resname == "ASX"):
+    #    charge_pt = Point(coords=np.array([0.0,0.0,0.0]))
+    #    count = 0.0
+    #    indices = []
+    #    charged_oxygens = []
+    #    for index in res:
+    #      atom = self.all_atoms[index]
+    #      if atom.atomname.strip() == "OD1":
+    #        charged_oxygens.append(atom)
+    #        indices.append(index)
+    #      if atom.atomname.strip() == "OD2":
+    #        charged_oxygens.append(atom)
+    #        indices.append(index)
+    #      if atom.atomname.strip() == "CG": indices.append(index)
 
-        if len(charged_oxygens) == 2:
-          avg_pt = average_point(*[n.coordinates for n in charged_oxygens])
-          if avg_pt.magnitude() != 0:
-            charges.append(Charged(avg_pt, indices, False))
-    return charges
+    #    if len(charged_oxygens) == 2:
+    #      avg_pt = average_point([n.coordinates for n in charged_oxygens])
+    #      if avg_pt.magnitude() != 0:
+    #        charges.append(Charged(avg_pt, indices, False))
+    #return charges
 
 
   # Functions to identify aromatic rings
@@ -1478,7 +1520,8 @@ class PDB:
     if total == 0:
       return # to prevent errors in some cases
 
-    center = Point(x_sum / total, y_sum / total, z_sum / total)
+    center = Point(coords=np.array([x_sum / total, y_sum / total, z_sum /
+        total]))
 
     # now get the radius of the aromatic ring
     radius = 0.0
@@ -2211,10 +2254,11 @@ class PDB:
 class MathFunctions:
 
   def vector_subtraction(self, vector1, vector2): # vector1 - vector2
-    return Point(vector1.x - vector2.x, vector1.y - vector2.y, vector1.z - vector2.z)
+    return Point(coords=np.array([vector1.x - vector2.x, vector1.y -
+        vector2.y, vector1.z - vector2.z]))
 
   def CrossProduct(self, Pt1, Pt2): # never tested
-    Response = Point(0,0,0)
+    Response = Point(coords=np.array([0,0,0]))
 
     Response.x = Pt1.y * Pt2.z - Pt1.z * Pt2.y
     Response.y = Pt1.z * Pt2.x - Pt1.x * Pt2.z
@@ -2223,7 +2267,8 @@ class MathFunctions:
     return Response;
 
   def vector_scalar_multiply(self, vector, scalar):
-    return Point(vector.x * scalar, vector.y * scalar, vector.z * scalar)
+    return Point(coords=np.array([vector.x * scalar, vector.y * scalar,
+    vector.z * scalar]))
 
   def dot_product(self, point1, point2):
     return point1.x * point2.x + point1.y * point2.y + point1.z * point2.z
@@ -2256,8 +2301,9 @@ class MathFunctions:
     return math.acos(dot_prod)
 
   def return_normalized_vector(self, vector):
-    dist = self.distance(Point(0,0,0), vector)
-    return Point(vector.x/dist, vector.y/dist, vector.z/dist)
+    dist = self.distance(Point(coords=np.array([0,0,0])), vector)
+    return Point(coords=np.array([vector.x/dist, vector.y/dist,
+        vector.z/dist]))
 
   def distance(self, point1, point2):
     return point1.dist_to(point2)
@@ -2290,4 +2336,4 @@ class MathFunctions:
     y = u + b*t
     z = v + c*t
 
-    return Point(x,y,z)
+    return Point(coords=np.array([x,y,z]))

@@ -31,8 +31,8 @@ class TestPoint(unittest.TestCase):
     """
     Instantiate local points for tests.
     """
-    self.point_a = Point(1,2,3)
-    self.point_b = Point(-1,-2,-3)
+    self.point_a = Point(coords=np.array([1,2,3]))
+    self.point_b = Point(coords=np.array([-1,-2,-3]))
 
   def testCopyOf(self):
     """
@@ -44,7 +44,7 @@ class TestPoint(unittest.TestCase):
     assert copy_point.z == 3
 
   def testAveragePoint(self):
-    avg_point = average_point(self.point_a, self.point_b)
+    avg_point = average_point([self.point_a, self.point_b])
     assert avg_point.x == 0
     assert avg_point.y == 0
     assert avg_point.z == 0
@@ -81,7 +81,7 @@ class TestAtom(unittest.TestCase):
     self.empty_atom = Atom()
     self.trial_atom = Atom()
     self.trial_atom.atomname = "C"
-    self.trial_atom.coordinates = Point(1,2,3)
+    self.trial_atom.coordinates = Point(coords=np.array([1,2,3]))
     self.trial_atom.charge = 0.
     self.trial_atom.element = "C"
     self.trial_atom.residue = "CYS"
@@ -234,6 +234,7 @@ class TestPDB(unittest.TestCase):
     res_list = prgr_pdb.get_residues()
     lysine_charges = prgr_pdb.get_lysine_charges(res_list)
     # prgr has 14 lysines.
+    print len(lysine_charges)
     assert len(lysine_charges) == 14
     for charge in lysine_charges:
       # Lysine should be posistively charged
@@ -281,7 +282,6 @@ class TestPDB(unittest.TestCase):
     
     res_list = prgr_pdb.get_residues()
     glutamic_acid_charges = prgr_pdb.get_glutamic_acid_charges(res_list)
-    print len(glutamic_acid_charges)
     assert len(glutamic_acid_charges) == 16
     for charge in glutamic_acid_charges:
       # The carboxyls get deprotonated.
@@ -452,8 +452,10 @@ class TestPDB(unittest.TestCase):
     TestPDB: Verifies creation of bonds.
     """
     # First test a toy example
-    carbon_atom = Atom(element="C", coordinates=Point(0,0,1))
-    oxygen_atom = Atom(element="O", coordinates=Point(0,0,2))
+    carbon_atom = Atom(element="C",
+        coordinates=Point(coords=np.array([0,0,1])))
+    oxygen_atom = Atom(element="O",
+        coordinates=Point(coords=np.array([0,0,2])))
 
     self.pdb.add_new_non_protein_atom(carbon_atom)
     self.pdb.add_new_non_protein_atom(oxygen_atom)
@@ -490,7 +492,8 @@ class TestPDB(unittest.TestCase):
     """
     # Test metallic ion charge.
     magnesium_pdb = PDB()
-    magnesium_atom = Atom(element="MG", coordinates=Point(0,0,0))
+    magnesium_atom = Atom(element="MG",
+        coordinates=Point(coords=np.array([0,0,0])))
     magnesium_pdb.add_new_non_protein_atom(magnesium_atom)
     metallic_charges = magnesium_pdb.identify_metallic_charges()
     assert len(metallic_charges) == 1
@@ -548,7 +551,7 @@ class TestPDB(unittest.TestCase):
     assert len(carbon_charges) == 1
     assert carbon_charges[0].positive  # Should be positive
 
-    # Formic acid is a carboxylic acid, which
+    # Formic acid is a carboxylic acid, which should be negatively charged.
     formic_acid_pdb = PDB()
     formic_acid_pdb_path = os.path.join(data_dir(),
         "formic_acid.pdb")
