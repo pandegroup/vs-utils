@@ -238,6 +238,7 @@ class Atom:
         self.indices_of_atoms_connecting.append(index)
 
   def side_chain_or_backbone(self): # only really applies to proteins, assuming standard atom names
+    # TODO(rbharath): Should this be an atom function?
     if (self.atomname.strip() == "CA" or self.atomname.strip() == "C"
       or self.atomname.strip() == "O" or self.atomname.strip() == "N"):
       return "BACKBONE"
@@ -1168,6 +1169,7 @@ class PDB:
     cur_key = None
     cur_res = []
     residues = []
+    # Group atoms in the same residue together
     for atom_index in self.all_atoms:
       atom = self.all_atoms[atom_index]
       # Assign each atom a residue key.
@@ -1229,14 +1231,13 @@ class PDB:
       List of Aromatic objects.
     """
     charges = []
-    num_matches = 0
     for key, res in res_list:
       resname, resid, chain = key.strip().split("_")
       real_resname = resname[-3:]
       if real_resname in resnames:
-        num_matches += 1
         indices = []
         charged_atoms = [] # The terminal nitrogen holds charge.
+        # Select those atoms which are part of the charged group.
         for index in res:
           atom = self.all_atoms[index]
           atomname = atom.atomname.strip()
@@ -1249,7 +1250,6 @@ class PDB:
               charged_atoms])
           if avg_pt.magnitude() != 0:
             charges.append(Charged(avg_pt, indices, positive))
-    print "NUM_MATCHES = %d" % num_matches
     return charges
 
   def get_lysine_charges(self, res_list):
@@ -1271,27 +1271,6 @@ class PDB:
     return self.get_residue_charges(res_list, ["LYS", "LYN"],
         ["NZ", "HZ1", "HNZ1", "HZ2", "HNZ2", "HZ3", "HNZ3"],
         ["NZ"])
-    #charges = []
-    #for key, res in res_list:
-    #  resname, resid, chain = key.strip().split("_")
-    #  real_resname = resname[-3:]
-    #  if real_resname == "LYS" or real_resname == "LYN":
-    #    indices = []
-    #    nitrogen_atom = None  # The terminal nitrogen holds charge.
-    #    for index in res:
-    #      atom = self.all_atoms[index]
-    #      atomname = atom.atomname.strip()
-    #      if atomname == "NZ":
-    #        indices.append(index)
-    #        nitrogen_atom = atom
-    #      if atomname == "HZ1" or atomname == "HNZ1":
-    #        indices.append(index)
-    #      if atomname == "HZ2" or atomname == "HNZ2":
-    #        indices.append(index)
-    #      if atomname == "HZ3" or atomname == "HNZ3":
-    #        indices.append(index)
-    #    charges.append(Charged(nitrogen_atom.coordinates, indices, True))
-    #return charges
 
   def get_arginine_charges(self, res_list):
     """Assign charges to arginine residues.
@@ -1302,41 +1281,8 @@ class PDB:
       List of tuples output by get_residue_list
     """
     return self.get_residue_charges(res_list, ["ARG"],
-        ["NH1", "NH2", "2HH2", "HN22", "1HH2", "HN12", "2HH1", "HN21",
+        ["NH1", "NH2", "2HH2", "HN22", "1HH2", "HN12", "CZ", "2HH1", "HN21",
         "1HH1", "HN11"], ["NH1", "NH2"])
-    #charges = []
-    #for key, res in res_list:
-    #  resname, _, _ = key.strip().split("_")
-    #  real_resname = resname[-3:]
-    #  if real_resname == "ARG":
-    #    indices = []
-    #    charged_nitrogens = []
-    #    for index in res:
-    #      atom = self.all_atoms[index]
-    #      atomname = atom.atomname.strip()
-    #      if atomname == "NH1":
-    #        charged_nitrogens.append(atom)
-    #        indices.append(index)
-    #      if atomname == "NH2":
-    #        charged_nitrogens.append(atom)
-    #        indices.append(index)
-    #      if atomname == "2HH2" or atomname == "HN22":
-    #        indices.append(index)
-    #      if atomname == "1HH2" or atomname == "HN12":
-    #        indices.append(index)
-    #      if atomname == "CZ":
-    #        indices.append(index)
-    #      if atomname == "2HH1" or atomname == "HN21":
-    #        indices.append(index)
-    #      if atomname == "1HH1" or atomname == "HN11":
-    #        indices.append(index)
-
-    #    if len(charged_nitrogens) == 2:
-    #      avg_pt = average_point([n.coordinates for n in
-    #          charged_nitrogens])
-    #      if avg_pt.magnitude() != 0:
-    #        charges.append(Charged(avg_pt, indices, True))
-    #return charges
 
   def get_histidine_charges(self, res_list):
     """Assign charges to histidine residues.
@@ -1359,34 +1305,6 @@ class PDB:
     return self.get_residue_charges(res_list, ["HIS", "HID", "HIE", "HIP"],
         ["NE2", "ND1", "HE2", "HD1", "CE1", "CD2", "CG"],
         ["NE2", "ND1"])
-    #charges = []
-    #for key, res in res_list:
-    #  resname, _, _ = key.strip().split("_")
-    #  real_resname = resname[-3:]
-    #  if (real_resname == "HIS" or real_resname == "HID" or
-    #    real_resname == "HIE" or real_resname == "HIP"):
-    #    indices = []
-    #    charged_nitrogens = []
-    #    for index in res:
-    #      atom = self.all_atoms[index]
-    #      atomname = atom.atomname.strip()
-    #      if atomname == "NE2":
-    #        charged_nitrogens.append(atom)
-    #        indices.append(index)
-    #      if atomname == "ND1":
-    #        charged_nitrogens.append(atom)
-    #        indices.append(index)
-    #      if (atomname == "HE2" or atomname == "HD1"
-    #       or atomname == "CE1" or atomname == "CD2"
-    #       or atomname == "CG"):
-    #        indices.append(index)
-
-    #    if len(charged_nitrogens) == 2:
-    #      avg_pt = average_point([n.coordinates for n in
-    #          charged_nitrogens])
-    #      if avg_pt.magnitude() != 0:
-    #        charges.append(Charged(avg_pt, indices, True))
-    #return charges
 
   def get_glutamic_acid_charges(self, res_list):
     """Assign charges to histidine residues.
@@ -1413,34 +1331,6 @@ class PDB:
     """
     return self.get_residue_charges(res_list, ["GLU", "GLH", "GLX"],
         ["OE1", "OE2", "CD"], ["OE1", "OE2"], positive=False)
-    #charges = []
-    #for key, res in res_list:
-    #  resname, _, _ = key.strip().split("_")
-    #  real_resname = resname[-3:]
-    #  if real_resname == "GLU" or real_resname == "GLH" or real_resname == "GLX":
-    #    # regardless of protonation state, assume it's charged. This based on
-    #    # "The Cation-Pi Interaction," which suggests protonated state would
-    #    # be stabilized.
-    #    indices = []
-    #    charged_oxygens = []
-    #    for index in res:
-    #      atom = self.all_atoms[index]
-    #      atomname = atom.atomname.strip()
-    #      if atomname == "OE1":
-    #        charged_oxygens.append(atom)
-    #        indices.append(index)
-    #      if atomname == "OE2":
-    #        charged_oxygens.append(atom)
-    #        indices.append(index)
-    #      if atomname == "CD":
-    #        indices.append(index)
-
-    #    if len(charged_oxygens) == 2:
-    #      avg_pt = average_point([n.coordinates for n in charged_oxygens])
-    #      if avg_pt.magnitude() != 0:
-    #        charges.append(Charged(avg_pt, indices, False))
-    #return charges
-
 
   def get_aspartic_acid_charges(self, res_list):
     """Assign charges to aspartic acid residues.
@@ -1461,36 +1351,6 @@ class PDB:
     """
     return self.get_residue_charges(res_list, ["ASP", "ASH", "ASX"],
         ["OD1", "OD2", "CG"], ["OD1", "OD2"], positive=False)
-    #charges = []
-    #for key, res in res_list:
-    #  resname, resid, chain = key.strip().split("_")
-    #  real_resname = resname[-3:]
-
-    #  # TODO(bramsundar): This comment about Cation-Pi interactions
-    #  # is repeated in multiple places. Look into this interaction
-    #  # and verify that it holds true for the residues in question.
-    #  if (real_resname == "ASP" or real_resname == "ASH" or
-    #    real_resname == "ASX"):
-    #    charge_pt = Point(coords=np.array([0.0,0.0,0.0]))
-    #    count = 0.0
-    #    indices = []
-    #    charged_oxygens = []
-    #    for index in res:
-    #      atom = self.all_atoms[index]
-    #      if atom.atomname.strip() == "OD1":
-    #        charged_oxygens.append(atom)
-    #        indices.append(index)
-    #      if atom.atomname.strip() == "OD2":
-    #        charged_oxygens.append(atom)
-    #        indices.append(index)
-    #      if atom.atomname.strip() == "CG": indices.append(index)
-
-    #    if len(charged_oxygens) == 2:
-    #      avg_pt = average_point([n.coordinates for n in charged_oxygens])
-    #      if avg_pt.magnitude() != 0:
-    #        charges.append(Charged(avg_pt, indices, False))
-    #return charges
-
 
   # Functions to identify aromatic rings
   # ====================================
@@ -1807,139 +1667,6 @@ class PDB:
         ["CE2", "CD2", "CE3", "CZ3", "CH2", "CZ2"])
     return small_ring + large_ring
 
-
-  #def assign_aromatic_rings_from_protein_process_residue(self, residue, last_key):
-  #  """Find aromatic rings in protein residues.
-
-  #  Parameters
-  #  ---------
-  #  residue: list
-  #    List of atom indices for this residue.
-  #  last_key: string
-  #    keys have format RESNAME_RESNUMBER_CHAIN
-  #  """
-  #  resname, resid, chain = last_key.strip().split("_")
-  #  real_resname = resname[-3:]
-
-  #  #if real_resname == "PHE":
-
-  #  #  # Note that order is important in the following.
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CG": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CD1": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CE1": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CZ": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
-
-  #  #  self.aromatic_rings.append(self.get_aromatic_marker(indices_of_ring))
-
-  #  #if real_resname == "TYR":
-  #  #  indices_of_ring = []
-
-  #  #  # Note that order is important in the following.
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CG": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CD1": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CE1": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CZ": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
-
-  #  #  self.aromatic_rings.append(self.get_aromatic_marker(indices_of_ring))
-
-  #  #if (real_resname == "HIS"
-  #  #  or real_resname == "HID"
-  #  #  or real_resname == "HIE"
-  #  #  or real_resname == "HIP"):
-  #  #  indices_of_ring = []
-
-  #  #  # Note that order is important in the following.
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CG": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "ND1": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CE1": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "NE2": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
-
-  #  #  self.aromatic_rings.append(self.get_aromatic_marker(indices_of_ring))
-
-  #  #if real_resname == "TRP":
-  #  #  indices_of_ring = []
-
-  #  #  # Note that order is important in the following.
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CG": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CD1": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "NE1": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
-  #  #  for index in residue:
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
-
-  #  #  self.aromatic_rings.append(self.get_aromatic_marker(indices_of_ring))
-
-  #  #  indices_of_ring = []
-
-  #  #  for index in residue: # written this way because order is important
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CE2": indices_of_ring.append(index)
-  #  #  for index in residue: # written this way because order is important
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CD2": indices_of_ring.append(index)
-  #  #  for index in residue: # written this way because order is important
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CE3": indices_of_ring.append(index)
-  #  #  for index in residue: # written this way because order is important
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CZ3": indices_of_ring.append(index)
-  #  #  for index in residue: # written this way because order is important
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CH2": indices_of_ring.append(index)
-  #  #  for index in residue: # written this way because order is important
-  #  #    atom = self.all_atoms[index]
-  #  #    if atom.atomname.strip() == "CZ2": indices_of_ring.append(index)
-
-  #  #  self.aromatic_rings.append(self.get_aromatic_marker(indices_of_ring))
-
   # TODO(bramsundar): This looks like it should be a standard
   # python function.
   def set1_is_subset_of_set2(self, set1, set2):
@@ -1953,33 +1680,36 @@ class PDB:
   # Functions to assign secondary structure to protein residues
   # ===========================================================
 
-  def assign_secondary_structure(self):
-    """Assign secondary structure labels (assuming self is a protein).
+  def get_structure_dict(self):
+    """Creates a dictionary of preliminary structure labels.
+    
+    Uses a simple heuristic of checking dihedral angles to classify as
+    alpha helix or beta sheet.
 
-    keys in this function have form RESNUMBER_CHAIN where CHAIN is
-    the chain identifier for this molecule.
-
-    TODO(bramsundar): This function is monolithic. Can we break it down?
+    Returns:
+    structure: dict
+      Maps keys of format RESNUMBER_CHAIN to one of ALPHA, BETA, or OTHER.
     """
     # first, we need to know what resid's are available
+    # TODO(rbharath): Can this function be altered to use the normal keys
+    # and not these altered keys?
     resids = []
-    last_key = "-99999_Z"
-    for atom_index in self.all_atoms:
-      atom = self.all_atoms[atom_index]
-      key = str(atom.resid) + "_" + atom.chain
-      if key != last_key:
-        last_key = key
-        resids.append(last_key)
+    for (key, _) in self.get_residues():
+      _, resnum, chain = key.split("_")
+      resids.append(resnum + "_" + chain)
 
+    # TODO(rbharath): This dictionary appears to be the critical piece that holds the
+    # information. Factor out the dictionary creation into a separate
+    # function.
     structure = {}
     for resid in resids:
       structure[resid] = "OTHER"
 
     atoms = []
-
     for atom_index in self.all_atoms:
       atom = self.all_atoms[atom_index]
       if atom.side_chain_or_backbone() == "BACKBONE":
+        # TODO(rbharath): Why magic number 8?
         if len(atoms) < 8:
           atoms.append(atom)
         else:
@@ -1988,6 +1718,7 @@ class PDB:
 
           # now make sure the first four all have the same resid and
           # the last four all have the same resid
+          # TODO(rbharath): Ugly code right here...
           if (atoms[0].resid == atoms[1].resid
             and atoms[0].resid == atoms[2].resid
             and atoms[0].resid == atoms[3].resid
@@ -2003,18 +1734,19 @@ class PDB:
 
             # Now give easier to use names to the atoms
             for atom in atoms:
-              if atom.resid == resid1 and atom.atomname.strip() == "N":
+              atomname = atom.atomname.strip()
+              if atom.resid == resid1 and atomname == "N":
                 first_N = atom
-              if atom.resid == resid1 and atom.atomname.strip() == "C":
+              if atom.resid == resid1 and atomname == "C":
                 first_C = atom
-              if atom.resid == resid1 and atom.atomname.strip() == "CA":
+              if atom.resid == resid1 and atomname == "CA":
                 first_CA = atom
 
-              if atom.resid == resid2 and atom.atomname.strip() == "N":
+              if atom.resid == resid2 and atomname == "N":
                 second_N = atom
-              if atom.resid == resid2 and atom.atomname.strip() == "C":
+              if atom.resid == resid2 and atomname == "C":
                 second_C = atom
-              if atom.resid == resid2 and atom.atomname.strip() == "CA":
+              if atom.resid == resid2 and atomname == "CA":
                 second_CA = atom
 
             # Now compute the phi and psi dihedral angles
@@ -2036,22 +1768,19 @@ class PDB:
               key2 = str(second_C.resid) + "_" + second_C.chain
               structure[key1] = "BETA"
               structure[key2] = "BETA"
+    return structure
 
-    # Now update each of the atoms with this structural information
-    for atom_index in self.all_atoms:
-      atom = self.all_atoms[atom_index]
-      key = str(atom.resid) + "_" + atom.chain
-      atom.structure = structure[key]
+  def process_alpha_helices(self, CA_list):
+    """Postprocess alpha helices to remove extraneous labels.
 
-    # Some more post processing.
-    CA_list = [] # first build a list of the indices of all the alpha carbons
-    for atom_index in self.all_atoms:
-      atom = self.all_atoms[atom_index]
-      if (atom.residue.strip() in self.protein_resnames
-        and atom.atomname.strip() == "CA"):
-        CA_list.append(atom_index)
+    TODO(rbharath): The comparison method here is quadratic. Can we do
+    better with a nice datastructure?
 
-    # some more post processing.
+    Parameters 
+    ----------
+    CA_list: list
+      List of all alpha carbons in protein.
+    """
     change = True
     while change == True:
       change = False
@@ -2178,31 +1907,46 @@ class PDB:
             self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
             change = True
 
+  def process_beta_sheets(self, CA_list):
+    """Postprocess beta sheets to remove extraneous labels.
+    
+    TODO(rbharath): The comparison method here is quadratic. Can we do
+    better with a nice datastructure?
+
+    Parameters 
+    ----------
+    CA_list: list
+      List of all alpha carbons in protein.
+    """
+    change = True
+    while change == True:
+      change = False
+
       # now go through each of the BETA CA atoms. A residue is only
       # going to be called a beta sheet if CA atom is within 6.0 A
       # of another CA beta, same chain, but index difference > 2.
       for CA_atom_index in CA_list:
-          CA_atom = self.all_atoms[CA_atom_index]
-          if CA_atom.structure == "BETA":
-            # so it's in a beta sheet
-            another_beta_is_close = False
-            for other_CA_atom_index in CA_list:
-              if other_CA_atom_index != CA_atom_index:
-                # so not comparing an atom to itself
-                other_CA_atom = self.all_atoms[other_CA_atom_index]
-                if other_CA_atom.structure == "BETA":
-                  # so you're comparing it only to other BETA-sheet atoms
-                  if other_CA_atom.chain == CA_atom.chain:
-                    # so require them to be on the same chain. needed to indecies can be fairly compared
-                    if math.fabs(other_CA_atom.resid - CA_atom.resid) > 2:
-                      # so the two residues are not simply adjacent to each other on the chain
-                      if CA_atom.coordinates.dist_to(other_CA_atom.coordinates) < 6.0:
-                        # so these to atoms are close to each other
-                        another_beta_is_close = True
-                        break
-            if another_beta_is_close == False:
-              self.set_structure_of_residue(CA_atom.chain, CA_atom.resid, "OTHER")
-              change = True
+        CA_atom = self.all_atoms[CA_atom_index]
+        if CA_atom.structure == "BETA":
+          # so it's in a beta sheet
+          another_beta_is_close = False
+          for other_CA_atom_index in CA_list:
+            if other_CA_atom_index != CA_atom_index:
+              # so not comparing an atom to itself
+              other_CA_atom = self.all_atoms[other_CA_atom_index]
+              if other_CA_atom.structure == "BETA":
+                # so you're comparing it only to other BETA-sheet atoms
+                if other_CA_atom.chain == CA_atom.chain:
+                  # so require them to be on the same chain. needed to indecies can be fairly compared
+                  if math.fabs(other_CA_atom.resid - CA_atom.resid) > 2:
+                    # so the two residues are not simply adjacent to each other on the chain
+                    if CA_atom.coordinates.dist_to(other_CA_atom.coordinates) < 6.0:
+                      # so these to atoms are close to each other
+                      another_beta_is_close = True
+                      break
+          if another_beta_is_close == False:
+            self.set_structure_of_residue(CA_atom.chain, CA_atom.resid, "OTHER")
+            change = True
 
       # Now some more post-processing needs to be done. Do this
       # again to clear up mess that may have just been created
@@ -2242,6 +1986,38 @@ class PDB:
             self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             change = True
+
+  def assign_secondary_structure(self):
+    """Assign secondary structure labels (assuming self is a protein).
+
+    Keys in this function have form RESNUMBER_CHAIN where CHAIN is
+    the chain identifier for this molecule.
+    """
+    structure = self.get_structure_dict()
+
+    # Now update each of the atoms with this structural information
+    for atom_index in self.all_atoms:
+      atom = self.all_atoms[atom_index]
+      key = str(atom.resid) + "_" + atom.chain
+      atom.structure = structure[key]
+
+    CA_list = [] # first build a list of the indices of all the alpha carbons
+    for atom_index in self.all_atoms:
+      atom = self.all_atoms[atom_index]
+      if (atom.residue.strip() in self.protein_resnames
+        and atom.atomname.strip() == "CA"):
+        CA_list.append(atom_index)
+
+    # Use this list to perform sanity checks on alpha-helix and beta-sheet
+    # labels.
+    self.process_alpha_helices(CA_list)
+    self.process_beta_sheets(CA_list)
+
+    # some more post processing.
+    # TODO(rbharath): Factor out the alpha-helix and beta-sheet processing
+    # into separate functions.
+    # TODO(rbharath): This code is sooo horrible. Undo the break on change.
+
 
   def set_structure_of_residue(self, chain, resid, structure):
     for atom_index in self.all_atoms:

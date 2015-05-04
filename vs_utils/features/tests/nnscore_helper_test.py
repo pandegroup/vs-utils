@@ -617,3 +617,15 @@ class TestPDB(unittest.TestCase):
     prgr_pdb.load_PDB_from_file(prgr_pdb_path)
     prgr_pdb.assign_secondary_structure()
     
+
+  def testGetStructureDict(self):
+    """
+    TestPDB: Verify that dict with rudimentary structure labels is generated.
+    """
+    prgr_pdb = PDB()
+    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
+    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
+    structures = prgr_pdb.get_structure_dict()
+    print structures
+    print len(structures)
+    #assert 0 == 1
