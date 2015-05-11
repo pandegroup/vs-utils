@@ -125,7 +125,7 @@ class Atom:
   """
 
   def __init__ (self, atomname="", residue="",
-                coordinates=Point(99999, 99999, 99999), element="",
+                coordinates=Point(coords=np.array([99999, 99999, 99999])), element="",
                 PDBIndex="", line="", atomtype="",
                 indices_of_atoms_connecting=None, charge=0, resid=0,
                 chain="", structure="", comment=""):
@@ -364,7 +364,7 @@ class PDB:
   """
 
   def __init__(self):
-    self.all_atoms={}
+    self.all_atoms = {}
     self.non_protein_atoms = {}
     self.max_x = -9999.99
     self.min_x = 9999.99

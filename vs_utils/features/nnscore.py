@@ -20,9 +20,11 @@ import sys
 import textwrap
 import glob
 import cPickle
+import numpy as np
 from vs_utils.features import Featurizer
 from vs_utils.features.nnscore_helper import MathFunctions
 from vs_utils.features.nnscore_helper import PDB
+from vs_utils.features.nnscore_helper import Point
 
 # TODO(bramsundar): Many places in this file use long switch
 # statements. Could there be a cleaner way to structure this file?
@@ -209,12 +211,12 @@ class binana:
       'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
       'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
       }
-    for ligand_atom_index in ligand.AllAtoms:
-      ligand_atom = ligand.AllAtoms[ligand_atom_index]
-      for receptor_atom_index in receptor.AllAtoms:
-        receptor_atom = receptor.AllAtoms[receptor_atom_index]
+    for ligand_atom_index in ligand.all_atoms:
+      ligand_atom = ligand.all_atoms[ligand_atom_index]
+      for receptor_atom_index in receptor.all_atoms:
+        receptor_atom = receptor.all_atoms[receptor_atom_index]
         if ligand_atom.element == "C" and receptor_atom.element == "C":
-          hydrophobic_key = (receptor_atom.SideChainOrBackBone() +
+          hydrophobic_key = (receptor_atom.side_chain_or_backbone() +
               "_" + receptor_atom.structure)
 
           hashtable_entry_add_one(hydrophobics, hydrophobic_key)
@@ -261,10 +263,10 @@ class binana:
         "OA_OA": 0.0, "OA_P": 0.0, "OA_S": 0.0, "OA_SA": 0.0, "OA_ZN":
         0.0, "P_ZN": 0.0, "SA_SA": 0.0, "SA_ZN": 0.0, "S_ZN": 0,
         "F_ZN": 0}
-    for ligand_atom_index in ligand.AllAtoms:
-      ligand_atom = ligand.AllAtoms[ligand_atom_index]
-      for receptor_atom_index in receptor.AllAtoms:
-        receptor_atom = receptor.AllAtoms[receptor_atom_index]
+    for ligand_atom_index in ligand.all_atoms:
+      ligand_atom = ligand.all_atoms[ligand_atom_index]
+      for receptor_atom_index in receptor.all_atoms:
+        receptor_atom = receptor.all_atoms[receptor_atom_index]
         atomtypes = [ligand_atom.atomtype, receptor_atom.atomtype]
         atomstr = "_".join(sorted(atomtypes))
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
@@ -301,10 +303,10 @@ class binana:
       'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
       'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
       }
-    for receptor_atom_index in receptor.AllAtoms:
-      receptor_atom = receptor.AllAtoms[receptor_atom_index]
+    for receptor_atom_index in receptor.all_atoms:
+      receptor_atom = receptor.all_atoms[receptor_atom_index]
 
-      flexibility_key = (receptor_atom.SideChainOrBackBone() + "_"
+      flexibility_key = (receptor_atom.side_chain_or_backbone() + "_"
           + receptor_atom.structure)
       hashtable_entry_add_one(active_site_flexibility, flexibility_key)
     return active_site_flexibility
@@ -340,10 +342,10 @@ class binana:
       'HDONOR-RECEPTOR_SIDECHAIN_ALPHA': 0,
       'HDONOR-RECEPTOR_SIDECHAIN_BETA': 0,
       'HDONOR-RECEPTOR_SIDECHAIN_OTHER': 0}
-    for ligand_atom_index in ligand.AllAtoms:
-      ligand_atom = ligand.AllAtoms[ligand_atom_index]
-      for receptor_atom_index in receptor.AllAtoms:
-        receptor_atom = receptor.AllAtoms[receptor_atom_index]
+    for ligand_atom_index in ligand.all_atoms:
+      ligand_atom = ligand.all_atoms[ligand_atom_index]
+      for receptor_atom_index in receptor.all_atoms:
+        receptor_atom = receptor.all_atoms[receptor_atom_index]
         # Now see if there's some sort of hydrogen bond between
         # these two atoms. distance cutoff = H_BOND_DIST, angle cutoff =
         # H_BOND_ANGLE.
@@ -356,32 +358,32 @@ class binana:
           # atoms
           hydrogens = []
 
-          for atm_index in ligand.AllAtoms:
-            if ligand.AllAtoms[atm_index].element == "H":
+          for atm_index in ligand.all_atoms:
+            if ligand.all_atoms[atm_index].element == "H":
               # so it's a hydrogen
-              if (ligand.AllAtoms[atm_index].coordinates.dist_to(
+              if (ligand.all_atoms[atm_index].coordinates.dist_to(
                   ligand_atom.coordinates) < H_BOND_DIST):
-                ligand.AllAtoms[atm_index].comment = "LIGAND"
-                hydrogens.append(ligand.AllAtoms[atm_index])
+                ligand.all_atoms[atm_index].comment = "LIGAND"
+                hydrogens.append(ligand.all_atoms[atm_index])
 
-          for atm_index in receptor.AllAtoms:
-            if receptor.AllAtoms[atm_index].element == "H": # so it's a hydrogen
-              if (receptor.AllAtoms[atm_index].coordinates.dist_to(
+          for atm_index in receptor.all_atoms:
+            if receptor.all_atoms[atm_index].element == "H": # so it's a hydrogen
+              if (receptor.all_atoms[atm_index].coordinates.dist_to(
                   receptor_atom.coordinates) < H_BOND_DIST):
-                receptor.AllAtoms[atm_index].comment = "RECEPTOR"
-                hydrogens.append(receptor.AllAtoms[atm_index])
+                receptor.all_atoms[atm_index].comment = "RECEPTOR"
+                hydrogens.append(receptor.all_atoms[atm_index])
 
           # now we need to check the angles
           # TODO(bramsundar): Verify this heuristic and add a source
           # citation.
           for hydrogen in hydrogens:
-            if (math.fabs(180 - functions.angle_between_three_points(
+            if (math.fabs(180 - self.functions.angle_between_three_points(
                   ligand_atom.coordinates,
                   hydrogen.coordinates,
                   receptor_atom.coordinates) * 180.0 / math.pi) <=
                   H_BOND_ANGLE):
               hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
-                  receptor_atom.SideChainOrBackBone() + "_" +
+                  receptor_atom.side_chain_or_backbone() + "_" +
                   receptor_atom.structure)
               hashtable_entry_add_one(hbonds, hbonds_key)
     return hbonds
@@ -405,8 +407,8 @@ class binana:
     ligand_atom_types = {
         'A': 0, 'BR': 0, 'C': 0, 'CL': 0, 'F': 0, 'HD': 0, 'I': 0,
         'N': 0, 'NA': 0, 'OA': 0, 'P': 0, 'S': 0, 'SA': 0}
-    for ligand_atom_index in ligand.AllAtoms:
-      ligand_atom = ligand.AllAtoms[ligand_atom_index]
+    for ligand_atom_index in ligand.all_atoms:
+      ligand_atom = ligand.all_atoms[ligand_atom_index]
       hashtable_entry_add_one(ligand_atom_types, ligand_atom.atomtype)
     return ligand_atom_types
 
@@ -454,10 +456,10 @@ class binana:
         "N_OA": 0, "N_P": 0, "N_S": 0, "N_SA": 0, "N_ZN": 0, "OA_OA":
         0, "OA_P": 0, "OA_S": 0, "OA_SA": 0, "OA_ZN": 0, "P_ZN": 0,
         "SA_SA": 0, "SA_ZN": 0, "S_ZN": 0}
-    for ligand_atom_index in ligand.AllAtoms:
-      for receptor_atom_index in receptor.AllAtoms:
-        ligand_atom = ligand.AllAtoms[ligand_atom_index]
-        receptor_atom = receptor.AllAtoms[receptor_atom_index]
+    for ligand_atom_index in ligand.all_atoms:
+      for receptor_atom_index in receptor.all_atoms:
+        ligand_atom = ligand.all_atoms[ligand_atom_index]
+        receptor_atom = receptor.all_atoms[receptor_atom_index]
 
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
         atomtypes = [ligand_atom.atomtype, receptor_atom.atomtype]
@@ -489,10 +491,10 @@ class binana:
           # so there could be some pi-pi interactions.  Now, let's
           # check for stacking interactions. Are the two pi's roughly
           # parallel?
-          lig_aromatic_norm_vector = point(lig_aromatic.plane_coeff[0],
-              lig_aromatic.plane_coeff[1], lig_aromatic.plane_coeff[2])
-          rec_aromatic_norm_vector = point(rec_aromatic.plane_coeff[0],
-              rec_aromatic.plane_coeff[1], rec_aromatic.plane_coeff[2])
+          lig_aromatic_norm_vector = Point(coords=np.array([lig_aromatic.plane_coeff[0],
+              lig_aromatic.plane_coeff[1], lig_aromatic.plane_coeff[2]]))
+          rec_aromatic_norm_vector = Point(coords=np.array([rec_aromatic.plane_coeff[0],
+              rec_aromatic.plane_coeff[1], rec_aromatic.plane_coeff[2]]))
           angle_between_planes = self.functions.angle_between_points(
               lig_aromatic_norm_vector, rec_aromatic_norm_vector) * 180.0/math.pi
 
@@ -510,7 +512,7 @@ class binana:
             for ligand_ring_index in lig_aromatic.indices:
               # project the ligand atom onto the plane of the receptor ring
               pt_on_receptor_plane = self.functions.project_point_onto_plane(
-                  ligand.AllAtoms[ligand_ring_index].coordinates,
+                  ligand.all_atoms[ligand_ring_index].coordinates,
                   rec_aromatic.plane_coeff)
               if (pt_on_receptor_plane.dist_to(rec_aromatic.center)
                  <= rec_aromatic.radius + PI_PADDING):
@@ -522,7 +524,7 @@ class binana:
               for receptor_ring_index in rec_aromatic.indices:
                 # project the ligand atom onto the plane of the receptor ring
                 pt_on_ligand_plane = self.functions.project_point_onto_plane(
-                    receptor.AllAtoms[receptor_ring_index].coordinates,
+                    receptor.all_atoms[receptor_ring_index].coordinates,
                     lig_aromatic.plane_coeff)
                 if (pt_on_ligand_plane.dist_to(lig_aromatic.center)
                     <= lig_aromatic.radius + PI_PADDING):
@@ -530,7 +532,7 @@ class binana:
                   break
 
             if pi_pi == True:
-                structure = receptor.AllAtoms[rec_aromatic.indices[0]].structure
+                structure = receptor.all_atoms[rec_aromatic.indices[0]].structure
                 if structure == "":
                   # since it could be interacting with a cofactor or something
                   structure = "OTHER"
@@ -554,6 +556,12 @@ class binana:
     pi_T = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
     for lig_aromatic in ligand.aromatic_rings:
       for rec_aromatic in receptor.aromatic_rings:
+        lig_aromatic_norm_vector = Point(coords=np.array([lig_aromatic.plane_coeff[0],
+            lig_aromatic.plane_coeff[1], lig_aromatic.plane_coeff[2]]))
+        rec_aromatic_norm_vector = Point(coords=np.array([rec_aromatic.plane_coeff[0],
+            rec_aromatic.plane_coeff[1], rec_aromatic.plane_coeff[2]]))
+        angle_between_planes = self.functions.angle_between_points(
+            lig_aromatic_norm_vector, rec_aromatic_norm_vector) * 180.0/math.pi
         if math.fabs(angle_between_planes-90) < 30.0 or math.fabs(angle_between_planes-270) < 30.0:
           # so they're more or less perpendicular, it's probably a
           # pi-edge interaction having looked at many structures, I
@@ -564,9 +572,9 @@ class binana:
           # to separate the good T's from the bad
           min_dist = 100.0
           for ligand_ind in lig_aromatic.indices:
-            ligand_at = ligand.AllAtoms[ligand_ind]
+            ligand_at = ligand.all_atoms[ligand_ind]
             for receptor_ind in rec_aromatic.indices:
-              receptor_at = receptor.AllAtoms[receptor_ind]
+              receptor_at = receptor.all_atoms[receptor_ind]
               dist = ligand_at.coordinates.dist_to(receptor_at.coordinates)
               if dist < min_dist: min_dist = dist
 
@@ -596,7 +604,7 @@ class binana:
               <= lig_aromatic.radius + PI_PADDING)):
 
               # so it is in the ring on the projected plane.
-              structure = receptor.AllAtoms[rec_aromatic.indices[0]].structure
+              structure = receptor.all_atoms[rec_aromatic.indices[0]].structure
               if structure == "":
                 # since it could be interacting with a cofactor or something
                 structure = "OTHER"
@@ -630,7 +638,7 @@ class binana:
                 charged.coordinates,aromatic.plane_coeff)
             if (charge_projected.dist_to(aromatic.center)
               < aromatic.radius + PI_PADDING):
-              structure = receptor.AllAtoms[aromatic.indices[0]].structure
+              structure = receptor.all_atoms[aromatic.indices[0]].structure
               if structure == "":
                 # since it could be interacting with a cofactor or something
                 structure = "OTHER"
@@ -646,7 +654,7 @@ class binana:
             charge_projected = self.functions.project_point_onto_plane(
                 charged.coordinates,aromatic.plane_coeff)
             if charge_projected.dist_to(aromatic.center) < aromatic.radius + PI_PADDING:
-              structure = receptor.AllAtoms[charged.indices[0]].structure
+              structure = receptor.all_atoms[charged.indices[0]].structure
               if structure == "":
                 # since it could be interacting with a cofactor or something
                 structure = "OTHER"
@@ -673,7 +681,7 @@ class binana:
           # so they have oppositve charges
           if (ligand_charge.coordinates.dist_to(
               receptor_charge.coordinates) < SALT_BRIDGE_CUTOFF):
-            structure = receptor.AllAtoms[receptor_charge.indices[0]].structure
+            structure = receptor.all_atoms[receptor_charge.indices[0]].structure
             if structure == "":
               # since it could be interacting with a cofactor or something
               structure = "OTHER"
