@@ -11,7 +11,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from vs_utils.scripts.featurize import main, parse_args
-from vs_utils.utils import read_pickle, write_pickle
+from vs_utils.utils import read_csv_features, read_pickle, write_pickle
 from vs_utils.utils.rdkit_utils import conformers, serial
 
 
