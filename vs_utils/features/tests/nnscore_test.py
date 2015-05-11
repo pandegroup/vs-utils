@@ -41,6 +41,7 @@ class TestBinana(unittest.TestCase):
     prgr_receptor_path = os.path.join(data_dir(), "prgr.pdb")
     self.prgr_receptor.load_PDB_from_file(prgr_receptor_path)
 
+    # TODO(rbharath): Document the pubchem id of this active.
     self.prgr_active = PDB()
     prgr_active_path = os.path.join(data_dir(), "prgr_active0.pdb")
     self.prgr_active.load_PDB_from_file(prgr_active_path)
@@ -96,7 +97,6 @@ class TestBinana(unittest.TestCase):
     active_site_flexibility = (
         self.binana.compute_active_site_flexibility(self.prgr_active,
             self.prgr_receptor))
-    print active_site_flexibility
     assert len(active_site_flexibility.keys()) == 6
     assert "BACKBONE_ALPHA" in active_site_flexibility
     assert "BACKBONE_BETA" in active_site_flexibility
@@ -113,13 +113,43 @@ class TestBinana(unittest.TestCase):
     hbonds = (
       self.binana.compute_hydrogen_bonds(self.prgr_active,
           self.prgr_receptor))
+    assert len(hbonds) == 12
+    assert "HDONOR-LIGAND_BACKBONE_ALPHA" in hbonds
+    assert "HDONOR-LIGAND_BACKBONE_BETA" in hbonds
+    assert "HDONOR-LIGAND_BACKBONE_OTHER" in hbonds
+    assert "HDONOR-LIGAND_SIDECHAIN_ALPHA" in hbonds
+    assert "HDONOR-LIGAND_SIDECHAIN_BETA" in hbonds
+    assert "HDONOR-LIGAND_SIDECHAIN_OTHER" in hbonds
+    assert "HDONOR-RECEPTOR_BACKBONE_ALPHA" in hbonds
+    assert "HDONOR-RECEPTOR_BACKBONE_BETA" in hbonds
+    assert "HDONOR-RECEPTOR_BACKBONE_OTHER" in hbonds
+    assert "HDONOR-RECEPTOR_SIDECHAIN_ALPHA" in hbonds
+    assert "HDONOR-RECEPTOR_SIDECHAIN_BETA" in hbonds
+    assert "HDONOR-RECEPTOR_SIDECHAIN_OTHER" in hbonds
 
   def testComputeLigandAtomCounts(self):
     """
     TestBinana: Compute the Number of Ligand Atom Counts.
     """
-    ligand_atom_types = (
+    ligand_atom_counts = (
       self.binana.compute_ligand_atom_counts(self.prgr_active))
+    print ligand_atom_counts
+    assert len(ligand_atom_counts) == 15
+    assert ligand_atom_counts["A"] == 0
+    assert ligand_atom_counts["BR"] == 0
+    assert ligand_atom_counts["C"] == 27
+    assert ligand_atom_counts["CL"] == 0
+    assert ligand_atom_counts["F"] == 0
+    assert ligand_atom_counts["H"] == 1
+    assert ligand_atom_counts["HD"] == 0
+    assert ligand_atom_counts["I"] == 0
+    assert ligand_atom_counts["N"] == 2
+    assert ligand_atom_counts["NA"] == 0
+    assert ligand_atom_counts["O"] == 3
+    assert ligand_atom_counts["OA"] == 0
+    assert ligand_atom_counts["P"] == 0
+    assert ligand_atom_counts["S"] == 0
+    assert ligand_atom_counts["SA"] == 0
 
   def testComputeLigandReceptorContacts(self):
     """
@@ -152,19 +182,33 @@ class TestBinana(unittest.TestCase):
     """
     TestBinana: Compute Pi-Cation Interactions.
     """
-    # TODO(bramsundar): THERE ARE NO AROMATIC RINGS HERE! BOGUS TEST!
+    # TODO(rbharath): prgr doesn't have any pi-cation interactions. Find a
+    # different complex that exhibits this interaction. 
     pi_cation = (
         self.binana.compute_pi_cation(self.prgr_active,
             self.prgr_receptor))
+    assert len(pi_cation) == 6
+    assert 'LIGAND-CHARGED_ALPHA' in pi_cation
+    assert 'LIGAND-CHARGED_BETA' in pi_cation
+    assert 'LIGAND-CHARGED_OTHER' in pi_cation
+    assert 'RECEPTOR-CHARGED_ALPHA' in pi_cation
+    assert 'RECEPTOR-CHARGED_BETA' in pi_cation
+    assert 'RECEPTOR-CHARGED_OTHER' in pi_cation
 
   def testComputeSaltBridges(self):
     """
     TestBinana: Compute Salt Bridges.
     """
-    # TODO(bramsundar): THERE ARE NO AROMATIC RINGS HERE! BOGUS TEST!
+    # TODO(bramsundar): prgr contains no salt-bridge interactions. Find a
+    # complex with an actual salt-bridge interaction.
     salt_bridges = (
         self.binana.compute_salt_bridges(self.prgr_active,
             self.prgr_receptor))
+    assert len(salt_bridges) == 3
+    assert 'ALPHA' in salt_bridges
+    assert 'BETA' in salt_bridges
+    assert 'OTHER' in salt_bridges
+
 
   def testComputeInputVector(self):
     """

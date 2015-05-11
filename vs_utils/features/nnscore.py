@@ -74,20 +74,6 @@ SALT_BRIDGE_CUTOFF = 5.5
 PI_PADDING = 0.75
 
 
-class NNScoreFeaturizer(Featurizer):
-  """
-  Featurizes a given docking pose using the features computed
-  by NNScore 2.0.1.
-  """
-
-  def _featurize(self, mol):
-    """
-    Compute NNScore Docking Fingerprint.
-    """
-    # TODO(bramsundar): Add connector code here.
-    pass
-
-
 def hashtable_entry_add_one(hashtable, key, toadd = 1):
   # note that dictionaries (hashtables) are passed by reference in python
   if hashtable.has_key(key):
@@ -306,8 +292,14 @@ class binana:
     for receptor_atom_index in receptor.all_atoms:
       receptor_atom = receptor.all_atoms[receptor_atom_index]
 
+      # TODO(rbharath): This feels like a silent failure mode... Introduce
+      # an upstream fix.
+      if receptor_atom.structure == "":
+        structure = "OTHER"
+      else:
+        structure = receptor_atom.structure
       flexibility_key = (receptor_atom.side_chain_or_backbone() + "_"
-          + receptor_atom.structure)
+          + structure)
       hashtable_entry_add_one(active_site_flexibility, flexibility_key)
     return active_site_flexibility
 
@@ -382,16 +374,22 @@ class binana:
                   hydrogen.coordinates,
                   receptor_atom.coordinates) * 180.0 / math.pi) <=
                   H_BOND_ANGLE):
+              # TODO(rbharath): This feels like a silent failure mode... Introduce
+              # an upstream fix.
+              if receptor_atom.structure == "":
+                structure = "OTHER"
+              else:
+                structure = receptor_atom.structure
               hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
                   receptor_atom.side_chain_or_backbone() + "_" +
-                  receptor_atom.structure)
+                  structure)
               hashtable_entry_add_one(hbonds, hbonds_key)
     return hbonds
 
   def compute_ligand_atom_counts(self, ligand):
     """Counts atoms of each type in given ligand.
 
-    Returns a dictionary that makes between atom types ("C", "O", etc.) to
+    Returns a dictionary that maps atom types ("C", "O", etc.) to
     counts.
 
     Parameters
@@ -404,17 +402,21 @@ class binana:
     ligand_atom_types: dictionary
       Keys are atom types; values are integer counts.
     """
+    # TODO(rbharath): What is atom type A here?
     ligand_atom_types = {
-        'A': 0, 'BR': 0, 'C': 0, 'CL': 0, 'F': 0, 'HD': 0, 'I': 0,
-        'N': 0, 'NA': 0, 'OA': 0, 'P': 0, 'S': 0, 'SA': 0}
+        "A": 0, "BR": 0, "C": 0, "CL": 0, "F": 0, "H": 0,  "HD": 0, "I": 0,
+        "N": 0, "NA": 0, "O": 0, "OA": 0, "P": 0, "S": 0, "SA": 0}
     for ligand_atom_index in ligand.all_atoms:
       ligand_atom = ligand.all_atoms[ligand_atom_index]
       hashtable_entry_add_one(ligand_atom_types, ligand_atom.atomtype)
     return ligand_atom_types
 
   def compute_ligand_receptor_contacts(self, ligand, receptor):
-    """
-    Compute distance measurements.
+    """Compute distance measurements for ligand-receptor atom pairs.
+
+    Returns two dictionaries, each of whose keys are of form
+    ATOMTYPE_ATOMTYPE.
+
     Parameters
     ----------
     ligand: TODO(bramsundar)
@@ -617,6 +619,10 @@ class binana:
     """
     Computes number of pi-cation interactions.
 
+    Returns a dictionary whose keys are of form
+    ${MOLTYPE}-CHARGED_${STRUCTURE} where MOLTYPE is either "LIGAND" or
+    "RECEPTOR" and STRUCTURE is "ALPHA" or "BETA" or "OTHER".
+
     Parameters
     ----------
     ligand: PDB Object
@@ -666,6 +672,9 @@ class binana:
   def compute_salt_bridges(self, ligand, receptor):
     """
     Computes number of ligand-receptor salt bridges.
+
+    Returns a dictionary with keys of form SALT-BRIDGE_${STRUCTURE} where
+    STRUCTURE is "ALPHA" or "BETA" or "OTHER."
 
     Parameters
     ----------
@@ -722,8 +731,6 @@ class binana:
       Contains loaded receptor.
     """
 
-    # Excluding vina output for now.
-    #vina_output = data['vina_output']
     rotatable_bonds_count = {'rot_bonds': ligand.rotatable_bonds_count}
     ligand_receptor_close_contacts, ligand_receptor_contacts = (
       self.compute_ligand_receptor_contacts(ligand, receptor))
@@ -740,8 +747,6 @@ class binana:
     salt_bridges = self.compute_salt_bridges(ligand, receptor)
 
     input_vector = []
-    # Excluding vina output for now.
-    #input_vector.extend(vina_output) # a list
     input_vector = extend_list_by_dictionaries(input_vector, [
         ligand_receptor_contacts,
         ligand_receptor_electrostatics,

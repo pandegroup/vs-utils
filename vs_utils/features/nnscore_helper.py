@@ -1585,7 +1585,6 @@ class PDB:
     """
     aromatics = []
     num_matches = 0
-    print "resname: %s" % resname
     for key, res in res_list:
       real_resname, resid, chain = key.strip().split("_")[-3:]
       indices_of_ring = []
@@ -1596,7 +1595,6 @@ class PDB:
           if self.all_atoms[index].atomname.strip() in ring_atomnames:
             indices_of_ring.append(index)
         aromatics.append(self.get_aromatic_marker(indices_of_ring))
-    print "num_matches: %d" % num_matches
     return aromatics
 
 
