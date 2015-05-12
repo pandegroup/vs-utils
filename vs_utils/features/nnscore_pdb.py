@@ -1,10 +1,6 @@
 """
 Custom PDB class implementation.
 
-TODO(bramsundar): Most of the method below cannot be meaningfully tested
-without a body of PDBs that exhibit the various amino-acids in questions.
-Build up such a body of PDBs which we can use in the test work.
-
 The code below contains heavily modified parts of Jacob Durrant's
 NNScore 2.0.1. The following notice is copied from the original NNScore
 file:

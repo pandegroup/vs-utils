@@ -54,7 +54,7 @@ def average_point(points):
   Parameters
   ----------
   points: list
-    List of point objects. 
+    List of point objects.
   Returns
   -------
   pavg: Point object
@@ -99,7 +99,7 @@ class Point:
     ValueError: If no arguments are provided.
     """
     if x and y and z:
-      self.x, self.y, self.z = x, y, z 
+      self.x, self.y, self.z = x, y, z
     elif coords is not None:  # Implicit eval doesn't work on numpy arrays.
       self.x, self.y, self.z = coords[0], coords[1], coords[2]
     else:
@@ -151,7 +151,8 @@ class Atom:
     line: string
       The line in the PDB file which specifies this atom.
     atomtype: string
-      Type of atom (TODO(bramsundar): How is this different from atomname)
+      Element of atom. This differs from atomname which typically has extra
+      annotations (e.g. CA, OA, HD, etc)
     IndicesOfAtomConnecting: list
       The indices (in a PDB object) of all atoms bonded to this one.
     charge: float
@@ -293,7 +294,16 @@ class Atom:
         float(Line[38:46]), float(Line[46:54])]))
 
     # now atom type (for pdbqt)
-    self.atomtype = Line[77:79].strip().upper()
+    if Line[77:79].strip():
+      self.atomtype = Line[77:79].strip().upper()
+    elif self.atomname:
+      # If atomtype is not specified, but atomname is, set atomtype to the
+      # first letter of atomname. This heuristic suffices for proteins,
+      # since no two-letter elements appear in standard amino acids.
+      # TODO(rbharath): Fix this hack for small-molecules if necessary.
+      self.atomtype = self.atomname[:1]
+    else:
+      self.atomtype = ""
 
     if Line[69:76].strip() != "":
       self.charge = float(Line[69:76])

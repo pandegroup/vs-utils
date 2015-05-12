@@ -83,6 +83,14 @@ class TestBinana(unittest.TestCase):
       key = "_".join(sorted([first, second]))
       ligand_receptor_electrostatics.pop(key, None)
     print ligand_receptor_electrostatics
+    print "ligand atoms"
+    for ind in self.prgr_active.all_atoms:
+      atom = self.prgr_active.all_atoms[ind]
+      print "atomtype: " + str(atom.atomtype)
+    print "receptor atoms"
+    for ind in self.prgr_receptor.all_atoms:
+      atom = self.prgr_receptor.all_atoms[ind]
+      print "atomtype: " + str(atom.atomtype)
     assert len(ligand_receptor_electrostatics) == N*(N+1)/2
 
   def testComputeActiveSiteFlexibility(self):

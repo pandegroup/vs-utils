@@ -11,10 +11,10 @@ import shutil
 import unittest
 import numpy as np
 
-from vs_utils.features.nnscore_helper import Point
-from vs_utils.features.nnscore_helper import Atom
-from vs_utils.features.nnscore_helper import PDB
-from vs_utils.features.nnscore_helper import average_point
+from vs_utils.features.nnscore_pdb import PDB
+from vs_utils.features.nnscore_utils import Point
+from vs_utils.features.nnscore_utils import Atom
+from vs_utils.features.nnscore_utils import average_point
 from vs_utils.features.tests import __file__ as test_directory
 
 
