@@ -47,13 +47,20 @@ class TestBinana(unittest.TestCase):
     prgr_active_path = os.path.join(data_dir(), "prgr_active0.pdb")
     self.prgr_active.load_PDB_from_file(prgr_active_path)
 
-  def testComputeHydrophobicContact(self):
+  def testComputeHydrophobicContacts(self):
     """
     TestBinana: Test that hydrophobic contacts are established.
     """
     hydrophobics = self.binana.compute_hydrophobic_contacts(
         self.prgr_active, self.prgr_receptor)
-    #assert len(hydrophobics.keys()) == 1
+    print hydrophobics
+    assert len(hydrophobics) == 6
+    assert "BACKBONE_ALPHA" in hydrophobics
+    assert "BACKBONE_BETA" in hydrophobics
+    assert "BACKBONE_OTHER" in hydrophobics
+    assert "SIDECHAIN_ALPHA" in hydrophobics
+    assert "SIDECHAIN_BETA" in hydrophobics
+    assert "SIDECHAIN_OTHER" in hydrophobics
 
   def testComputeElectrostaticEnergy(self):
     """
@@ -151,6 +158,16 @@ class TestBinana(unittest.TestCase):
     ligand_receptor_close_contacts, ligand_receptor_contacts = (
       self.binana.compute_ligand_receptor_contacts(self.prgr_active,
           self.prgr_receptor))
+    print "ligand_receptor_close_contacts"
+    for key in ligand_receptor_close_contacts:
+      val = ligand_receptor_close_contacts[key]
+      if val != 0:
+        print key + ": " + str(val)
+    print "ligand_receptor_contacts"
+    for key in ligand_receptor_contacts:
+      val = ligand_receptor_contacts[key]
+      if val != 0:
+        print key + ": " + str(val)
     # The keys of these dicts are pairs of atomtypes, but the keys are
     # sorted so that ("C", "O") is always written as "C_O". Thus, for N
     # atom types, there are N*(N+1)/2 unique pairs.

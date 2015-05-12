@@ -209,11 +209,13 @@ class binana:
       ligand_atom = ligand.all_atoms[ligand_atom_index]
       for receptor_atom_index in receptor.all_atoms:
         receptor_atom = receptor.all_atoms[receptor_atom_index]
-        if ligand_atom.element == "C" and receptor_atom.element == "C":
-          hydrophobic_key = (receptor_atom.side_chain_or_backbone() +
-              "_" + receptor_atom.structure)
+        dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
+        if dist < CONTACT_CUTOFF:
+          if ligand_atom.element == "C" and receptor_atom.element == "C":
+            hydrophobic_key = (receptor_atom.side_chain_or_backbone() +
+                "_" + receptor_atom.structure)
 
-          hashtable_entry_add_one(hydrophobics, hydrophobic_key)
+            hashtable_entry_add_one(hydrophobics, hydrophobic_key)
     return hydrophobics
 
   def compute_electrostatic_energy(self, ligand, receptor):
@@ -221,8 +223,13 @@ class binana:
     Compute electrostatic energy between ligand and atom.
 
     Returns a dictionary whose keys are atompairs of type
-    "${RECEPTOR_ATOM}_${LIGAND_ATOM}". The ATOM terms can equal "C", "O",
-    etc. The values are the associated coulomb energies for this pair.
+    "${ATOMTYPE}_${ATOMTYPE}". The ATOMTYPE terms can equal "C", "O",
+    etc. One ATOMTYPE belongs to receptor, the other to ligand, but
+    information on which is which isn't preserved
+    (i.e., C-receptor, O-ligand and C-ligand, O-receptor generate the same
+    key). The values are the sum of associated coulomb energies for such
+    pairs (i.e., if there are three C_O interactions with energies 1, 2,
+    and 3 respectively, the total energy is 6).
 
     Parameters
     ----------
@@ -243,25 +250,25 @@ class binana:
         atomtypes = [ligand_atom.atomtype, receptor_atom.atomtype]
         atomstr = "_".join(sorted(atomtypes))
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
-        # calculate electrostatic energies for all less than 4 A
-        ligand_charge = ligand_atom.charge
-        receptor_charge = receptor_atom.charge
-        # to convert into J/mol; might be nice to double check this
-        # TODO(bramsundar): What are units of
-        # ligand_charge/receptor_charge?
-        coulomb_energy = ((ligand_charge * receptor_charge / dist)
-            * ELECTROSTATIC_JOULE_PER_MOL)
-        hashtable_entry_add_one(ligand_receptor_electrostatics,
-            atomstr, coulomb_energy)
+        if dist < CONTACT_CUTOFF:
+          ligand_charge = ligand_atom.charge
+          receptor_charge = receptor_atom.charge
+          # to convert into J/mol; might be nice to double check this
+          # TODO(bramsundar): What are units of
+          # ligand_charge/receptor_charge?
+          coulomb_energy = ((ligand_charge * receptor_charge / dist)
+              * ELECTROSTATIC_JOULE_PER_MOL)
+          hashtable_entry_add_one(ligand_receptor_electrostatics,
+              atomstr, coulomb_energy)
     return ligand_receptor_electrostatics
 
   def compute_active_site_flexibility(self, ligand, receptor):
     """
     Compute statistics to judge active-site flexibility
 
-    Returns a dictionary whose keys are atompairs of type
-    "${RESIDUETYPE}_${STRUCTURE}" where RESIDUETYPE is either "SIDECHAIN" or
-    "BACKBONE" and STRUCTURE is either ALPHA, BETA, or OTHER and
+    Returns a dictionary whose keys are of type
+    "${RESIDUETYPE}_${STRUCTURE}" where RESIDUETYPE is either "SIDECHAIN"
+    or "BACKBONE" and STRUCTURE is either ALPHA, BETA, or OTHER and
     corresponds to the protein secondary structure of the current residue.
 
     Parameters
@@ -296,10 +303,13 @@ class binana:
     Computes hydrogen bonds between ligand and receptor.
 
     Returns a dictionary whose keys are of form
-    HDONOR-${COMMENT}_${RESIDUETYPE}_${STRUCTURE} where COMMENT is either
+    HDONOR-${MOLTYPE}_${RESIDUETYPE}_${STRUCTURE} where MOLTYPE is either
     "RECEPTOR" or "LIGAND", RESIDUETYPE is "BACKBONE" or "SIDECHAIN" and
     where STRUCTURE is "ALPHA" or "BETA" or "OTHER". The values are counts
     of the numbers of hydrogen bonds associated with the given keys.
+
+    TODO(rbharath): How are the ligands and the receptors protonated? Is
+    the protocol used reasonable?
 
     Parameters
     ----------
@@ -329,48 +339,54 @@ class binana:
         # these two atoms. distance cutoff = H_BOND_DIST, angle cutoff =
         # H_BOND_ANGLE.
         # Note that this is liberal.
-        if ((ligand_atom.element == "O" or ligand_atom.element == "N")
-          and (receptor_atom.element == "O"
-              or receptor_atom.element == "N")):
+        dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
+        if dist < CONTACT_CUTOFF:
+          if ((ligand_atom.element == "O" or ligand_atom.element == "N")
+            and (receptor_atom.element == "O"
+                or receptor_atom.element == "N")):
 
-          # now build a list of all the hydrogens close to these
-          # atoms
-          hydrogens = []
+            # now build a list of all the hydrogens close to these
+            # atoms
+            hydrogens = []
 
-          for atm_index in ligand.all_atoms:
-            if ligand.all_atoms[atm_index].element == "H":
-              # so it's a hydrogen
-              if (ligand.all_atoms[atm_index].coordinates.dist_to(
-                  ligand_atom.coordinates) < H_BOND_DIST):
-                ligand.all_atoms[atm_index].comment = "LIGAND"
-                hydrogens.append(ligand.all_atoms[atm_index])
+            # TODO(rbharath): I don't like this bit of code. It's emebdding
+            # state in the atoms to propagate information. Causing
+            # side-effects like this is dirty.
+            for atm_index in ligand.all_atoms:
+              if ligand.all_atoms[atm_index].element == "H":
+                # so it's a hydrogen
+                if (ligand.all_atoms[atm_index].coordinates.dist_to(
+                    ligand_atom.coordinates) < H_BOND_DIST):
+                  ligand.all_atoms[atm_index].comment = "LIGAND"
+                  hydrogens.append(ligand.all_atoms[atm_index])
 
-          for atm_index in receptor.all_atoms:
-            if receptor.all_atoms[atm_index].element == "H": # so it's a hydrogen
-              if (receptor.all_atoms[atm_index].coordinates.dist_to(
-                  receptor_atom.coordinates) < H_BOND_DIST):
-                receptor.all_atoms[atm_index].comment = "RECEPTOR"
-                hydrogens.append(receptor.all_atoms[atm_index])
+            for atm_index in receptor.all_atoms:
+              if receptor.all_atoms[atm_index].element == "H":
+                if (receptor.all_atoms[atm_index].coordinates.dist_to(
+                    receptor_atom.coordinates) < H_BOND_DIST):
+                  receptor.all_atoms[atm_index].comment = "RECEPTOR"
+                  hydrogens.append(receptor.all_atoms[atm_index])
 
-          # now we need to check the angles
-          # TODO(bramsundar): Verify this heuristic and add a source
-          # citation.
-          for hydrogen in hydrogens:
-            if (math.fabs(180 - self.functions.angle_between_three_points(
-                  ligand_atom.coordinates,
-                  hydrogen.coordinates,
-                  receptor_atom.coordinates) * 180.0 / math.pi) <=
-                  H_BOND_ANGLE):
-              # TODO(rbharath): This feels like a silent failure mode... Introduce
-              # an upstream fix.
-              if receptor_atom.structure == "":
-                structure = "OTHER"
-              else:
-                structure = receptor_atom.structure
-              hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
-                  receptor_atom.side_chain_or_backbone() + "_" +
-                  structure)
-              hashtable_entry_add_one(hbonds, hbonds_key)
+            # now we need to check the angles
+            # TODO(rbharath): Rather than using this heuristic, it seems like
+            # it might be better to just report the angle in the feature
+            # vector... 
+            for hydrogen in hydrogens:
+              if (math.fabs(180 - self.functions.angle_between_three_points(
+                    ligand_atom.coordinates,
+                    hydrogen.coordinates,
+                    receptor_atom.coordinates) * 180.0 / math.pi) <=
+                    H_BOND_ANGLE):
+                # TODO(rbharath): This feels like a silent failure mode... Introduce
+                # an upstream fix.
+                if receptor_atom.structure == "":
+                  structure = "OTHER"
+                else:
+                  structure = receptor_atom.structure
+                hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
+                    receptor_atom.side_chain_or_backbone() + "_" +
+                    structure)
+                hashtable_entry_add_one(hbonds, hbonds_key)
     return hbonds
 
   def compute_ligand_atom_counts(self, ligand):
@@ -464,7 +480,7 @@ class binana:
 
           if math.fabs(angle_between_planes-0) < 30.0 or math.fabs(angle_between_planes-180) < 30.0:
             # so they're more or less parallel, it's probably pi-pi
-            # stackingoutput_dir now, pi-pi are not usually right on
+            # stacking now, since pi-pi are not usually right on
             # top of each other. They're often staggered. So I don't
             # want to just look at the centers of the rings and
             # compare. Let's look at each of the atoms.  do atom of
@@ -483,6 +499,7 @@ class binana:
                 pi_pi = True
                 break
 
+            # TODO(rbharath): This if-else is confusing.
             if pi_pi == False:
               # if you've already determined it's a pi-pi stacking interaction, no need to keep trying
               for receptor_ring_index in rec_aromatic.indices:
@@ -501,8 +518,6 @@ class binana:
                   # since it could be interacting with a cofactor or something
                   structure = "OTHER"
                 key = "STACKING_" + structure
-
-
                 hashtable_entry_add_one(pi_stacking, key)
     return pi_stacking
 
