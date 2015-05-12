@@ -23,9 +23,9 @@ import cPickle
 import numpy as np
 import itertools
 from vs_utils.features import Featurizer
-from vs_utils.features.nnscore_helper import MathFunctions
-from vs_utils.features.nnscore_helper import PDB
-from vs_utils.features.nnscore_helper import Point
+from vs_utils.features.nnscore_utils import MathFunctions
+from vs_utils.features.nnscore_pdb import PDB
+from vs_utils.features.nnscore_utils import Point
 
 # TODO(bramsundar): Many places in this file use long switch
 # statements. Could there be a cleaner way to structure this file?

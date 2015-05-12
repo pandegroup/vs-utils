@@ -22,6 +22,12 @@ __license__ = "GNU General Public License"
 import math
 import textwrap
 import numpy as np
+from vs_utils.features.nnscore_utils import AromaticRing
+from vs_utils.features.nnscore_utils import Atom
+from vs_utils.features.nnscore_utils import average_point
+from vs_utils.features.nnscore_utils import Charged
+from vs_utils.features.nnscore_utils import Point
+from vs_utils.features.nnscore_utils import MathFunctions
 
 
 class PDB:
@@ -79,6 +85,7 @@ class PDB:
     self.assign_protein_aromatic_rings()
     self.assign_non_protein_charges()
     self.assign_protein_charges()
+    self.assign_secondary_structure()
 
 
   def load_atoms_from_PDB_list(self, lines):
@@ -641,7 +648,7 @@ class PDB:
     """Assign charges to phosphorus groups where necessary.
 
     Searches for phosphate-like groups and assigns charges.
-    
+
     Returns
     -------
     charges: list
@@ -858,7 +865,7 @@ class PDB:
     keys.append(cur_key)
     residues.append(cur_res)
     return zip(keys, residues)
-      
+
 
   def assign_protein_charges(self):
     """Assigns charges to atoms in charged residues.
@@ -921,7 +928,7 @@ class PDB:
 
   def get_lysine_charges(self, res_list):
     """Assign charges to lysine residues.
-    
+
     Regardless of protonation state, assume that lysine is charged.
     Recall that LYS is positive charged lysine and LYN is neutral. See
     http://www.cgl.ucsf.edu/chimera/docs/ContributedSoftware/addh/addh.html
@@ -980,7 +987,7 @@ class PDB:
 
     See
     http://aria.pasteur.fr/documentation/use-aria/version-2.2/non-standard-atom-or-residue-definitions
-    or 
+    or
     http://proteopedia.org/wiki/index.php/Standard_Residues
 
     Regardless of protonation state, assume it's charged. This based on
@@ -1263,7 +1270,7 @@ class PDB:
 
   def get_phenylalanine_aromatics(self, res_list):
     """Assign aromatics in phenylalanines.
-    
+
     Parameters
     ----------
     res_list: list
@@ -1278,7 +1285,7 @@ class PDB:
 
   def get_tyrosine_aromatics(self, res_list):
     """Assign aromatics in tyrosines.
-    
+
     Parameters
     ----------
     res_list: list
@@ -1293,7 +1300,7 @@ class PDB:
 
   def get_histidine_aromatics(self, res_list):
     """Assign aromatics in histidines.
-    
+
     Parameters
     ----------
     res_list: list
@@ -1309,7 +1316,7 @@ class PDB:
 
   def get_tryptophan_aromatics(self, res_list):
     """Assign aromatics in tryptophans.
-    
+
     Parameters
     ----------
     res_list: list
@@ -1343,17 +1350,18 @@ class PDB:
 
   def get_structure_dict(self):
     """Creates a dictionary of preliminary structure labels.
-    
+
     Uses a simple heuristic of checking dihedral angles to classify as
     alpha helix or beta sheet.
+
+    TODO(rbharath): This prediction function is overly simplistic and
+    fails to provide reasonable results. Swap to use JPred results instead.
 
     Returns:
     structure: dict
       Maps keys of format RESNUMBER_CHAIN to one of ALPHA, BETA, or OTHER.
     """
     # first, we need to know what resid's are available
-    # TODO(rbharath): Can this function be altered to use the normal keys
-    # and not these altered keys?
     resids = []
     for (key, _) in self.get_residues():
       _, resnum, chain = key.split("_")
@@ -1437,7 +1445,7 @@ class PDB:
     TODO(rbharath): The comparison method here is quadratic. Can we do
     better with a nice datastructure?
 
-    Parameters 
+    Parameters
     ----------
     CA_list: list
       List of all alpha carbons in protein.
@@ -1570,11 +1578,11 @@ class PDB:
 
   def process_beta_sheets(self, CA_list):
     """Postprocess beta sheets to remove extraneous labels.
-    
+
     TODO(rbharath): The comparison method here is quadratic. Can we do
     better with a nice datastructure?
 
-    Parameters 
+    Parameters
     ----------
     CA_list: list
       List of all alpha carbons in protein.
@@ -1673,11 +1681,6 @@ class PDB:
     # labels.
     self.process_alpha_helices(CA_list)
     self.process_beta_sheets(CA_list)
-
-    # some more post processing.
-    # TODO(rbharath): Factor out the alpha-helix and beta-sheet processing
-    # into separate functions.
-    # TODO(rbharath): This code is sooo horrible. Undo the break on change.
 
 
   def set_structure_of_residue(self, chain, resid, structure):

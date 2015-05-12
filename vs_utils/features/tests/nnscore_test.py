@@ -1,17 +1,18 @@
 """
 Test NNScore binana featurizer.
 
-TODO(rbharath): Most of these tests are trivial and merely check that the
-code can be invoked with trivial arguments. More nontrivial tests require
-identification of ligand-receptor structures that boast interesting
-geometries (with salt-bridges, pi-cation interactions, etc.)
+TODO(rbharath): Most of these tests are simplistic. More nontrivial tests
+require identification of ligand-receptor structures that boast interesting
+interactions (with salt-bridges, pi-cation interactions, etc.)
 """
 import os
 import unittest
 import itertools
 
 from vs_utils.features.nnscore import binana
-from vs_utils.features.nnscore_helper import PDB, Atom, Point
+from vs_utils.features.nnscore_pdb import PDB
+from vs_utils.features.nnscore_utils import Atom
+from vs_utils.features.nnscore_utils import Point
 from vs_utils.features.tests import __file__ as test_directory
 
 class TestNNScoreFeaturizer(unittest.TestCase):
@@ -53,7 +54,6 @@ class TestBinana(unittest.TestCase):
     """
     hydrophobics = self.binana.compute_hydrophobic_contacts(
         self.prgr_active, self.prgr_receptor)
-    print hydrophobics
     assert len(hydrophobics) == 6
     assert "BACKBONE_ALPHA" in hydrophobics
     assert "BACKBONE_BETA" in hydrophobics
@@ -189,7 +189,7 @@ class TestBinana(unittest.TestCase):
     TestBinana: Compute Pi-Pi Stacking.
     """
     # TODO(bramsundar): prgr has no pi-pi stacking. Find a different
-    # complex that does. 
+    # complex that does.
     pi_stacking = (
         self.binana.compute_pi_pi_stacking(self.prgr_active,
             self.prgr_receptor))
@@ -204,7 +204,7 @@ class TestBinana(unittest.TestCase):
     TestBinana: Compute Pi-T Interactions.
     """
     # TODO(bramsundar): prgr has no pi-T interactions. Find an alternative
-    # structure that does. 
+    # structure that does.
     pi_T = (
         self.binana.compute_pi_T(self.prgr_active,
             self.prgr_receptor))
@@ -218,7 +218,7 @@ class TestBinana(unittest.TestCase):
     TestBinana: Compute Pi-Cation Interactions.
     """
     # TODO(rbharath): prgr doesn't have any pi-cation interactions. Find a
-    # different complex that exhibits this interaction. 
+    # different complex that exhibits this interaction.
     pi_cation = (
         self.binana.compute_pi_cation(self.prgr_active,
             self.prgr_receptor))
