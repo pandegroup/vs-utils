@@ -122,7 +122,7 @@ class binana:
        receptor atoms (< 4 A)
     -ligand_receptor_electrostatics: Coulomb energy between contacting
        ligand and receptor atoms.
-    -ligand_atom_types: The atom types in the ligand.
+    -ligand_atom_counts: The atom types in the ligand.
     -ligand_receptor_close_contacts: List of close contacts between
        ligand and receptor (< 2.5 A)
     -hbonds: List of hydrogen bonds.
@@ -718,7 +718,7 @@ class binana:
       self.compute_ligand_receptor_contacts(ligand, receptor))
     ligand_receptor_electrostatics = (
       self.compute_electrostatic_energy(ligand, receptor))
-    ligand_atom_types = self.compute_ligand_atom_counts(ligand)
+    ligand_atom_counts = self.compute_ligand_atom_counts(ligand)
     hbonds = self.compute_hydrogen_bonds(ligand, receptor)
     hydrophobics = self.compute_hydrophobic_contacts(ligand, receptor)
     stacking = self.compute_pi_pi_stacking(ligand, receptor)
@@ -732,7 +732,7 @@ class binana:
     input_vector = extend_list_by_dictionaries(input_vector, [
         ligand_receptor_contacts,
         ligand_receptor_electrostatics,
-        ligand_atom_types,
+        ligand_atom_counts,
         ligand_receptor_close_contacts,
         hbonds,
         hydrophobics,

@@ -69,29 +69,14 @@ class TestBinana(unittest.TestCase):
     ligand_receptor_electrostatics = (
         self.binana.compute_electrostatic_energy(
             self.prgr_active, self.prgr_receptor))
-    # TODO(bramsundar): Add a more nontrivial test of electrostatics here.
     # The keys of these dicts are pairs of atomtypes, but the keys are
     # sorted so that ("C", "O") is always written as "C_O". Thus, for N
     # atom types, there are N*(N+1)/2 unique pairs.
     N = len(binana.atom_types)
-    print N
-    print ligand_receptor_electrostatics
-    print len(ligand_receptor_electrostatics)
-    print N*(N+1)/2
-    for first, second in itertools.product(binana.atom_types,
-      binana.atom_types):
-      key = "_".join(sorted([first, second]))
-      ligand_receptor_electrostatics.pop(key, None)
-    print ligand_receptor_electrostatics
-    print "ligand atoms"
-    for ind in self.prgr_active.all_atoms:
-      atom = self.prgr_active.all_atoms[ind]
-      print "atomtype: " + str(atom.atomtype)
-    print "receptor atoms"
-    for ind in self.prgr_receptor.all_atoms:
-      atom = self.prgr_receptor.all_atoms[ind]
-      print "atomtype: " + str(atom.atomtype)
     assert len(ligand_receptor_electrostatics) == N*(N+1)/2
+    # TODO(rbharath): The current example has all electrostatic values set
+    # to 0. Not sure if this is a bug, or if there are genuinely no charged
+    # interactions for the current prgr active.
 
   def testComputeActiveSiteFlexibility(self):
     """
@@ -180,17 +165,8 @@ class TestBinana(unittest.TestCase):
     # sorted so that ("C", "O") is always written as "C_O". Thus, for N
     # atom types, there are N*(N+1)/2 unique pairs.
     N = len(binana.atom_types)
-    print N
-    print ligand_receptor_close_contacts
-    print len(ligand_receptor_close_contacts)
-    print N*(N+1)/2
-    for first, second in itertools.product(binana.atom_types,
-      binana.atom_types):
-      key = "_".join(sorted([first, second]))
-      ligand_receptor_close_contacts.pop(key, None)
-    print ligand_receptor_close_contacts
-    #assert len(ligand_receptor_close_contacts) == N*(N+1)/2
-    assert 0 == 1
+    assert len(ligand_receptor_close_contacts) == N*(N+1)/2
+    assert len(ligand_receptor_contacts) == N*(N+1)/2
 
   def testComputePiPiStacking(self):
     """
@@ -205,7 +181,6 @@ class TestBinana(unittest.TestCase):
     assert "STACKING_ALPHA" in pi_stacking
     assert "STACKING_BETA" in pi_stacking
     assert "STACKING_OTHER" in pi_stacking
-
 
   def testComputePiT(self):
     """
@@ -260,3 +235,19 @@ class TestBinana(unittest.TestCase):
     input_vector = (
         self.binana.compute_input_vector(self.prgr_active,
             self.prgr_receptor))
+    N = len(binana.atom_types)
+    # Lengths:
+    # ligand_receptor_close_contacts: N*(N+1)/2
+    # ligand_receptor_contacts: N*(N+1)/2
+    # ligand_receptor_electrostatics: N*(N+1)/2
+    # ligand_atom_counts: N
+    # hbonds: 12
+    # hydrophobics: 6
+    # stacking: 3
+    # pi_cation: 6
+    # t_shaped: 3
+    # active_site_flexibility: 6
+    # salt_bridges: 3
+    # rotatable_boonds_count: 1
+    total_len = 3*N*(N+1)/2 + N + 12 + 6 + 3 + 6 + 3 + 6 + 3 + 1
+    assert len(input_vector) == total_len
