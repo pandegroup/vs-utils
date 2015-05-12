@@ -237,7 +237,9 @@ class Atom:
       if not (index in self.indices_of_atoms_connecting):
         self.indices_of_atoms_connecting.append(index)
 
-  def side_chain_or_backbone(self): # only really applies to proteins, assuming standard atom names
+  def side_chain_or_backbone(self):
+    """Determine whether receptor atom belongs to residue sidechain or backbone.
+    """
     # TODO(rbharath): Should this be an atom function?
     if (self.atomname.strip() == "CA" or self.atomname.strip() == "C"
       or self.atomname.strip() == "O" or self.atomname.strip() == "N"):

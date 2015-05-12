@@ -21,6 +21,7 @@ import textwrap
 import glob
 import cPickle
 import numpy as np
+import itertools
 from vs_utils.features import Featurizer
 from vs_utils.features.nnscore_helper import MathFunctions
 from vs_utils.features.nnscore_helper import PDB
@@ -129,7 +130,10 @@ class binana:
     -stacking: List of pi-pi stacking.
     -pi_cation: List of pi-cation interactions.
     -t_shaped: List of T-shaped interactions.
-      TODO(bramsundar): What are T-shaped interactions?
+      The pi-cloud concentrates negative charge, leaving the edges of the
+      aromatic ring with some positive charge. Hence, T-shaped interactions
+      align the positive exterior of one ring with the negative interior of
+      another. See wikipedia for details.
     -active_site_flexibility: Considers whether the receptor atoms are
        backbone or sidechain and whether they are part of
        alpha-helices or beta-sheets.
@@ -137,6 +141,10 @@ class binana:
     -rotatable_bonds_count: Count of (ligand(?), receptor(?))
        rotatable bonds.
   """
+  # TODO(rbharath): What is atom type A here?
+  atom_types = [
+      "A", "BR", "C", "CD", "CL", "CU", "F", "FE", "H",  "HD", "I", "MG", "MN",
+      "N", "NA", "O", "OA", "P", "S", "SA", "ZN"]
 
   # supporting functions
   def get_vina_output(self):
@@ -222,33 +230,12 @@ class binana:
       A PDB Object describing the ligand molecule.
     receptor: PDB
       A PDB object describing the receptor protein.
-
     """
-    ligand_receptor_electrostatics = {
-        "A_MG": 0, "A_MN": 0, "BR_SA": 0, "CL_FE": 0, "CL_MG": 0,
-        "CL_MN": 0, "CL_NA": 0, "CL_P": 0, "CL_S": 0, "CL_ZN": 0,
-        "CU_HD": 0, "CU_N": 0, "FE_NA": 0, "FE_SA": 0, "MG_N": 0,
-        "MG_S": 0, "MG_SA": 0, "MN_NA": 0, "MN_S": 0, "MN_SA": 0,
-        "NA_P": 0, "P_S": 0, "P_SA": 0, "S_SA": 0, "A_A": 0.0, "A_BR":
-        0.0, "A_C": 0.0, "A_CL": 0.0, "A_F": 0.0, "A_FE": 0.0, "A_HD":
-        0.0, "A_I": 0.0, "A_N": 0.0, "A_NA": 0.0, "A_OA": 0.0, "A_P":
-        0.0, "A_S": 0.0, "A_SA": 0.0, "A_ZN": 0.0, "BR_C": 0.0,
-        "BR_HD": 0.0, "BR_N": 0.0, "BR_OA": 0.0, "C_C": 0.0, "C_CL":
-        0.0, "C_F": 0.0, "C_FE": 0.0, "C_HD": 0.0, "C_I": 0.0,
-        "CL_HD": 0.0, "CL_N": 0.0, "CL_OA": 0.0, "CL_SA": 0.0, "C_MG":
-        0.0, "C_MN": 0.0, "C_N": 0.0, "C_NA": 0.0, "C_OA": 0.0, "C_P":
-        0.0, "C_S": 0.0, "C_SA": 0.0, "C_ZN": 0.0, "FE_HD": 0.0,
-        "FE_N": 0.0, "FE_OA": 0.0, "F_HD": 0.0, "F_N": 0.0, "F_OA":
-        0.0, "F_SA": 0.0, "HD_HD": 0.0, "HD_I": 0.0, "HD_MG": 0.0,
-        "HD_MN": 0.0, "HD_N": 0.0, "HD_NA": 0.0, "HD_OA": 0.0, "HD_P":
-        0.0, "HD_S": 0.0, "HD_SA": 0.0, "HD_ZN": 0.0, "I_N": 0.0,
-        "I_OA": 0.0, "MG_NA": 0.0, "MG_OA": 0.0, "MG_P": 0.0, "MN_N":
-        0.0, "MN_OA": 0.0, "MN_P": 0.0, "NA_OA": 0.0, "NA_S": 0.0,
-        "NA_SA": 0.0, "NA_ZN": 0.0, "N_N": 0.0, "N_NA": 0.0, "N_OA":
-        0.0, "N_P": 0.0, "N_S": 0.0, "N_SA": 0.0, "N_ZN": 0.0,
-        "OA_OA": 0.0, "OA_P": 0.0, "OA_S": 0.0, "OA_SA": 0.0, "OA_ZN":
-        0.0, "P_ZN": 0.0, "SA_SA": 0.0, "SA_ZN": 0.0, "S_ZN": 0,
-        "F_ZN": 0}
+    ligand_receptor_electrostatics = {}
+    for first, second in itertools.product(binana.atom_types,
+      binana.atom_types):
+      key = "_".join(sorted([first, second]))
+      ligand_receptor_electrostatics[key] = 0
     for ligand_atom_index in ligand.all_atoms:
       ligand_atom = ligand.all_atoms[ligand_atom_index]
       for receptor_atom_index in receptor.all_atoms:
@@ -402,10 +389,9 @@ class binana:
     ligand_atom_types: dictionary
       Keys are atom types; values are integer counts.
     """
-    # TODO(rbharath): What is atom type A here?
-    ligand_atom_types = {
-        "A": 0, "BR": 0, "C": 0, "CL": 0, "F": 0, "H": 0,  "HD": 0, "I": 0,
-        "N": 0, "NA": 0, "O": 0, "OA": 0, "P": 0, "S": 0, "SA": 0}
+    ligand_atom_types = {}
+    for atom_type in binana.atom_types:
+      ligand_atom_types[atom_type] = 0
     for ligand_atom_index in ligand.all_atoms:
       ligand_atom = ligand.all_atoms[ligand_atom_index]
       hashtable_entry_add_one(ligand_atom_types, ligand_atom.atomtype)
@@ -419,45 +405,17 @@ class binana:
 
     Parameters
     ----------
-    ligand: TODO(bramsundar)
-    receptor: TODO(bramsundar)
+    ligand: PDB object
+      Should be loaded with the ligand in question. 
+    receptor: PDB object.
+      Should be loaded with the receptor in question. 
     """
-    ligand_receptor_close_contacts = {
-        "A_A": 0, "A_C": 0, "A_CL": 0, "A_F": 0, "A_FE": 0, "A_MG": 0,
-        "A_MN": 0, "A_NA": 0, "A_SA": 0, "BR_C": 0, "BR_OA": 0, "C_CL":
-        0, "CD_OA": 0, "CL_FE": 0, "CL_MG": 0, "CL_N": 0, "CL_OA": 0,
-        "CL_ZN": 0, "C_MN": 0, "C_NA": 0, "F_N": 0, "F_SA": 0, "F_ZN":
-        0, "HD_MN": 0, "MN_N": 0, "NA_SA": 0, "N_SA": 0, "A_HD": 0,
-        "A_N": 0, "A_OA": 0, "A_ZN": 0, "BR_HD": 0, "C_C": 0, "C_F": 0,
-        "C_HD": 0, "CL_HD": 0, "C_MG": 0, "C_N": 0, "C_OA": 0, "C_SA":
-        0, "C_ZN": 0, "FE_HD": 0, "FE_N": 0, "FE_OA": 0, "F_HD": 0,
-        "F_OA": 0, "HD_HD": 0, "HD_I": 0, "HD_MG": 0, "HD_N": 0,
-        "HD_NA": 0, "HD_OA": 0, "HD_P": 0, "HD_S": 0, "HD_SA": 0,
-        "HD_ZN": 0, "MG_NA": 0, "MG_OA": 0, "MN_OA": 0, "NA_OA": 0,
-        "NA_ZN": 0, "N_N": 0, "N_NA": 0, "N_OA": 0, "N_ZN": 0, "OA_OA":
-        0, "OA_SA": 0, "OA_ZN": 0, "SA_ZN": 0, "S_ZN": 0}
-    ligand_receptor_contacts = {
-        "A_CU": 0, "A_MG": 0, "A_MN": 0, "BR_SA": 0, "C_CD": 0,
-        "CL_FE": 0, "CL_MG": 0, "CL_MN": 0, "CL_NA": 0, "CL_P": 0,
-        "CL_S": 0, "CL_ZN": 0, "CU_HD": 0, "CU_N": 0, "FE_NA": 0,
-        "FE_SA": 0, "MG_N": 0, "MG_S": 0, "MG_SA": 0, "MN_NA": 0,
-        "MN_S": 0, "MN_SA": 0, "NA_P": 0, "P_S": 0, "P_SA": 0, "S_SA":
-        0, "A_A": 0, "A_BR": 0, "A_C": 0, "A_CL": 0, "A_F": 0, "A_FE":
-        0, "A_HD": 0, "A_I": 0, "A_N": 0, "A_NA": 0, "A_OA": 0, "A_P":
-        0, "A_S": 0, "A_SA": 0, "A_ZN": 0, "BR_C": 0, "BR_HD": 0,
-        "BR_N": 0, "BR_OA": 0, "C_C": 0, "C_CL": 0, "C_F": 0, "C_FE":
-        0, "C_HD": 0, "C_I": 0, "CL_HD": 0, "CL_N": 0, "CL_OA": 0,
-        "CL_SA": 0, "C_MG": 0, "C_MN": 0, "C_N": 0, "C_NA": 0, "C_OA":
-        0, "C_P": 0, "C_S": 0, "C_SA": 0, "C_ZN": 0, "FE_HD": 0,
-        "FE_N": 0, "FE_OA": 0, "F_HD": 0, "F_N": 0, "F_OA": 0, "F_SA":
-        0, "HD_HD": 0, "HD_I": 0, "HD_MG": 0, "HD_MN": 0, "HD_N": 0,
-        "HD_NA": 0, "HD_OA": 0, "HD_P": 0, "HD_S": 0, "HD_SA": 0,
-        "HD_ZN": 0, "I_N": 0, "I_OA": 0, "MG_NA": 0, "MG_OA": 0,
-        "MG_P": 0, "MN_N": 0, "MN_OA": 0, "MN_P": 0, "NA_OA": 0,
-        "NA_S": 0, "NA_SA": 0, "NA_ZN": 0, "N_N": 0, "N_NA": 0,
-        "N_OA": 0, "N_P": 0, "N_S": 0, "N_SA": 0, "N_ZN": 0, "OA_OA":
-        0, "OA_P": 0, "OA_S": 0, "OA_SA": 0, "OA_ZN": 0, "P_ZN": 0,
-        "SA_SA": 0, "SA_ZN": 0, "S_ZN": 0}
+    ligand_receptor_contacts, ligand_receptor_close_contacts = {}, {}
+    for first, second in itertools.product(binana.atom_types,
+      binana.atom_types):
+      key = "_".join(sorted([first, second]))
+      ligand_receptor_contacts[key] = 0
+      ligand_receptor_close_contacts[key] = 0
     for ligand_atom_index in ligand.all_atoms:
       for receptor_atom_index in receptor.all_atoms:
         ligand_atom = ligand.all_atoms[ligand_atom_index]
@@ -478,6 +436,10 @@ class binana:
     """
     Computes pi-pi interactions.
 
+    Returns a dictionary with keys of form STACKING_${STRUCTURE} where
+    STRUCTURE is "ALPHA" or "BETA" or "OTHER". Values are counts of the
+    number of such stacking interactions.
+
     Parameters
     ----------
     ligand: PDB Object.
@@ -485,7 +447,7 @@ class binana:
     receptor: PDB Object
       protein to dock agains.
     """
-    pi_stacking = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
+    pi_stacking = {'STACKING_ALPHA': 0, 'STACKING_BETA': 0, 'STACKING_OTHER': 0}
     for lig_aromatic in ligand.aromatic_rings:
       for rec_aromatic in receptor.aromatic_rings:
         dist = lig_aromatic.center.dist_to(rec_aromatic.center)
@@ -548,6 +510,10 @@ class binana:
     """
     Computes T-shaped pi-pi interactions.
 
+    Returns a dictionary with keys of form T-SHAPED_${STRUCTURE} where
+    STRUCTURE is "ALPHA" or "BETA" or "OTHER". Values are counts of the
+    number of such stacking interactions.
+
     Parameters
     ----------
     ligand: PDB Object.
@@ -555,7 +521,7 @@ class binana:
     receptor: PDB Object
       protein to dock agains.
     """
-    pi_T = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
+    pi_T = {'T-SHAPED_ALPHA': 0, 'T-SHAPED_BETA': 0, 'T-SHAPED_OTHER': 0}
     for lig_aromatic in ligand.aromatic_rings:
       for rec_aromatic in receptor.aromatic_rings:
         lig_aromatic_norm_vector = Point(coords=np.array([lig_aromatic.plane_coeff[0],
@@ -683,7 +649,8 @@ class binana:
     receptor: PDB Object
       protein to dock agains.
     """
-    salt_bridges = {'ALPHA': 0, 'BETA': 0, 'OTHER': 0}
+    salt_bridges = {'SALT-BRIDGE_ALPHA': 0, 'SALT-BRIDGE_BETA': 0,
+                    'SALT-BRIDGE_OTHER': 0}
     for receptor_charge in receptor.charges:
       for ligand_charge in ligand.charges:
         if ligand_charge.positive != receptor_charge.positive:
@@ -699,25 +666,25 @@ class binana:
             hashtable_entry_add_one(salt_bridges, key)
     return salt_bridges
 
-  def compute_input_vector_from_files(self, ligand_pdbqt_filename,
-      receptor_pdbqt_filename, line_header):
+  def compute_input_vector_from_files(self, ligand_pdb_filename,
+      receptor_pdb_filename, line_header):
     """Computes feature vector for ligand-receptor pair.
 
     Parameters
     ----------
-    ligand_pdbqt_filename: string
-      path to ligand's pdbqt file.
-    receptor_pdbqt_filename: string
-      path to receptor pdbqt file.
+    ligand_pdb_filename: string
+      path to ligand's pdb file.
+    receptor_pdb_filename: string
+      path to receptor pdb file.
     line_header: string
       TODO(bramsundar): line separator in PDB files (?)
     """
     # Load receptor and ligand from file.
     receptor = PDB()
-    receptor.load_PDB_from_file(receptor_pdbqt_filename, line_header)
+    receptor.load_PDB_from_file(receptor_pdb_filename, line_header)
     receptor.assign_secondary_structure()
     ligand = PDB()
-    ligand.load_PDB_from_file(ligand_pdbqt_filename, line_header)
+    ligand.load_PDB_from_file(ligand_pdb_filename, line_header)
     self.compute_input_vector(ligand, pdb)
 
   def compute_input_vector(self, ligand, receptor):

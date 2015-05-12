@@ -8,8 +8,9 @@ geometries (with salt-bridges, pi-cation interactions, etc.)
 """
 import os
 import unittest
+import itertools
 
-from vs_utils.features.nnscore import NNScoreFeaturizer, binana
+from vs_utils.features.nnscore import binana
 from vs_utils.features.nnscore_helper import PDB, Atom, Point
 from vs_utils.features.tests import __file__ as test_directory
 
@@ -45,32 +46,6 @@ class TestBinana(unittest.TestCase):
     self.prgr_active = PDB()
     prgr_active_path = os.path.join(data_dir(), "prgr_active0.pdb")
     self.prgr_active.load_PDB_from_file(prgr_active_path)
-    #self.receptor = PDB()
-    #receptor_atom = atom(element="C", coordinates=point(0,0,0))
-    #self.receptor.AddNewAtom(receptor_atom)
-
-    #self.structured_receptor = PDB()
-    #backbone_alpha_receptor_atom = atom(element="C", coordinates=point(0,0,0),
-    #    structure="ALPHA")
-    #backbone_beta_receptor_atom = atom(element="C", coordinates=point(0,0,1),
-    #    structure="BETA")
-    #backbone_other_receptor_atom = atom(element="C", coordinates=point(0,0,2),
-    #    structure="OTHER")
-    #sidechain_alpha_receptor_atom = atom(element="S", coordinates=point(0,0,3),
-    #    structure="ALPHA")
-    #sidechain_beta_receptor_atom = atom(element="S", coordinates=point(0,0,4),
-    #    structure="BETA")
-    #sidechain_other_receptor_atom = atom(element="S", coordinates=point(0,0,5),
-    #    structure="OTHER")
-    #self.structured_receptor.AddNewAtoms([backbone_alpha_receptor_atom,
-    #    backbone_beta_receptor_atom, backbone_other_receptor_atom,
-    #    sidechain_alpha_receptor_atom, sidechain_beta_receptor_atom,
-    #    sidechain_other_receptor_atom])
-    
-
-    #self.hydrophobic_ligand = PDB()
-    #hydrophobic_ligand_atom = atom(element="C", coordinates=point(0,0,1))
-    #self.hydrophobic_ligand.AddNewAtom(hydrophobic_ligand_atom)
 
   def testComputeHydrophobicContact(self):
     """
@@ -88,7 +63,20 @@ class TestBinana(unittest.TestCase):
         self.binana.compute_electrostatic_energy(
             self.prgr_active, self.prgr_receptor))
     # TODO(bramsundar): Add a more nontrivial test of electrostatics here.
-    #assert len(ligand_receptor_electrostatics) == 1
+    # The keys of these dicts are pairs of atomtypes, but the keys are
+    # sorted so that ("C", "O") is always written as "C_O". Thus, for N
+    # atom types, there are N*(N+1)/2 unique pairs.
+    N = len(binana.atom_types)
+    print N
+    print ligand_receptor_electrostatics
+    print len(ligand_receptor_electrostatics)
+    print N*(N+1)/2
+    for first, second in itertools.product(binana.atom_types,
+      binana.atom_types):
+      key = "_".join(sorted([first, second]))
+      ligand_receptor_electrostatics.pop(key, None)
+    print ligand_receptor_electrostatics
+    assert len(ligand_receptor_electrostatics) == N*(N+1)/2
 
   def testComputeActiveSiteFlexibility(self):
     """
@@ -133,16 +121,20 @@ class TestBinana(unittest.TestCase):
     """
     ligand_atom_counts = (
       self.binana.compute_ligand_atom_counts(self.prgr_active))
-    print ligand_atom_counts
-    assert len(ligand_atom_counts) == 15
+    assert len(ligand_atom_counts) == len(binana.atom_types)
     assert ligand_atom_counts["A"] == 0
     assert ligand_atom_counts["BR"] == 0
     assert ligand_atom_counts["C"] == 27
+    assert ligand_atom_counts["CD"] == 0
     assert ligand_atom_counts["CL"] == 0
+    assert ligand_atom_counts["CU"] == 0
     assert ligand_atom_counts["F"] == 0
+    assert ligand_atom_counts["FE"] == 0
     assert ligand_atom_counts["H"] == 1
     assert ligand_atom_counts["HD"] == 0
     assert ligand_atom_counts["I"] == 0
+    assert ligand_atom_counts["MG"] == 0
+    assert ligand_atom_counts["MN"] == 0
     assert ligand_atom_counts["N"] == 2
     assert ligand_atom_counts["NA"] == 0
     assert ligand_atom_counts["O"] == 3
@@ -150,6 +142,7 @@ class TestBinana(unittest.TestCase):
     assert ligand_atom_counts["P"] == 0
     assert ligand_atom_counts["S"] == 0
     assert ligand_atom_counts["SA"] == 0
+    assert ligand_atom_counts["ZN"] == 0
 
   def testComputeLigandReceptorContacts(self):
     """
@@ -158,25 +151,50 @@ class TestBinana(unittest.TestCase):
     ligand_receptor_close_contacts, ligand_receptor_contacts = (
       self.binana.compute_ligand_receptor_contacts(self.prgr_active,
           self.prgr_receptor))
+    # The keys of these dicts are pairs of atomtypes, but the keys are
+    # sorted so that ("C", "O") is always written as "C_O". Thus, for N
+    # atom types, there are N*(N+1)/2 unique pairs.
+    N = len(binana.atom_types)
+    print N
+    print ligand_receptor_close_contacts
+    print len(ligand_receptor_close_contacts)
+    print N*(N+1)/2
+    for first, second in itertools.product(binana.atom_types,
+      binana.atom_types):
+      key = "_".join(sorted([first, second]))
+      ligand_receptor_close_contacts.pop(key, None)
+    print ligand_receptor_close_contacts
+    #assert len(ligand_receptor_close_contacts) == N*(N+1)/2
+    assert 0 == 1
 
   def testComputePiPiStacking(self):
     """
     TestBinana: Compute Pi-Pi Stacking.
     """
-    # TODO(bramsundar): THERE ARE NO AROMATIC RINGS HERE! BOGUS TEST!
+    # TODO(bramsundar): prgr has no pi-pi stacking. Find a different
+    # complex that does. 
     pi_stacking = (
         self.binana.compute_pi_pi_stacking(self.prgr_active,
             self.prgr_receptor))
+    assert len(pi_stacking) == 3
+    assert "STACKING_ALPHA" in pi_stacking
+    assert "STACKING_BETA" in pi_stacking
+    assert "STACKING_OTHER" in pi_stacking
 
 
   def testComputePiT(self):
     """
     TestBinana: Compute Pi-T Interactions.
     """
-    # TODO(bramsundar): THERE ARE NO AROMATIC RINGS HERE! BOGUS TEST!
+    # TODO(bramsundar): prgr has no pi-T interactions. Find an alternative
+    # structure that does. 
     pi_T = (
         self.binana.compute_pi_T(self.prgr_active,
             self.prgr_receptor))
+    assert len(pi_T) == 3
+    assert "T-SHAPED_ALPHA" in pi_T
+    assert "T-SHAPED_BETA" in pi_T
+    assert "T-SHAPED_OTHER" in pi_T
 
   def testComputePiCation(self):
     """
@@ -205,9 +223,9 @@ class TestBinana(unittest.TestCase):
         self.binana.compute_salt_bridges(self.prgr_active,
             self.prgr_receptor))
     assert len(salt_bridges) == 3
-    assert 'ALPHA' in salt_bridges
-    assert 'BETA' in salt_bridges
-    assert 'OTHER' in salt_bridges
+    assert 'SALT-BRIDGE_ALPHA' in salt_bridges
+    assert 'SALT-BRIDGE_BETA' in salt_bridges
+    assert 'SALT-BRIDGE_OTHER' in salt_bridges
 
 
   def testComputeInputVector(self):
