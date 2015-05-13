@@ -27,19 +27,6 @@ from vs_utils.features.nnscore_utils import MathFunctions
 from vs_utils.features.nnscore_pdb import PDB
 from vs_utils.features.nnscore_utils import Point
 
-# TODO(bramsundar): Many places in this file use long switch
-# statements. Could there be a cleaner way to structure this file?
-
-# TODO(bramsundar): Add some tests for the classes and functions in
-# this file. Will help verify that cleanup didn't bork anything.
-
-# TODO(bramsundar): How does vs_utils handle scripts? Should I factor
-# the script part of this file elsewhere?
-
-# TODO(bramsundar): Many arbitrary choices in cutoff-values. I think
-# that moving to a 3D-convnet might actually be necessary to remove
-# the high-degree of hand-tuning here.
-
 ELECTROSTATIC_JOULE_PER_MOL = 138.94238460104697e4 # units?
 # O-H distance is 0.96 A, N-H is 1.01 A. See
 # http://www.science.uwaterloo.ca/~cchieh/cact/c120/bondel.html
@@ -283,18 +270,19 @@ class binana:
       'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
       'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
       }
-    for receptor_atom_index in receptor.all_atoms:
-      receptor_atom = receptor.all_atoms[receptor_atom_index]
-
-      # TODO(rbharath): This feels like a silent failure mode... Introduce
-      # an upstream fix.
-      if receptor_atom.structure == "":
-        structure = "OTHER"
-      else:
-        structure = receptor_atom.structure
-      flexibility_key = (receptor_atom.side_chain_or_backbone() + "_"
-          + structure)
-      hashtable_entry_add_one(active_site_flexibility, flexibility_key)
+    #print ligand.all_atoms
+    #print receptor.all_atoms
+    for ligand_atom_index in ligand.all_atoms:
+      #print ligand_atom_index
+      ligand_atom = ligand.all_atoms[ligand_atom_index]
+      for receptor_atom_index in receptor.all_atoms:
+        #print receptor_atom_index
+        receptor_atom = receptor.all_atoms[receptor_atom_index]
+        dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
+        if dist < CONTACT_CUTOFF:
+          flexibility_key = (receptor_atom.side_chain_or_backbone() + "_"
+              + receptor_atom.structure)
+          hashtable_entry_add_one(active_site_flexibility, flexibility_key)
     return active_site_flexibility
 
 
@@ -377,15 +365,9 @@ class binana:
                     hydrogen.coordinates,
                     receptor_atom.coordinates) * 180.0 / math.pi) <=
                     H_BOND_ANGLE):
-                # TODO(rbharath): This feels like a silent failure mode... Introduce
-                # an upstream fix.
-                if receptor_atom.structure == "":
-                  structure = "OTHER"
-                else:
-                  structure = receptor_atom.structure
                 hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
                     receptor_atom.side_chain_or_backbone() + "_" +
-                    structure)
+                    receptor_atom.structure)
                 hashtable_entry_add_one(hbonds, hbonds_key)
     return hbonds
 
@@ -692,7 +674,7 @@ class binana:
     receptor_pdb_filename: string
       path to receptor pdb file.
     line_header: string
-      TODO(bramsundar): line separator in PDB files (?)
+      line separator in PDB files
     """
     # Load receptor and ligand from file.
     receptor = PDB()

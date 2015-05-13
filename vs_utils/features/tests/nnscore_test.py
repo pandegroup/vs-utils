@@ -43,130 +43,143 @@ class TestBinana(unittest.TestCase):
     prgr_receptor_path = os.path.join(data_dir(), "prgr.pdb")
     self.prgr_receptor.load_PDB_from_file(prgr_receptor_path)
 
-    # TODO(rbharath): Document the pubchem id of this active.
+    # This compound is CHEMBL1164248
     self.prgr_active = PDB()
     prgr_active_path = os.path.join(data_dir(), "prgr_active0.pdb")
     self.prgr_active.load_PDB_from_file(prgr_active_path)
+
+    self.cAbl_receptor = PDB()
+    cAbl_receptor_path = os.path.join(data_dir(), "c-Abl.pdb")
+    self.cAbl_receptor.load_PDB_from_file(cAbl_receptor_path)
+
+    # This compound is imatinib
+    self.cAbl_active = PDB()
+    cAbl_active_path = os.path.join(data_dir(), "imatinib.pdb")
+    self.cAbl_active.load_PDB_from_file(cAbl_active_path)
 
   def testComputeHydrophobicContacts(self):
     """
     TestBinana: Test that hydrophobic contacts are established.
     """
-    hydrophobics = self.binana.compute_hydrophobic_contacts(
+    prgr_hydrophobics = self.binana.compute_hydrophobic_contacts(
         self.prgr_active, self.prgr_receptor)
-    assert len(hydrophobics) == 6
-    assert "BACKBONE_ALPHA" in hydrophobics
-    assert "BACKBONE_BETA" in hydrophobics
-    assert "BACKBONE_OTHER" in hydrophobics
-    assert "SIDECHAIN_ALPHA" in hydrophobics
-    assert "SIDECHAIN_BETA" in hydrophobics
-    assert "SIDECHAIN_OTHER" in hydrophobics
+    cAbl_hydrophobics = self.binana.compute_hydrophobic_contacts(
+        self.cAbl_active, self.cAbl_receptor)
+    for hydrophobics in [prgr_hydrophobics, cAbl_hydrophobics]:
+      assert len(hydrophobics) == 6
+      assert "BACKBONE_ALPHA" in hydrophobics
+      assert "BACKBONE_BETA" in hydrophobics
+      assert "BACKBONE_OTHER" in hydrophobics
+      assert "SIDECHAIN_ALPHA" in hydrophobics
+      assert "SIDECHAIN_BETA" in hydrophobics
+      assert "SIDECHAIN_OTHER" in hydrophobics
 
   def testComputeElectrostaticEnergy(self):
     """
     TestBinana: Test that electrostatic energies are computed.
+
+    TODO(rbharath): This method reports that no electrostatics are found
+    for either prgr or cAbl. I'm pretty sure this is a bug.
     """
-    ligand_receptor_electrostatics = (
+    prgr_electro = (
         self.binana.compute_electrostatic_energy(
             self.prgr_active, self.prgr_receptor))
-    # The keys of these dicts are pairs of atomtypes, but the keys are
-    # sorted so that ("C", "O") is always written as "C_O". Thus, for N
-    # atom types, there are N*(N+1)/2 unique pairs.
-    N = len(binana.atom_types)
-    assert len(ligand_receptor_electrostatics) == N*(N+1)/2
-    # TODO(rbharath): The current example has all electrostatic values set
-    # to 0. Not sure if this is a bug, or if there are genuinely no charged
-    # interactions for the current prgr active.
+    cAbl_electro = (
+        self.binana.compute_electrostatic_energy(
+            self.cAbl_active, self.cAbl_receptor))
+    for ligand_receptor_electrostatics in [prgr_electro, cAbl_electro]:
+      # The keys of these dicts are pairs of atomtypes, but the keys are
+      # sorted so that ("C", "O") is always written as "C_O". Thus, for N
+      # atom types, there are N*(N+1)/2 unique pairs.
+      N = len(binana.atom_types)
+      assert len(ligand_receptor_electrostatics) == N*(N+1)/2
 
   def testComputeActiveSiteFlexibility(self):
     """
     TestBinana: Gather statistics about active site protein atoms.
     """
-    active_site_flexibility = (
+    prgr_flex = (
         self.binana.compute_active_site_flexibility(self.prgr_active,
             self.prgr_receptor))
-    assert len(active_site_flexibility.keys()) == 6
-    assert "BACKBONE_ALPHA" in active_site_flexibility
-    assert "BACKBONE_BETA" in active_site_flexibility
-    assert "BACKBONE_OTHER" in active_site_flexibility
-    assert "SIDECHAIN_ALPHA" in active_site_flexibility
-    assert "SIDECHAIN_BETA" in active_site_flexibility
-    assert "SIDECHAIN_OTHER" in active_site_flexibility
+    cAbl_flex = (
+        self.binana.compute_active_site_flexibility(self.cAbl_active,
+            self.cAbl_receptor))
+    for active_site_flexibility in [prgr_flex, cAbl_flex]:
+      assert len(active_site_flexibility.keys()) == 6
+      assert "BACKBONE_ALPHA" in active_site_flexibility
+      assert "BACKBONE_BETA" in active_site_flexibility
+      assert "BACKBONE_OTHER" in active_site_flexibility
+      assert "SIDECHAIN_ALPHA" in active_site_flexibility
+      assert "SIDECHAIN_BETA" in active_site_flexibility
+      assert "SIDECHAIN_OTHER" in active_site_flexibility
 
   def testComputeHydrogenBonds(self):
     """
     TestBinana: Compute the number of hydrogen bonds.
+
+    TODO(rbharath): This method reports that no hydrogen bonds are found
+    for either prgr or cAbl. I'm pretty sure this is a bug.
     """
-    # TODO(bramsundar): Add a nontrivial test here
-    hbonds = (
+    prgr_hbonds = (
       self.binana.compute_hydrogen_bonds(self.prgr_active,
           self.prgr_receptor))
-    assert len(hbonds) == 12
-    assert "HDONOR-LIGAND_BACKBONE_ALPHA" in hbonds
-    assert "HDONOR-LIGAND_BACKBONE_BETA" in hbonds
-    assert "HDONOR-LIGAND_BACKBONE_OTHER" in hbonds
-    assert "HDONOR-LIGAND_SIDECHAIN_ALPHA" in hbonds
-    assert "HDONOR-LIGAND_SIDECHAIN_BETA" in hbonds
-    assert "HDONOR-LIGAND_SIDECHAIN_OTHER" in hbonds
-    assert "HDONOR-RECEPTOR_BACKBONE_ALPHA" in hbonds
-    assert "HDONOR-RECEPTOR_BACKBONE_BETA" in hbonds
-    assert "HDONOR-RECEPTOR_BACKBONE_OTHER" in hbonds
-    assert "HDONOR-RECEPTOR_SIDECHAIN_ALPHA" in hbonds
-    assert "HDONOR-RECEPTOR_SIDECHAIN_BETA" in hbonds
-    assert "HDONOR-RECEPTOR_SIDECHAIN_OTHER" in hbonds
+    cAbl_hbonds = (
+      self.binana.compute_hydrogen_bonds(self.cAbl_active,
+          self.cAbl_receptor))
+    for hbonds in [prgr_hbonds, cAbl_hbonds]:
+      assert len(hbonds) == 12
+      assert "HDONOR-LIGAND_BACKBONE_ALPHA" in hbonds
+      assert "HDONOR-LIGAND_BACKBONE_BETA" in hbonds
+      assert "HDONOR-LIGAND_BACKBONE_OTHER" in hbonds
+      assert "HDONOR-LIGAND_SIDECHAIN_ALPHA" in hbonds
+      assert "HDONOR-LIGAND_SIDECHAIN_BETA" in hbonds
+      assert "HDONOR-LIGAND_SIDECHAIN_OTHER" in hbonds
+      assert "HDONOR-RECEPTOR_BACKBONE_ALPHA" in hbonds
+      assert "HDONOR-RECEPTOR_BACKBONE_BETA" in hbonds
+      assert "HDONOR-RECEPTOR_BACKBONE_OTHER" in hbonds
+      assert "HDONOR-RECEPTOR_SIDECHAIN_ALPHA" in hbonds
+      assert "HDONOR-RECEPTOR_SIDECHAIN_BETA" in hbonds
+      assert "HDONOR-RECEPTOR_SIDECHAIN_OTHER" in hbonds
 
   def testComputeLigandAtomCounts(self):
     """
     TestBinana: Compute the Number of Ligand Atom Counts.
     """
-    ligand_atom_counts = (
+    prgr_counts = (
       self.binana.compute_ligand_atom_counts(self.prgr_active))
-    assert len(ligand_atom_counts) == len(binana.atom_types)
-    assert ligand_atom_counts["A"] == 0
-    assert ligand_atom_counts["BR"] == 0
-    assert ligand_atom_counts["C"] == 27
-    assert ligand_atom_counts["CD"] == 0
-    assert ligand_atom_counts["CL"] == 0
-    assert ligand_atom_counts["CU"] == 0
-    assert ligand_atom_counts["F"] == 0
-    assert ligand_atom_counts["FE"] == 0
-    assert ligand_atom_counts["H"] == 1
-    assert ligand_atom_counts["HD"] == 0
-    assert ligand_atom_counts["I"] == 0
-    assert ligand_atom_counts["MG"] == 0
-    assert ligand_atom_counts["MN"] == 0
-    assert ligand_atom_counts["N"] == 2
-    assert ligand_atom_counts["NA"] == 0
-    assert ligand_atom_counts["O"] == 3
-    assert ligand_atom_counts["OA"] == 0
-    assert ligand_atom_counts["P"] == 0
-    assert ligand_atom_counts["S"] == 0
-    assert ligand_atom_counts["SA"] == 0
-    assert ligand_atom_counts["ZN"] == 0
+    cAbl_counts = (
+      self.binana.compute_ligand_atom_counts(self.cAbl_active))
+    for ligand_atom_counts in [prgr_counts, cAbl_counts]:
+      assert len(ligand_atom_counts) == len(binana.atom_types)
 
   def testComputeLigandReceptorContacts(self):
     """
     TestBinana: Compute contacts between Ligand and receptor.
     """
-    ligand_receptor_close_contacts, ligand_receptor_contacts = (
+    prgr_close, prgr_contacts = (
       self.binana.compute_ligand_receptor_contacts(self.prgr_active,
           self.prgr_receptor))
-    print "ligand_receptor_close_contacts"
-    for key in ligand_receptor_close_contacts:
-      val = ligand_receptor_close_contacts[key]
-      if val != 0:
-        print key + ": " + str(val)
-    print "ligand_receptor_contacts"
-    for key in ligand_receptor_contacts:
-      val = ligand_receptor_contacts[key]
-      if val != 0:
-        print key + ": " + str(val)
-    # The keys of these dicts are pairs of atomtypes, but the keys are
-    # sorted so that ("C", "O") is always written as "C_O". Thus, for N
-    # atom types, there are N*(N+1)/2 unique pairs.
-    N = len(binana.atom_types)
-    assert len(ligand_receptor_close_contacts) == N*(N+1)/2
-    assert len(ligand_receptor_contacts) == N*(N+1)/2
+    cAbl_close, cAbl_contacts = (
+      self.binana.compute_ligand_receptor_contacts(self.cAbl_active,
+          self.cAbl_receptor))
+    for ligand_receptor_close_contacts, ligand_receptor_contacts in [
+        (prgr_close, prgr_contacts), (cAbl_close, cAbl_contacts)]:
+      print "close_contacts"
+      for key in ligand_receptor_close_contacts:
+        val = ligand_receptor_close_contacts[key]
+        if val != 0:
+          print (key, val)
+      print "contacts"
+      for key in ligand_receptor_contacts:
+        val = ligand_receptor_contacts[key]
+        if val != 0:
+          print (key, val)
+      # The keys of these dicts are pairs of atomtypes, but the keys are
+      # sorted so that ("C", "O") is always written as "C_O". Thus, for N
+      # atom types, there are N*(N+1)/2 unique pairs.
+      N = len(binana.atom_types)
+      assert len(ligand_receptor_close_contacts) == N*(N+1)/2
+      assert len(ligand_receptor_contacts) == N*(N+1)/2
 
   def testComputePiPiStacking(self):
     """
