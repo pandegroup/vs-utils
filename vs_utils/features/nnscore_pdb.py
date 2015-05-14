@@ -72,7 +72,7 @@ class PDB:
     # Now load the file into a list
     with open(filename,"r") as f:
       lines = f.readlines()
-    self.load_atoms_from_PDB_list(lines)
+    self.load_atoms_from_PDB_list(lines, line_header=line_header)
     self.load_bonds_from_PDB_list(lines)
     self.check_protein_format()
     if impute_bonds:
@@ -84,7 +84,7 @@ class PDB:
     self.assign_secondary_structure()
 
 
-  def load_atoms_from_PDB_list(self, lines):
+  def load_atoms_from_PDB_list(self, lines, line_header=""):
     """
     Loads atoms from a list of PDB file lines.
 
@@ -113,9 +113,12 @@ class PDB:
           key = (cur_atom.atomname.strip() + "_" +
             str(cur_atom.resid) + "_" + cur_atom.residue.strip() +
             "_" + cur_atom.chain.strip())
-          # so this is a receptor atom that has already been loaded once
+          # Check whether receptor atom has already been loaded. Hydrogens
+          # form an exception to this check, since there can be multiple
+          # hydrogens (all with atomname "H") attached to the same residue.
           if (key in atom_already_loaded
-            and cur_atom.residue.strip() in self.protein_resnames):
+            and cur_atom.residue.strip() in self.protein_resnames
+            and cur_atom.atomname.strip() != "H"):
             print (line_header
                 + "WARNING: Duplicate receptor atom detected: \""
                 + cur_atom.line.strip() + "\". Not loading this duplicate.")
@@ -697,7 +700,6 @@ class PDB:
           # so we need to count the number of nitrogens that are only
           # connected to one heavy atom (the carbon)
           if len(nitrogens) >= 2:
-            print "Found carbon with two nitrogens attached!"
 
             nitrogens_to_use = []
             all_connected = atom.indices_of_atoms_connecting[:]

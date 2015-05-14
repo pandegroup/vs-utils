@@ -96,11 +96,25 @@ def center(string, length):
   return string
 
 
-class binana:
+class Binana:
   """
-  binana extracts a fingerprint from a provided binding pose.
+  Binana extracts a fingerprint from a provided binding pose.
 
-  The binana feature vector transforms a ligand-receptor binding pose
+  TODO(rbharath): Write a function that extracts the binding-site residues
+  and their numbers. This will prove useful when debugging the fingerprint
+  for correct binding-pocket interactions.
+
+  TODO(rbharath): Write a function that lists charged groups in
+  binding-site residues.
+
+  TODO(rbharath): Write a function that aromatic groups in
+  binding-site residues.
+
+  TODO(rbharath) Write a function that lists charged groups in ligand.
+
+  TODO(rbharath): Write a function that lists aromatic groups in ligand.
+
+  The Binana feature vector transforms a ligand-receptor binding pose
   into a feature vector. The feature vector has the following
   components:
 
@@ -226,8 +240,8 @@ class binana:
       A PDB object describing the receptor protein.
     """
     ligand_receptor_electrostatics = {}
-    for first, second in itertools.product(binana.atom_types,
-      binana.atom_types):
+    for first, second in itertools.product(Binana.atom_types,
+      Binana.atom_types):
       key = "_".join(sorted([first, second]))
       ligand_receptor_electrostatics[key] = 0
     for ligand_atom_index in ligand.all_atoms:
@@ -270,13 +284,9 @@ class binana:
       'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
       'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
       }
-    #print ligand.all_atoms
-    #print receptor.all_atoms
     for ligand_atom_index in ligand.all_atoms:
-      #print ligand_atom_index
       ligand_atom = ligand.all_atoms[ligand_atom_index]
       for receptor_atom_index in receptor.all_atoms:
-        #print receptor_atom_index
         receptor_atom = receptor.all_atoms[receptor_atom_index]
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
         if dist < CONTACT_CUTOFF:
@@ -329,9 +339,10 @@ class binana:
         # Note that this is liberal.
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
         if dist < CONTACT_CUTOFF:
-          if ((ligand_atom.element == "O" or ligand_atom.element == "N")
-            and (receptor_atom.element == "O"
-                or receptor_atom.element == "N")):
+          electronegative_atoms = ["O", "N", "F"]
+          if ((ligand_atom.element in electronegative_atoms)
+            and (receptor_atom.element in electronegative_atoms)):
+            print "Oxygens or Nitrogens or Fluorines"
 
             # now build a list of all the hydrogens close to these
             # atoms
@@ -355,16 +366,21 @@ class binana:
                   receptor.all_atoms[atm_index].comment = "RECEPTOR"
                   hydrogens.append(receptor.all_atoms[atm_index])
 
+            print "nearby hydrogens: " + str(hydrogens)
             # now we need to check the angles
             # TODO(rbharath): Rather than using this heuristic, it seems like
             # it might be better to just report the angle in the feature
             # vector... 
             for hydrogen in hydrogens:
+              angle = 180 - self.functions.angle_between_three_points(
+                ligand_atom.coordinates, hydrogen.coordinates,
+                receptor_atom.coordinates) * 180.0 / math.pi
+              print "angle: " + str(angle)
               if (math.fabs(180 - self.functions.angle_between_three_points(
-                    ligand_atom.coordinates,
-                    hydrogen.coordinates,
-                    receptor_atom.coordinates) * 180.0 / math.pi) <=
-                    H_BOND_ANGLE):
+                  ligand_atom.coordinates,
+                  hydrogen.coordinates,
+                  receptor_atom.coordinates) * 180.0 / math.pi) <=
+                  H_BOND_ANGLE):
                 hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
                     receptor_atom.side_chain_or_backbone() + "_" +
                     receptor_atom.structure)
@@ -388,7 +404,7 @@ class binana:
       Keys are atom types; values are integer counts.
     """
     ligand_atom_types = {}
-    for atom_type in binana.atom_types:
+    for atom_type in Binana.atom_types:
       ligand_atom_types[atom_type] = 0
     for ligand_atom_index in ligand.all_atoms:
       ligand_atom = ligand.all_atoms[ligand_atom_index]
@@ -409,8 +425,8 @@ class binana:
       Should be loaded with the receptor in question. 
     """
     ligand_receptor_contacts, ligand_receptor_close_contacts = {}, {}
-    for first, second in itertools.product(binana.atom_types,
-      binana.atom_types):
+    for first, second in itertools.product(Binana.atom_types,
+      Binana.atom_types):
       key = "_".join(sorted([first, second]))
       ligand_receptor_contacts[key] = 0
       ligand_receptor_close_contacts[key] = 0
@@ -594,9 +610,9 @@ class binana:
       protein to dock agains.
     """
     pi_cation = {
-      'LIGAND-CHARGED_ALPHA': 0, 'LIGAND-CHARGED_BETA': 0,
-      'LIGAND-CHARGED_OTHER': 0, 'RECEPTOR-CHARGED_ALPHA': 0,
-      'RECEPTOR-CHARGED_BETA': 0, 'RECEPTOR-CHARGED_OTHER': 0}
+      'PI-CATION_LIGAND-CHARGED_ALPHA': 0, 'PI-CATION_LIGAND-CHARGED_BETA': 0,
+      'PI-CATION_LIGAND-CHARGED_OTHER': 0, 'PI-CATION_RECEPTOR-CHARGED_ALPHA': 0,
+      'PI-CATION_RECEPTOR-CHARGED_BETA': 0, 'PI-CATION_RECEPTOR-CHARGED_OTHER': 0}
     for aromatic in receptor.aromatic_rings:
       for charged in ligand.charges:
         if charged.positive == True: # so only consider positive charges
@@ -655,11 +671,7 @@ class binana:
           if (ligand_charge.coordinates.dist_to(
               receptor_charge.coordinates) < SALT_BRIDGE_CUTOFF):
             structure = receptor.all_atoms[receptor_charge.indices[0]].structure
-            if structure == "":
-              # since it could be interacting with a cofactor or something
-              structure = "OTHER"
             key = "SALT-BRIDGE_" + structure
-
             hashtable_entry_add_one(salt_bridges, key)
     return salt_bridges
 

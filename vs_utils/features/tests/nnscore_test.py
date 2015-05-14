@@ -1,5 +1,5 @@
 """
-Test NNScore binana featurizer.
+Test NNScore Binana featurizer.
 
 TODO(rbharath): Most of these tests are simplistic. More nontrivial tests
 require identification of ligand-receptor structures that boast interesting
@@ -9,7 +9,7 @@ import os
 import unittest
 import itertools
 
-from vs_utils.features.nnscore import binana
+from vs_utils.features.nnscore import Binana
 from vs_utils.features.nnscore_pdb import PDB
 from vs_utils.features.nnscore_utils import Atom
 from vs_utils.features.nnscore_utils import Point
@@ -31,13 +31,13 @@ def data_dir():
 
 class TestBinana(unittest.TestCase):
   """
-  Test binana Binding Pose Featurizer.
+  Test Binana Binding Pose Featurizer.
   """
   def setUp(self):
     """
-    Instantiate local copy of binana object.
+    Instantiate local copy of Binana object.
     """
-    self.binana = binana()
+    self.binana = Binana()
 
     self.prgr_receptor = PDB()
     prgr_receptor_path = os.path.join(data_dir(), "prgr.pdb")
@@ -49,12 +49,12 @@ class TestBinana(unittest.TestCase):
     self.prgr_active.load_PDB_from_file(prgr_active_path)
 
     self.cAbl_receptor = PDB()
-    cAbl_receptor_path = os.path.join(data_dir(), "c-Abl.pdb")
+    cAbl_receptor_path = os.path.join(data_dir(), "c-Abl_hyd.pdb")
     self.cAbl_receptor.load_PDB_from_file(cAbl_receptor_path)
 
     # This compound is imatinib
     self.cAbl_active = PDB()
-    cAbl_active_path = os.path.join(data_dir(), "imatinib.pdb")
+    cAbl_active_path = os.path.join(data_dir(), "imatinib_hyd.pdb")
     self.cAbl_active.load_PDB_from_file(cAbl_active_path)
 
   def testComputeHydrophobicContacts(self):
@@ -91,7 +91,7 @@ class TestBinana(unittest.TestCase):
       # The keys of these dicts are pairs of atomtypes, but the keys are
       # sorted so that ("C", "O") is always written as "C_O". Thus, for N
       # atom types, there are N*(N+1)/2 unique pairs.
-      N = len(binana.atom_types)
+      N = len(Binana.atom_types)
       assert len(ligand_receptor_electrostatics) == N*(N+1)/2
 
   def testComputeActiveSiteFlexibility(self):
@@ -120,13 +120,14 @@ class TestBinana(unittest.TestCase):
     TODO(rbharath): This method reports that no hydrogen bonds are found
     for either prgr or cAbl. I'm pretty sure this is a bug.
     """
-    prgr_hbonds = (
-      self.binana.compute_hydrogen_bonds(self.prgr_active,
-          self.prgr_receptor))
+    #prgr_hbonds = (
+    #  self.binana.compute_hydrogen_bonds(self.prgr_active,
+    #      self.prgr_receptor))
     cAbl_hbonds = (
       self.binana.compute_hydrogen_bonds(self.cAbl_active,
           self.cAbl_receptor))
-    for hbonds in [prgr_hbonds, cAbl_hbonds]:
+    #for hbonds in [prgr_hbonds, cAbl_hbonds]:
+    for hbonds in [cAbl_hbonds]:
       assert len(hbonds) == 12
       assert "HDONOR-LIGAND_BACKBONE_ALPHA" in hbonds
       assert "HDONOR-LIGAND_BACKBONE_BETA" in hbonds
@@ -140,6 +141,11 @@ class TestBinana(unittest.TestCase):
       assert "HDONOR-RECEPTOR_SIDECHAIN_ALPHA" in hbonds
       assert "HDONOR-RECEPTOR_SIDECHAIN_BETA" in hbonds
       assert "HDONOR-RECEPTOR_SIDECHAIN_OTHER" in hbonds
+    #print "prgr:"
+    #print prgr_hbonds
+    print "cAbl:"
+    print cAbl_hbonds
+    assert 0 == 1
 
   def testComputeLigandAtomCounts(self):
     """
@@ -150,7 +156,7 @@ class TestBinana(unittest.TestCase):
     cAbl_counts = (
       self.binana.compute_ligand_atom_counts(self.cAbl_active))
     for ligand_atom_counts in [prgr_counts, cAbl_counts]:
-      assert len(ligand_atom_counts) == len(binana.atom_types)
+      assert len(ligand_atom_counts) == len(Binana.atom_types)
 
   def testComputeLigandReceptorContacts(self):
     """
@@ -177,7 +183,7 @@ class TestBinana(unittest.TestCase):
       # The keys of these dicts are pairs of atomtypes, but the keys are
       # sorted so that ("C", "O") is always written as "C_O". Thus, for N
       # atom types, there are N*(N+1)/2 unique pairs.
-      N = len(binana.atom_types)
+      N = len(Binana.atom_types)
       assert len(ligand_receptor_close_contacts) == N*(N+1)/2
       assert len(ligand_receptor_contacts) == N*(N+1)/2
 
@@ -187,27 +193,40 @@ class TestBinana(unittest.TestCase):
     """
     # TODO(bramsundar): prgr has no pi-pi stacking. Find a different
     # complex that does.
-    pi_stacking = (
+    prgr_pi_stacking = (
         self.binana.compute_pi_pi_stacking(self.prgr_active,
             self.prgr_receptor))
-    assert len(pi_stacking) == 3
-    assert "STACKING_ALPHA" in pi_stacking
-    assert "STACKING_BETA" in pi_stacking
-    assert "STACKING_OTHER" in pi_stacking
+    cAbl_pi_stacking = (
+        self.binana.compute_pi_pi_stacking(self.cAbl_active,
+            self.cAbl_receptor))
+    for pi_stacking in [prgr_pi_stacking, cAbl_pi_stacking]:
+      assert len(pi_stacking) == 3
+      assert "STACKING_ALPHA" in pi_stacking
+      assert "STACKING_BETA" in pi_stacking
+      assert "STACKING_OTHER" in pi_stacking
+
 
   def testComputePiT(self):
     """
     TestBinana: Compute Pi-T Interactions.
+
+    TODO(rbharath): I believe that the imatininb-cAbl complex has a pi-T
+    interaction. This code has a bug since it reports that no such
+    interaction is found.
     """
     # TODO(bramsundar): prgr has no pi-T interactions. Find an alternative
     # structure that does.
-    pi_T = (
+    prgr_pi_T = (
         self.binana.compute_pi_T(self.prgr_active,
             self.prgr_receptor))
-    assert len(pi_T) == 3
-    assert "T-SHAPED_ALPHA" in pi_T
-    assert "T-SHAPED_BETA" in pi_T
-    assert "T-SHAPED_OTHER" in pi_T
+    cAbl_pi_T = (
+        self.binana.compute_pi_T(self.cAbl_active,
+            self.cAbl_receptor))
+    for pi_T in [prgr_pi_T, cAbl_pi_T]:
+      assert len(pi_T) == 3
+      assert "T-SHAPED_ALPHA" in pi_T
+      assert "T-SHAPED_BETA" in pi_T
+      assert "T-SHAPED_OTHER" in pi_T
 
   def testComputePiCation(self):
     """
@@ -215,16 +234,20 @@ class TestBinana(unittest.TestCase):
     """
     # TODO(rbharath): prgr doesn't have any pi-cation interactions. Find a
     # different complex that exhibits this interaction.
-    pi_cation = (
+    prgr_pi_cation = (
         self.binana.compute_pi_cation(self.prgr_active,
             self.prgr_receptor))
-    assert len(pi_cation) == 6
-    assert 'LIGAND-CHARGED_ALPHA' in pi_cation
-    assert 'LIGAND-CHARGED_BETA' in pi_cation
-    assert 'LIGAND-CHARGED_OTHER' in pi_cation
-    assert 'RECEPTOR-CHARGED_ALPHA' in pi_cation
-    assert 'RECEPTOR-CHARGED_BETA' in pi_cation
-    assert 'RECEPTOR-CHARGED_OTHER' in pi_cation
+    cAbl_pi_cation = (
+        self.binana.compute_pi_cation(self.cAbl_active,
+            self.cAbl_receptor))
+    for pi_cation in [prgr_pi_cation, cAbl_pi_cation]:
+      assert len(pi_cation) == 6
+      assert 'PI-CATION_LIGAND-CHARGED_ALPHA' in pi_cation
+      assert 'PI-CATION_LIGAND-CHARGED_BETA' in pi_cation
+      assert 'PI-CATION_LIGAND-CHARGED_OTHER' in pi_cation
+      assert 'PI-CATION_RECEPTOR-CHARGED_ALPHA' in pi_cation
+      assert 'PI-CATION_RECEPTOR-CHARGED_BETA' in pi_cation
+      assert 'PI-CATION_RECEPTOR-CHARGED_OTHER' in pi_cation
 
   def testComputeSaltBridges(self):
     """
@@ -232,23 +255,30 @@ class TestBinana(unittest.TestCase):
     """
     # TODO(bramsundar): prgr contains no salt-bridge interactions. Find a
     # complex with an actual salt-bridge interaction.
-    salt_bridges = (
+    prgr_bridges = (
         self.binana.compute_salt_bridges(self.prgr_active,
             self.prgr_receptor))
-    assert len(salt_bridges) == 3
-    assert 'SALT-BRIDGE_ALPHA' in salt_bridges
-    assert 'SALT-BRIDGE_BETA' in salt_bridges
-    assert 'SALT-BRIDGE_OTHER' in salt_bridges
+    cAbl_bridges = (
+        self.binana.compute_salt_bridges(self.cAbl_active,
+            self.cAbl_receptor))
+    for salt_bridges in [prgr_bridges, cAbl_bridges]:
+      assert len(salt_bridges) == 3
+      assert 'SALT-BRIDGE_ALPHA' in salt_bridges
+      assert 'SALT-BRIDGE_BETA' in salt_bridges
+      assert 'SALT-BRIDGE_OTHER' in salt_bridges
 
 
   def testComputeInputVector(self):
     """
     TestBinana: Compute Input Vector.
     """
-    input_vector = (
+    prgr_vector = (
         self.binana.compute_input_vector(self.prgr_active,
             self.prgr_receptor))
-    N = len(binana.atom_types)
+    cAbl_vector = (
+        self.binana.compute_input_vector(self.cAbl_active,
+            self.cAbl_receptor))
+    N = len(Binana.atom_types)
     # Lengths:
     # ligand_receptor_close_contacts: N*(N+1)/2
     # ligand_receptor_contacts: N*(N+1)/2
@@ -263,4 +293,5 @@ class TestBinana(unittest.TestCase):
     # salt_bridges: 3
     # rotatable_boonds_count: 1
     total_len = 3*N*(N+1)/2 + N + 12 + 6 + 3 + 6 + 3 + 6 + 3 + 1
-    assert len(input_vector) == total_len
+    for input_vector in [prgr_vector, cAbl_vector]:
+      assert len(input_vector) == total_len
