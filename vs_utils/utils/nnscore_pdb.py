@@ -18,12 +18,12 @@ __license__ = "GNU General Public License"
 import math
 import textwrap
 import numpy as np
-from vs_utils.features.nnscore_utils import AromaticRing
-from vs_utils.features.nnscore_utils import Atom
-from vs_utils.features.nnscore_utils import average_point
-from vs_utils.features.nnscore_utils import Charged
-from vs_utils.features.nnscore_utils import Point
-from vs_utils.features.nnscore_utils import MathFunctions
+from vs_utils.utils.nnscore_utils import AromaticRing
+from vs_utils.utils.nnscore_utils import Atom
+from vs_utils.utils.nnscore_utils import average_point
+from vs_utils.utils.nnscore_utils import Charged
+from vs_utils.utils.nnscore_utils import Point
+from vs_utils.utils.nnscore_utils import MathFunctions
 
 
 class PDB:

@@ -10,10 +10,10 @@ import unittest
 import itertools
 
 from vs_utils.features.nnscore import Binana
-from vs_utils.features.nnscore_pdb import PDB
-from vs_utils.features.nnscore_utils import Atom
-from vs_utils.features.nnscore_utils import Point
-from vs_utils.features.tests import __file__ as test_directory
+from vs_utils.utils.nnscore_pdb import PDB
+from vs_utils.utils.nnscore_utils import Atom
+from vs_utils.utils.nnscore_utils import Point
+from vs_utils.utils.tests import __file__ as test_directory
 
 def data_dir():
   """Get location of data directory."""
@@ -39,12 +39,12 @@ class TestBinana(unittest.TestCase):
     self.prgr_active.load_PDB_from_file(prgr_active_path)
 
     self.cAbl_receptor = PDB()
-    cAbl_receptor_path = os.path.join(data_dir(), "c-Abl_hyd.pdb")
+    cAbl_receptor_path = os.path.join(data_dir(), "c-Abl.pdb")
     self.cAbl_receptor.load_PDB_from_file(cAbl_receptor_path)
 
     # This compound is imatinib
     self.cAbl_active = PDB()
-    cAbl_active_path = os.path.join(data_dir(), "imatinib_hyd.pdb")
+    cAbl_active_path = os.path.join(data_dir(), "imatinib.pdb")
     self.cAbl_active.load_PDB_from_file(cAbl_active_path)
 
   def testComputeHydrophobicContacts(self):
@@ -131,11 +131,6 @@ class TestBinana(unittest.TestCase):
       assert "HDONOR-RECEPTOR_SIDECHAIN_ALPHA" in hbonds
       assert "HDONOR-RECEPTOR_SIDECHAIN_BETA" in hbonds
       assert "HDONOR-RECEPTOR_SIDECHAIN_OTHER" in hbonds
-    #print "prgr:"
-    #print prgr_hbonds
-    print "cAbl:"
-    print cAbl_hbonds
-    assert 0 == 1
 
   def testComputeLigandAtomCounts(self):
     """

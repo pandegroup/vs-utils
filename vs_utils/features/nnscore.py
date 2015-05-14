@@ -22,10 +22,9 @@ import glob
 import cPickle
 import numpy as np
 import itertools
-from vs_utils.features import Featurizer
-from vs_utils.features.nnscore_utils import MathFunctions
-from vs_utils.features.nnscore_pdb import PDB
-from vs_utils.features.nnscore_utils import Point
+from vs_utils.utils.nnscore_utils import MathFunctions
+from vs_utils.utils.nnscore_pdb import PDB
+from vs_utils.utils.nnscore_utils import Point
 
 ELECTROSTATIC_JOULE_PER_MOL = 138.94238460104697e4 # units?
 # O-H distance is 0.96 A, N-H is 1.01 A. See
