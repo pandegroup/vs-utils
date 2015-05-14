@@ -15,16 +15,6 @@ from vs_utils.features.nnscore_utils import Atom
 from vs_utils.features.nnscore_utils import Point
 from vs_utils.features.tests import __file__ as test_directory
 
-class TestNNScoreFeaturizer(unittest.TestCase):
-  """
-  Test NNScoreFeaturizer class.
-  """
-  def setUp(self):
-    """
-    Instantiate local featurizer.
-    """
-    self.featurizer = NNScoreFeaturizer()
-
 def data_dir():
   """Get location of data directory."""
   return os.path.join(os.path.dirname(test_directory), "data")
