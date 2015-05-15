@@ -49,7 +49,10 @@ pdbfixer ${input_filename} \
 # create PDBQT with obabel (-xr treats the molecule as rigid)
 output_basename=$(basename ${input_filename} | sed 's/\..*$//g')
 echo obabel -i pdb ${fixed_filename} -O ${output_basename}.pdbqt -xr
-obabel -i pdb ${fixed_filename} -O ${output_basename}.pdbqt -xr
+~/openbabel/build/bin/obabel -i pdb ${fixed_filename} -O ${output_basename}.pdbqt -xr
+# Autodock Vina complains about USER being an inappropriate tag. Replace
+# with REMARK instead. Remove TER marker as well
+#sed -i -e s/USER/REMARK/ -e /TER/d -e/ROOT/d -e/ENDROOT/d -e/TORSDOF.*$/d ${output_basename}.pdbqt
 
 # cleanup
 rm ${fixed_filename}
