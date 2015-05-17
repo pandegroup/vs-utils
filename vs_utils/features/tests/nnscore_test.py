@@ -39,12 +39,12 @@ class TestBinana(unittest.TestCase):
     self.prgr_active.load_PDB_from_file(prgr_active_path)
 
     self.cAbl_receptor = PDB()
-    cAbl_receptor_path = os.path.join(data_dir(), "c-Abl.pdb")
+    cAbl_receptor_path = os.path.join(data_dir(), "c-Abl_hyd.pdb")
     self.cAbl_receptor.load_PDB_from_file(cAbl_receptor_path)
 
     # This compound is imatinib
     self.cAbl_active = PDB()
-    cAbl_active_path = os.path.join(data_dir(), "imatinib.pdb")
+    cAbl_active_path = os.path.join(data_dir(), "imatinib_hyd.pdb")
     self.cAbl_active.load_PDB_from_file(cAbl_active_path)
 
   def testComputeHydrophobicContacts(self):
@@ -131,6 +131,7 @@ class TestBinana(unittest.TestCase):
       assert "HDONOR-RECEPTOR_SIDECHAIN_ALPHA" in hbonds
       assert "HDONOR-RECEPTOR_SIDECHAIN_BETA" in hbonds
       assert "HDONOR-RECEPTOR_SIDECHAIN_OTHER" in hbonds
+    assert 0 == 1
 
   def testComputeLigandAtomCounts(self):
     """

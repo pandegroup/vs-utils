@@ -87,7 +87,7 @@ class TestPDB(unittest.TestCase):
     prgr_pdb.load_PDB_from_file(prgr_pdb_path)
     residues = prgr_pdb.get_residues()
     # prgr.pdb has 280 unique residues
-    assert len(residues) == 280
+    assert len(residues.keys()) == 280
     prgr_residues = ["LEU", "ILE", "ASN", "LEU", "LEU", "MET", "SER",
         "ILE", "GLU", "PRO", "ASP", "VAL", "ILE", "TYR", "ALA", "GLY", "HIS",
         "ASP", "THR", "SER", "SER", "SER", "LEU", "LEU", "THR", "SER", "LEU",
@@ -118,11 +118,13 @@ class TestPDB(unittest.TestCase):
         "ALA", "GLN", "LEU", "PRO", "LYS", "ILE", "LEU", "ALA", "GLY", "MET",
         "VAL", "LYS", "PRO"]
     # Recall the keys have format RESNAME_RESNUMBER_CHAIN
-    resnames = [reskey.split("_")[0].strip() for (reskey, _) in residues]
+    resnames = [reskey.split("_")[0].strip() for reskey in residues]
+    resnames.sort()
+    prgr_residues.sort()
     assert resnames == prgr_residues
     # prgr.pdb has 2749 unique atoms.
     atom_count = 0
-    for (_, atom_indices) in residues:
+    for (_, atom_indices) in residues.iteritems():
       atom_count += len(atom_indices)
     assert atom_count == 2749
 

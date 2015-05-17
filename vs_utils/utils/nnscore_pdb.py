@@ -116,19 +116,16 @@ class PDB:
           # Check whether receptor atom has already been loaded. Hydrogens
           # form an exception to this check, since there can be multiple
           # hydrogens (all with atomname "H") attached to the same residue.
+          # Note that non-receptor atoms can have redundant names, but
+          # receptor atoms cannot.  This is because protein residues often
+          # contain rotamers
           if (key in atom_already_loaded
             and cur_atom.residue.strip() in self.protein_resnames
             and cur_atom.atomname.strip() != "H"):
             print (line_header
                 + "WARNING: Duplicate receptor atom detected: \""
                 + cur_atom.line.strip() + "\". Not loading this duplicate.")
-
-          # so either the atom hasn't been loaded, or else it's a non-receptor
-          # atom so note that non-receptor atoms can have redundant names, but
-          # receptor atoms cannot.  This is because protein residues often
-          # contain rotamers
-          if (not key in atom_already_loaded
-              or not cur_atom.residue.strip() in self.protein_resnames):
+          else:
             # so each atom can only be loaded once. No rotamers.
             atom_already_loaded.append(key)
             # So you're actually reindexing everything here.
@@ -301,30 +298,9 @@ class PDB:
 
     Helper function called when loading PDB from file.
     """
-    curr_res = ""
-    first = True
-    residue = []
-
-    for atom_index in self.all_atoms:
-      atom = self.all_atoms[atom_index]
-
-      key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
-
-      if first == True:
-        curr_res = key
-        first = False
-
-      if key != curr_res:
-
-        self.check_protein_format_process_residue(residue, last_key)
-
-        residue = []
-        curr_res = key
-
-      residue.append(atom.atomname.strip())
-      last_key = key
-
-    self.check_protein_format_process_residue(residue, last_key)
+    for key, residue in self.get_residues().iteritems():
+      residue_names = [self.all_atoms[ind].atomname.strip() for ind in residue]
+      self.check_protein_format_process_residue(residue_names, key)
 
   def print_warning(self, atom, residue, need):
     """
@@ -340,7 +316,7 @@ class PDB:
       Description of need for this atom in residue.
     """
     text = ('WARNING: There is no atom named "%s"' % atom
-        + 'in the protein residue ' + last_key + '.'
+        + 'in the protein residue ' + residue + '.'
         + ' Please use standard naming conventions for all'
         + ' protein residues. This atom is needed to determine'
         + ' %s. If this residue is far from the' % need
@@ -350,118 +326,122 @@ class PDB:
       print line
     print
 
-  def check_protein_format_process_residue(self, residue, last_key):
+  def check_protein_format_process_residue(self, residue_atoms, key):
     """
     Check that specified residue in PDB is formatted correctly.
 
+    TODO(rbharath): Lots of code repeating in this function. Factor this
+    out.
+
     Parameters
     ----------
-    residue: list
+    residue_atoms: list
       List of atom names in residue.
-    last_key: string
+    key: string
       Should be in format RESNAME_RESNUMBER_CHAIN
     """
 
-    resname, resid, chain = last_key.strip().split("_")
+    resname, resid, chain = key.strip().split("_")
     real_resname = resname[-3:]
 
     if real_resname in self.protein_resnames: # so it's a protein residue
 
-      if not "N" in residue:
-        self.print_warning("N", last_key, "secondary structure")
-      if not "C" in residue:
-        self.print_warning("C", last_key, "secondary structure")
-      if not "CA" in residue:
-        self.print_warning("CA", last_key, "secondary structure")
+      if not "N" in residue_atoms:
+        print residue_atoms
+        self.print_warning("N", key, "secondary structure")
+      if not "C" in residue_atoms:
+        self.print_warning("C", key, "secondary structure")
+      if not "CA" in residue_atoms:
+        self.print_warning("CA", key, "secondary structure")
 
       if real_resname == "GLU" or real_resname == "GLH" or real_resname == "GLX":
-        if not "OE1" in residue:
-          self.print_warning("OE1", last_key, "salt-bridge interactions")
-        if not "OE2" in residue:
-          self.print_warning("OE2", last_key, "salt-bridge interactions")
+        if not "OE1" in residue_atoms:
+          self.print_warning("OE1", key, "salt-bridge interactions")
+        if not "OE2" in residue_atoms:
+          self.print_warning("OE2", key, "salt-bridge interactions")
 
       if real_resname == "ASP" or real_resname == "ASH" or real_resname == "ASX":
-        if not "OD1" in residue:
-          self.print_warning("OD1", last_key, "salt-bridge interactions")
-        if not "OD2" in residue:
-          self.print_warning("OD2", last_key, "salt-bridge interactions")
+        if not "OD1" in residue_atoms:
+          self.print_warning("OD1", key, "salt-bridge interactions")
+        if not "OD2" in residue_atoms:
+          self.print_warning("OD2", key, "salt-bridge interactions")
 
       if real_resname == "LYS" or real_resname == "LYN":
-        if not "NZ" in residue:
-          self.print_warning("NZ", last_key, "pi-cation and salt-bridge interactions")
+        if not "NZ" in residue_atoms:
+          self.print_warning("NZ", key, "pi-cation and salt-bridge interactions")
 
       if real_resname == "ARG":
-        if not "NH1" in residue:
-          self.print_warning("NH1", last_key, "pi-cation and salt-bridge interactions")
-        if not "NH2" in residue:
-          self.print_warning("NH2", last_key, "pi-cation and salt-bridge interactions")
+        if not "NH1" in residue_atoms:
+          self.print_warning("NH1", key, "pi-cation and salt-bridge interactions")
+        if not "NH2" in residue_atoms:
+          self.print_warning("NH2", key, "pi-cation and salt-bridge interactions")
 
       if real_resname == "HIS" or real_resname == "HID" or real_resname == "HIE" or real_resname == "HIP":
-        if not "NE2" in residue:
-          self.print_warning("NE2", last_key, "pi-cation and salt-bridge interactions")
-        if not "ND1" in residue:
-          self.print_warning("ND1", last_key, "pi-cation and salt-bridge interactions")
+        if not "NE2" in residue_atoms:
+          self.print_warning("NE2", key, "pi-cation and salt-bridge interactions")
+        if not "ND1" in residue_atoms:
+          self.print_warning("ND1", key, "pi-cation and salt-bridge interactions")
 
       if real_resname == "PHE":
-        if not "CG" in residue:
-          self.print_warning("CG", last_key, "pi-pi and pi-cation interactions")
-        if not "CD1" in residue:
-          self.print_warning("CD1", last_key, "pi-pi and pi-cation interactions")
-        if not "CD2" in residue:
-          self.print_warning("CD2", last_key, "pi-pi and pi-cation interactions")
-        if not "CE1" in residue:
-          self.print_warning("CE1", last_key, "pi-pi and pi-cation interactions")
-        if not "CE2" in residue:
-          self.print_warning("CE2", last_key, "pi-pi and pi-cation interactions")
-        if not "CZ" in residue:
-          self.print_warning("CZ", last_key, "pi-pi and pi-cation interactions")
+        if not "CG" in residue_atoms:
+          self.print_warning("CG", key, "pi-pi and pi-cation interactions")
+        if not "CD1" in residue_atoms:
+          self.print_warning("CD1", key, "pi-pi and pi-cation interactions")
+        if not "CD2" in residue_atoms:
+          self.print_warning("CD2", key, "pi-pi and pi-cation interactions")
+        if not "CE1" in residue_atoms:
+          self.print_warning("CE1", key, "pi-pi and pi-cation interactions")
+        if not "CE2" in residue_atoms:
+          self.print_warning("CE2", key, "pi-pi and pi-cation interactions")
+        if not "CZ" in residue_atoms:
+          self.print_warning("CZ", key, "pi-pi and pi-cation interactions")
 
       if real_resname == "TYR":
-        if not "CG" in residue:
-          self.print_warning("CG", last_key, "pi-pi and pi-cation interactions")
-        if not "CD1" in residue:
-          self.print_warning("CD1", last_key, "pi-pi and pi-cation interactions")
-        if not "CD2" in residue:
-          self.print_warning("CD2", last_key, "pi-pi and pi-cation interactions")
-        if not "CE1" in residue:
-          self.print_warning("CE1", last_key, "pi-pi and pi-cation interactions")
-        if not "CE2" in residue:
-          self.print_warning("CE2", last_key, "pi-pi and pi-cation interactions")
-        if not "CZ" in residue:
-          self.print_warning("CZ", last_key, "pi-pi and pi-cation interactions")
+        if not "CG" in residue_atoms:
+          self.print_warning("CG", key, "pi-pi and pi-cation interactions")
+        if not "CD1" in residue_atoms:
+          self.print_warning("CD1", key, "pi-pi and pi-cation interactions")
+        if not "CD2" in residue_atoms:
+          self.print_warning("CD2", key, "pi-pi and pi-cation interactions")
+        if not "CE1" in residue_atoms:
+          self.print_warning("CE1", key, "pi-pi and pi-cation interactions")
+        if not "CE2" in residue_atoms:
+          self.print_warning("CE2", key, "pi-pi and pi-cation interactions")
+        if not "CZ" in residue_atoms:
+          self.print_warning("CZ", key, "pi-pi and pi-cation interactions")
 
       if real_resname == "TRP":
-        if not "CG" in residue:
-          self.print_warning("CG", last_key, "pi-pi and pi-cation interactions")
-        if not "CD1" in residue:
-          self.print_warning("CD1", last_key, "pi-pi and pi-cation interactions")
-        if not "CD2" in residue:
-          self.print_warning("CD2", last_key, "pi-pi and pi-cation interactions")
-        if not "NE1" in residue:
-          self.print_warning("NE1", last_key, "pi-pi and pi-cation interactions")
-        if not "CE2" in residue:
-          self.print_warning("CE2", last_key, "pi-pi and pi-cation interactions")
-        if not "CE3" in residue:
-          self.print_warning("CE3", last_key, "pi-pi and pi-cation interactions")
-        if not "CZ2" in residue:
-          self.print_warning("CZ2", last_key, "pi-pi and pi-cation interactions")
-        if not "CZ3" in residue:
-          self.print_warning("CZ3", last_key, "pi-pi and pi-cation interactions")
-        if not "CH2" in residue:
-          self.print_warning("CH2", last_key, "pi-pi and pi-cation interactions")
+        if not "CG" in residue_atoms:
+          self.print_warning("CG", key, "pi-pi and pi-cation interactions")
+        if not "CD1" in residue_atoms:
+          self.print_warning("CD1", key, "pi-pi and pi-cation interactions")
+        if not "CD2" in residue_atoms:
+          self.print_warning("CD2", key, "pi-pi and pi-cation interactions")
+        if not "NE1" in residue_atoms:
+          self.print_warning("NE1", key, "pi-pi and pi-cation interactions")
+        if not "CE2" in residue_atoms:
+          self.print_warning("CE2", key, "pi-pi and pi-cation interactions")
+        if not "CE3" in residue_atoms:
+          self.print_warning("CE3", key, "pi-pi and pi-cation interactions")
+        if not "CZ2" in residue_atoms:
+          self.print_warning("CZ2", key, "pi-pi and pi-cation interactions")
+        if not "CZ3" in residue_atoms:
+          self.print_warning("CZ3", key, "pi-pi and pi-cation interactions")
+        if not "CH2" in residue_atoms:
+          self.print_warning("CH2", key, "pi-pi and pi-cation interactions")
 
       if (real_resname == "HIS" or real_resname == "HID" or
         real_resname == "HIE" or real_resname == "HIP"):
-        if not "CG" in residue:
-          self.print_warning("CG", last_key, "pi-pi and pi-cation interactions")
-        if not "ND1" in residue:
-          self.print_warning("ND1", last_key, "pi-pi and pi-cation interactions")
-        if not "CD2" in residue:
-          self.print_warning("CD2", last_key, "pi-pi and pi-cation interactions")
-        if not "CE1" in residue:
-          self.print_warning("CE2", last_key, "pi-pi and pi-cation interactions")
-        if not "NE2" in residue:
-          self.print_warning("NE2", last_key, "pi-pi and pi-cation interactions")
+        if not "CG" in residue_atoms:
+          self.print_warning("CG", key, "pi-pi and pi-cation interactions")
+        if not "ND1" in residue_atoms:
+          self.print_warning("ND1", key, "pi-pi and pi-cation interactions")
+        if not "CD2" in residue_atoms:
+          self.print_warning("CD2", key, "pi-pi and pi-cation interactions")
+        if not "CE1" in residue_atoms:
+          self.print_warning("CE2", key, "pi-pi and pi-cation interactions")
+        if not "NE2" in residue_atoms:
+          self.print_warning("NE2", key, "pi-pi and pi-cation interactions")
 
 
   # Functions to determine the bond connectivity based on distance
@@ -828,54 +808,42 @@ class PDB:
     self.charges += self.identify_sulfur_group_charges()
 
   def get_residues(self):
-    """Returns a list of all residues in this protein.
+    """Returns a dictionary containing all residues in this protein.
 
-    This function uses keys of the following type to uniquely identify
+    The generated dictionary uses keys of the following type to uniquely identify
     protein residues: RESNAME_RESNUMBER_CHAIN.
 
     Returns
     -------
-    residues: list
-      Each list element is a tuple whose first element is a key (of type
-      defined above) and whose second element is a list of the atom-indices
-      that make up this residue.
+    residues: dictionary 
+      Each key is of type defined above and each value is a list of the
+      atom-indices that make up this residue.
     """
-    keys = []
-    cur_key = None
-    cur_res = []
-    residues = []
+    residues = {}
     # Group atoms in the same residue together
     for atom_index in self.all_atoms:
       atom = self.all_atoms[atom_index]
       # Assign each atom a residue key.
       key = atom.residue + "_" + str(atom.resid) + "_" + atom.chain
-      if not cur_key:
-        cur_key = key
+      if key not in residues:
+        residues[key] = []
+      residues[key].append(atom_index)
 
-      if key != cur_key:
-        keys.append(cur_key)
-        residues.append(cur_res)
-        cur_key = key
-        cur_res = []
-
-      cur_res.append(atom_index)
     # Handle edge case of last residue.
-    keys.append(cur_key)
-    residues.append(cur_res)
-    return zip(keys, residues)
+    return residues
 
 
   def assign_protein_charges(self):
     """Assigns charges to atoms in charged residues.
     """
-    res_list = self.get_residues()
-    self.charges += self.get_lysine_charges(res_list)
-    self.charges += self.get_arginine_charges(res_list)
-    self.charges += self.get_histidine_charges(res_list)
-    self.charges += self.get_glutamic_acid_charges(res_list)
-    self.charges += self.get_aspartic_acid_charges(res_list)
+    residues = self.get_residues()
+    self.charges += self.get_lysine_charges(residues)
+    self.charges += self.get_arginine_charges(residues)
+    self.charges += self.get_histidine_charges(residues)
+    self.charges += self.get_glutamic_acid_charges(residues)
+    self.charges += self.get_aspartic_acid_charges(residues)
 
-  def get_residue_charges(self, res_list, resnames, atomnames,
+  def get_residue_charges(self, residues, resnames, atomnames,
       charged_atomnames, positive=True):
     """Helper function that assigns charges to specified residue.
 
@@ -886,8 +854,8 @@ class PDB:
 
     Parameters
     ---------
-    res_list: list
-      List of tuples output by get_residue_list
+    residues: dictionary 
+      Dict output by get_residue_list
     resnames: list
       List of acceptable names for residue (e.g. [PHE], [HIS, HIP, HIE,
       HID])
@@ -903,7 +871,7 @@ class PDB:
       List of Aromatic objects.
     """
     charges = []
-    for key, res in res_list:
+    for key, res in residues.iteritems():
       resname, resid, chain = key.strip().split("_")
       real_resname = resname[-3:]
       if real_resname in resnames:
@@ -924,7 +892,7 @@ class PDB:
             charges.append(Charged(avg_pt, indices, positive))
     return charges
 
-  def get_lysine_charges(self, res_list):
+  def get_lysine_charges(self, residues):
     """Assign charges to lysine residues.
 
     Regardless of protonation state, assume that lysine is charged.
@@ -933,26 +901,26 @@ class PDB:
 
     Parameters
     ----------
-    res_list: list
-      List of tuples output by get_residue_list
+    residues: dictionary 
+      Dict output by get_residue_list
     """
-    return self.get_residue_charges(res_list, ["LYS", "LYN"],
+    return self.get_residue_charges(residues, ["LYS", "LYN"],
         ["NZ", "HZ1", "HNZ1", "HZ2", "HNZ2", "HZ3", "HNZ3"],
         ["NZ"])
 
-  def get_arginine_charges(self, res_list):
+  def get_arginine_charges(self, residues):
     """Assign charges to arginine residues.
 
     Parameters
     ----------
-    res_list: list
-      List of tuples output by get_residue_list
+    residues: dictionary 
+      Dict output by get_residue_list
     """
-    return self.get_residue_charges(res_list, ["ARG"],
+    return self.get_residue_charges(residues, ["ARG"],
         ["NH1", "NH2", "2HH2", "HN22", "1HH2", "HN12", "CZ", "2HH1", "HN21",
         "1HH1", "HN11"], ["NH1", "NH2"])
 
-  def get_histidine_charges(self, res_list):
+  def get_histidine_charges(self, residues):
     """Assign charges to histidine residues.
 
     The specific histidine name determines the protonation state:
@@ -967,14 +935,14 @@ class PDB:
     be stabilized. But let's not consider HIS when doing salt bridges.
     Parameters
     ----------
-    res_list: list
-      List of tuples output by get_residue_list
+    residues: dictionary 
+      Dict output by get_residue_list
     """
-    return self.get_residue_charges(res_list, ["HIS", "HID", "HIE", "HIP"],
+    return self.get_residue_charges(residues, ["HIS", "HID", "HIE", "HIP"],
         ["NE2", "ND1", "HE2", "HD1", "CE1", "CD2", "CG"],
         ["NE2", "ND1"])
 
-  def get_glutamic_acid_charges(self, res_list):
+  def get_glutamic_acid_charges(self, residues):
     """Assign charges to histidine residues.
 
     The specific glutamic acid name determines the protonation state:
@@ -994,13 +962,13 @@ class PDB:
 
     Parameters
     ----------
-    res_list: list
-      List of tuples output by get_residue_list
+    residues: dictionary 
+      Dict output by get_residue_list
     """
-    return self.get_residue_charges(res_list, ["GLU", "GLH", "GLX"],
+    return self.get_residue_charges(residues, ["GLU", "GLH", "GLX"],
         ["OE1", "OE2", "CD"], ["OE1", "OE2"], positive=False)
 
-  def get_aspartic_acid_charges(self, res_list):
+  def get_aspartic_acid_charges(self, residues):
     """Assign charges to aspartic acid residues.
 
     The specific aspartic acid name determines the protonation.
@@ -1014,10 +982,10 @@ class PDB:
     be stabilized.
     Parameters
     ----------
-    res_list: list
-      List of tuples output by get_residue_list
+    residues: dictionary 
+      Dict output by get_residue_list
     """
-    return self.get_residue_charges(res_list, ["ASP", "ASH", "ASX"],
+    return self.get_residue_charges(residues, ["ASP", "ASH", "ASX"],
         ["OD1", "OD2", "CG"], ["OD1", "OD2"], positive=False)
 
   # Functions to identify aromatic rings
@@ -1226,21 +1194,19 @@ class PDB:
   def assign_protein_aromatic_rings(self):
     """Identifies aromatic rings in protein residues.
     """
-    res_list = self.get_residues()
-    self.aromatic_rings += self.get_phenylalanine_aromatics(res_list)
-    self.aromatic_rings += self.get_tyrosine_aromatics(res_list)
-    self.aromatic_rings += self.get_histidine_aromatics(res_list)
-    self.aromatic_rings += self.get_tryptophan_aromatics(res_list)
-    #for key, res in res_list:
-    #  self.assign_aromatic_rings_from_protein_process_residue(res, key)
+    residues = self.get_residues()
+    self.aromatic_rings += self.get_phenylalanine_aromatics(residues)
+    self.aromatic_rings += self.get_tyrosine_aromatics(residues)
+    self.aromatic_rings += self.get_histidine_aromatics(residues)
+    self.aromatic_rings += self.get_tryptophan_aromatics(residues)
 
-  def get_residue_aromatics(self, res_list, resname, ring_atomnames):
+  def get_residue_aromatics(self, residues, resname, ring_atomnames):
     """Helper function that identifies aromatics in given residue.
 
     Parameters
     ----------
-    res_list: list
-      List of tuples output by get_residue_list
+    residues: dictionary 
+      Dict output by get_residue_list
     resname: list
       List of acceptable names for residue (e.g. [PHE], [HIS, HIP, HIE,
       HID])
@@ -1253,7 +1219,7 @@ class PDB:
     """
     aromatics = []
     num_matches = 0
-    for key, res in res_list:
+    for key, res in residues.iteritems():
       real_resname, resid, chain = key.strip().split("_")[-3:]
       indices_of_ring = []
       if real_resname in resname:
@@ -1266,58 +1232,58 @@ class PDB:
     return aromatics
 
 
-  def get_phenylalanine_aromatics(self, res_list):
+  def get_phenylalanine_aromatics(self, residues):
     """Assign aromatics in phenylalanines.
 
     Parameters
     ----------
-    res_list: list
-      List of tuples output by get_residue_list
+    residues: dictionary 
+      Dict output by get_residue_list
     Returns
     -------
     aromatics: list
       List of Aromatic objects for aromatics in phenylalanines.
     """
-    return self.get_residue_aromatics(res_list, "PHE",
+    return self.get_residue_aromatics(residues, "PHE",
         ["CG", "CD1", "CE1", "CZ", "CE2", "CD2"])
 
-  def get_tyrosine_aromatics(self, res_list):
+  def get_tyrosine_aromatics(self, residues):
     """Assign aromatics in tyrosines.
 
     Parameters
     ----------
-    res_list: list
-      List of tuples output by get_residue_list
+    residues: dictionary 
+      Dict output by get_residue_list
     Returns
     -------
     aromatics: list
       List of Aromatic objects for aromatics in tyrosines.
     """
-    return self.get_residue_aromatics(res_list, "TYR",
+    return self.get_residue_aromatics(residues, "TYR",
         ["CG", "CD1", "CE1", "CZ", "CE2", "CD2"])
 
-  def get_histidine_aromatics(self, res_list):
+  def get_histidine_aromatics(self, residues):
     """Assign aromatics in histidines.
 
     Parameters
     ----------
-    res_list: list
-      List of tuples output by get_residue_list
+    residues: dictionary 
+      Dict output by get_residue_list
     Returns
     -------
     aromatics: list
       List of Aromatic objects for aromatics in histidines.
     """
-    return self.get_residue_aromatics(res_list,
+    return self.get_residue_aromatics(residues,
         ["HIS", "HID", "HIE", "HIP"],
         ["CG", "ND1", "CE1", "NE2", "CD2"])
 
-  def get_tryptophan_aromatics(self, res_list):
+  def get_tryptophan_aromatics(self, residues):
     """Assign aromatics in tryptophans.
 
     Parameters
     ----------
-    res_list: list
+    residues: list
       List of tuples output by get_residue_list
     Returns
     -------
@@ -1325,10 +1291,10 @@ class PDB:
       List of Aromatic objects for aromatics in tryptophans.
     """
     # Tryptophan has two aromatic rings.
-    small_ring = self.get_residue_aromatics(res_list,
+    small_ring = self.get_residue_aromatics(residues,
         ["TRP"],
         ["CG", "CD1", "NE1", "CE2", "CD2"])
-    large_ring = self.get_residue_aromatics(res_list,
+    large_ring = self.get_residue_aromatics(residues,
         ["TRP"],
         ["CE2", "CD2", "CE3", "CZ3", "CH2", "CZ2"])
     return small_ring + large_ring
@@ -1359,15 +1325,13 @@ class PDB:
     structure: dict
       Maps keys of format RESNUMBER_CHAIN to one of ALPHA, BETA, or OTHER.
     """
-    # first, we need to know what resid's are available
+    # first, we need to know what residues are available
     resids = []
-    for (key, _) in self.get_residues():
+    #print self.get_residues()
+    for key in self.get_residues():
       _, resnum, chain = key.split("_")
       resids.append(resnum + "_" + chain)
 
-    # TODO(rbharath): This dictionary appears to be the critical piece that holds the
-    # information. Factor out the dictionary creation into a separate
-    # function.
     structure = {}
     for resid in resids:
       structure[resid] = "OTHER"
