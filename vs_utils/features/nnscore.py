@@ -21,6 +21,7 @@ import textwrap
 import glob
 import cPickle
 import numpy as np
+import re
 import itertools
 from vs_utils.utils.nnscore_utils import MathFunctions
 from vs_utils.utils.nnscore_pdb import PDB
@@ -205,16 +206,15 @@ class Binana:
       'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
       'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
       }
-    for ligand_atom_index in ligand.all_atoms:
-      ligand_atom = ligand.all_atoms[ligand_atom_index]
-      for receptor_atom_index in receptor.all_atoms:
-        receptor_atom = receptor.all_atoms[receptor_atom_index]
+    for ligand_index in ligand.all_atoms:
+      ligand_atom = ligand.all_atoms[ligand_index]
+      for receptor_index in receptor.all_atoms:
+        receptor_atom = receptor.all_atoms[receptor_index]
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
         if dist < CONTACT_CUTOFF:
           if ligand_atom.element == "C" and receptor_atom.element == "C":
             hydrophobic_key = (receptor_atom.side_chain_or_backbone() +
                 "_" + receptor_atom.structure)
-
             hashtable_entry_add_one(hydrophobics, hydrophobic_key)
     return hydrophobics
 
@@ -238,16 +238,19 @@ class Binana:
     receptor: PDB
       A PDB object describing the receptor protein.
     """
-    ligand_receptor_electrostatics = {}
+    electrostatics = {}
     for first, second in itertools.product(Binana.atom_types,
       Binana.atom_types):
       key = "_".join(sorted([first, second]))
-      ligand_receptor_electrostatics[key] = 0
-    for ligand_atom_index in ligand.all_atoms:
-      ligand_atom = ligand.all_atoms[ligand_atom_index]
-      for receptor_atom_index in receptor.all_atoms:
-        receptor_atom = receptor.all_atoms[receptor_atom_index]
-        atomtypes = [ligand_atom.atomtype, receptor_atom.atomtype]
+      electrostatics[key] = 0
+    for ligand_index in ligand.all_atoms:
+      ligand_atom = ligand.all_atoms[ligand_index]
+      for receptor_index in receptor.all_atoms:
+        receptor_atom = receptor.all_atoms[receptor_index]
+        # Atomtypes occasionally have charges such as O1+ or N1-
+        # Use regexps to replace these out.
+        atomtypes = [re.sub(r'[0-9]+[+-]?', r'', atom) for atom in
+            [ligand_atom.atomtype, receptor_atom.atomtype]]
         atomstr = "_".join(sorted(atomtypes))
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
         if dist < CONTACT_CUTOFF:
@@ -258,9 +261,9 @@ class Binana:
           # ligand_charge/receptor_charge?
           coulomb_energy = ((ligand_charge * receptor_charge / dist)
               * ELECTROSTATIC_JOULE_PER_MOL)
-          hashtable_entry_add_one(ligand_receptor_electrostatics,
+          hashtable_entry_add_one(electrostatics,
               atomstr, coulomb_energy)
-    return ligand_receptor_electrostatics
+    return electrostatics
 
   def compute_active_site_flexibility(self, ligand, receptor):
     """
@@ -283,10 +286,10 @@ class Binana:
       'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
       'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
       }
-    for ligand_atom_index in ligand.all_atoms:
-      ligand_atom = ligand.all_atoms[ligand_atom_index]
-      for receptor_atom_index in receptor.all_atoms:
-        receptor_atom = receptor.all_atoms[receptor_atom_index]
+    for ligand_index in ligand.all_atoms:
+      ligand_atom = ligand.all_atoms[ligand_index]
+      for receptor_index in receptor.all_atoms:
+        receptor_atom = receptor.all_atoms[receptor_index]
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
         if dist < CONTACT_CUTOFF:
           flexibility_key = (receptor_atom.side_chain_or_backbone() + "_"
@@ -328,41 +331,33 @@ class Binana:
       'HDONOR-RECEPTOR_SIDECHAIN_ALPHA': 0,
       'HDONOR-RECEPTOR_SIDECHAIN_BETA': 0,
       'HDONOR-RECEPTOR_SIDECHAIN_OTHER': 0}
-    for ligand_atom_index in ligand.all_atoms:
-      ligand_atom = ligand.all_atoms[ligand_atom_index]
-      for receptor_atom_index in receptor.all_atoms:
-        receptor_atom = receptor.all_atoms[receptor_atom_index]
+    for ligand_index in ligand.all_atoms:
+      ligand_atom = ligand.all_atoms[ligand_index]
+      for receptor_index in receptor.all_atoms:
+        receptor_atom = receptor.all_atoms[receptor_index]
         # Now see if there's some sort of hydrogen bond between
         # these two atoms. distance cutoff = H_BOND_DIST, angle cutoff =
         # H_BOND_ANGLE.
-        # Note that this is liberal.
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
         if dist < CONTACT_CUTOFF:
           electronegative_atoms = ["O", "N", "F"]
           if ((ligand_atom.element in electronegative_atoms)
             and (receptor_atom.element in electronegative_atoms)):
-            print "Oxygens or Nitrogens or Fluorines"
 
-            # now build a list of all the hydrogens close to these
-            # atoms
             hydrogens = []
-
-            # TODO(rbharath): I don't like this bit of code. It's emebdding
-            # state in the atoms to propagate information. Causing
-            # side-effects like this is dirty.
+            # TODO(rbharath): This is a horrible inner-loop search. Can
+            # this be made more efficient?
             for atm_index in ligand.all_atoms:
               if ligand.all_atoms[atm_index].element == "H":
                 # so it's a hydrogen
                 if (ligand.all_atoms[atm_index].coordinates.dist_to(
                     ligand_atom.coordinates) < H_BOND_DIST):
-                  ligand.all_atoms[atm_index].comment = "LIGAND"
                   hydrogens.append(ligand.all_atoms[atm_index])
 
             for atm_index in receptor.all_atoms:
               if receptor.all_atoms[atm_index].element == "H":
                 if (receptor.all_atoms[atm_index].coordinates.dist_to(
                     receptor_atom.coordinates) < H_BOND_DIST):
-                  receptor.all_atoms[atm_index].comment = "RECEPTOR"
                   hydrogens.append(receptor.all_atoms[atm_index])
 
             print "nearby hydrogens: " + str(hydrogens)
@@ -371,15 +366,11 @@ class Binana:
             # it might be better to just report the angle in the feature
             # vector... 
             for hydrogen in hydrogens:
-              angle = 180 - self.functions.angle_between_three_points(
+              angle = math.fabs(180 - self.functions.angle_between_three_points(
                 ligand_atom.coordinates, hydrogen.coordinates,
-                receptor_atom.coordinates) * 180.0 / math.pi
+                receptor_atom.coordinates) * 180.0 / math.pi)
               print "angle: " + str(angle)
-              if (math.fabs(180 - self.functions.angle_between_three_points(
-                  ligand_atom.coordinates,
-                  hydrogen.coordinates,
-                  receptor_atom.coordinates) * 180.0 / math.pi) <=
-                  H_BOND_ANGLE):
+              if (angle <= H_BOND_ANGLE):
                 hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
                     receptor_atom.side_chain_or_backbone() + "_" +
                     receptor_atom.structure)
@@ -405,8 +396,8 @@ class Binana:
     ligand_atom_types = {}
     for atom_type in Binana.atom_types:
       ligand_atom_types[atom_type] = 0
-    for ligand_atom_index in ligand.all_atoms:
-      ligand_atom = ligand.all_atoms[ligand_atom_index]
+    for ligand_index in ligand.all_atoms:
+      ligand_atom = ligand.all_atoms[ligand_index]
       hashtable_entry_add_one(ligand_atom_types, ligand_atom.atomtype)
     return ligand_atom_types
 
@@ -429,10 +420,10 @@ class Binana:
       key = "_".join(sorted([first, second]))
       ligand_receptor_contacts[key] = 0
       ligand_receptor_close_contacts[key] = 0
-    for ligand_atom_index in ligand.all_atoms:
-      for receptor_atom_index in receptor.all_atoms:
-        ligand_atom = ligand.all_atoms[ligand_atom_index]
-        receptor_atom = receptor.all_atoms[receptor_atom_index]
+    for ligand_index in ligand.all_atoms:
+      for receptor_index in receptor.all_atoms:
+        ligand_atom = ligand.all_atoms[ligand_index]
+        receptor_atom = receptor.all_atoms[receptor_index]
 
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
         atomtypes = [ligand_atom.atomtype, receptor_atom.atomtype]

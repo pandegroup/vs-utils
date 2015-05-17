@@ -11,10 +11,8 @@ def parse_args(input_args=None):
   parser = argparse.ArgumentParser()
   parser.add_argument('--input_file', required=1,
                       help='Input PDB File.')
-  parser.add_argument('--add-hydrogens', action='store_true',
-                      dest='add_hydrogens', help='Add hydrogens at pH 7.4')
-  parser.add_argument('--gen-pdbqt', action='store_true', dest='gen_pdbqt',
-                      help='Generate pdbqt from input.')
+  parser.add_argument('--output_directory', required=1,
+                      help='Output Directory.')
   return parser.parse_args(input_args)
 
 
@@ -30,38 +28,43 @@ def force_partial_charge_computation(mol):
     Molecule on which we compute partial charges.
   """
   for obatom in openbabel.OBMolAtomIter(mol):
-    print obatom.GetPartialCharge()
+    obatom.GetPartialCharge()
 
 
-def main(input_file, add_hydrogens, gen_pdbqt):
+def main(input_file, output_directory):
+  basename = os.path.basename(input_file).split(".")[0]
+
+  hyd_output = os.path.join(output_directory, basename + "_hyd.pdb")
+  pdbqt_output = os.path.join(output_directory, basename + "_hyd.pdbqt")
+
+  # Create pdb with hydrogens added
   hydConversion = openbabel.OBConversion()
-  if add_hydrogens:
-    # Create pdb with hydrogens added
-    hydConversion.SetInAndOutFormats("pdb", "pdb")
+  hydConversion.SetInAndOutFormats("pdb", "pdb")
+  mol = openbabel.OBMol()
+  hydConversion.ReadFile(mol, input_file)  
+  # AddHydrogens(polaronly, correctForPH, pH)
+  mol.AddHydrogens(True, True, 7.4)
+  hydConversion.WriteFile(mol, hyd_output)
 
-    mol = openbabel.OBMol()
-    hydConversion.ReadFile(mol, input_file)  
-    print "Molecule has %d atoms." % mol.NumAtoms()
-    # AddHydrogens(polaronly, correctForPH, pH)
-    mol.AddHydrogens(True, True, 7.4)
-    print "Molecule has %d atoms." % mol.NumAtoms()
-    hydConversion.WriteFile(mol, "prgr_hyd.pdb")
+  # Create a pdbqt file
+  chargeConversion = openbabel.OBConversion()
+  chargeConversion.SetInAndOutFormats("pdb", "pdbqt")
+  # Make protein rigid
+  chargeConversion.AddOption("c", chargeConversion.OUTOPTIONS)
+  chargeConversion.AddOption("r", chargeConversion.OUTOPTIONS)
+  # Preserve hydrogens
+  chargeConversion.AddOption("h", chargeConversion.OUTOPTIONS)
+  # Preserve atom indices
+  chargeConversion.AddOption("p", chargeConversion.OUTOPTIONS)
+  # Preserve atom indices
+  chargeConversion.AddOption("n", chargeConversion.OUTOPTIONS)
 
-  if gen_pdbqt:
-    # Create a pdbqt file
-    chargeConversion = openbabel.OBConversion()
-    chargeConversion.SetInAndOutFormats("pdb", "pdbqt")
-    chargeConversion.AddOption("c", chargeConversion.OUTOPTIONS)
-    chargeConversion.AddOption("r", chargeConversion.OUTOPTIONS)
-    chargeConversion.AddOption("h", chargeConversion.OUTOPTIONS)
-    chargeConversion.AddOption("p", chargeConversion.OUTOPTIONS)
-    chargeConversion.AddOption("n", chargeConversion.OUTOPTIONS)
-
-    mol = openbabel.OBMol()
-    chargeConversion.ReadFile(mol, "prgr_hyd.pdb")
-    chargeConversion.WriteFile(mol, "prgr_hyd.pdbqt")
+  mol = openbabel.OBMol()
+  chargeConversion.ReadFile(mol, hyd_output)
+  force_partial_charge_computation(mol)
+  chargeConversion.WriteFile(mol, pdbqt_output)
 
 
 if __name__ == '__main__':
   args = parse_args()
-  main(args.input_file, args.add_hydrogens, args.gen_pdbqt)
+  main(args.input_file, args.output_directory)

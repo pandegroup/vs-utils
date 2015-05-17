@@ -6,6 +6,8 @@ require identification of ligand-receptor structures that boast interesting
 interactions (with salt-bridges, pi-cation interactions, etc.)
 """
 import os
+import numpy as np
+import re
 import unittest
 import itertools
 
@@ -30,12 +32,12 @@ class TestBinana(unittest.TestCase):
     self.binana = Binana()
 
     self.prgr_receptor = PDB()
-    prgr_receptor_path = os.path.join(data_dir(), "prgr.pdb")
+    prgr_receptor_path = os.path.join(data_dir(), "prgr_hyd.pdb")
     self.prgr_receptor.load_PDB_from_file(prgr_receptor_path)
 
     # This compound is CHEMBL1164248
     self.prgr_active = PDB()
-    prgr_active_path = os.path.join(data_dir(), "prgr_active0.pdb")
+    prgr_active_path = os.path.join(data_dir(), "prgr_active0_hyd.pdb")
     self.prgr_active.load_PDB_from_file(prgr_active_path)
 
     self.cAbl_receptor = PDB()
@@ -77,12 +79,13 @@ class TestBinana(unittest.TestCase):
     cAbl_electro = (
         self.binana.compute_electrostatic_energy(
             self.cAbl_active, self.cAbl_receptor))
-    for ligand_receptor_electrostatics in [prgr_electro, cAbl_electro]:
+    for electrostatics in [prgr_electro, cAbl_electro]:
       # The keys of these dicts are pairs of atomtypes, but the keys are
       # sorted so that ("C", "O") is always written as "C_O". Thus, for N
       # atom types, there are N*(N+1)/2 unique pairs.
       N = len(Binana.atom_types)
-      assert len(ligand_receptor_electrostatics) == N*(N+1)/2
+      assert len(electrostatics) == N*(N+1)/2
+      assert np.count_nonzero(np.array(electrostatics.values())) > 0
 
   def testComputeActiveSiteFlexibility(self):
     """
@@ -107,17 +110,22 @@ class TestBinana(unittest.TestCase):
     """
     TestBinana: Compute the number of hydrogen bonds.
 
-    TODO(rbharath): This method reports that no hydrogen bonds are found
-    for either prgr or cAbl. I'm pretty sure this is a bug.
+    TODO(rbharath): The hydrogen-bond angle cutoff seems like it's
+    incorrect to me. The hydrogens are placed by openbabel and aren't
+    optimized, so I'm pretty sure that this code will miss many hydrogens.
+    Here are some options:
+    -) Find a method to optimize the hydrogen placement.
+    -) Place a more permissive angle cutoff for hydrogens.
+    -) Allow for "buckets": angles 0-20, 20-40, 40-60, etc. and count the
+    number of hydrogen bonds in each bucket.
     """
-    #prgr_hbonds = (
-    #  self.binana.compute_hydrogen_bonds(self.prgr_active,
-    #      self.prgr_receptor))
+    prgr_hbonds = (
+      self.binana.compute_hydrogen_bonds(self.prgr_active,
+          self.prgr_receptor))
     cAbl_hbonds = (
       self.binana.compute_hydrogen_bonds(self.cAbl_active,
           self.cAbl_receptor))
-    #for hbonds in [prgr_hbonds, cAbl_hbonds]:
-    for hbonds in [cAbl_hbonds]:
+    for hbonds in [prgr_hbonds, cAbl_hbonds]:
       assert len(hbonds) == 12
       assert "HDONOR-LIGAND_BACKBONE_ALPHA" in hbonds
       assert "HDONOR-LIGAND_BACKBONE_BETA" in hbonds
@@ -131,7 +139,6 @@ class TestBinana(unittest.TestCase):
       assert "HDONOR-RECEPTOR_SIDECHAIN_ALPHA" in hbonds
       assert "HDONOR-RECEPTOR_SIDECHAIN_BETA" in hbonds
       assert "HDONOR-RECEPTOR_SIDECHAIN_OTHER" in hbonds
-    assert 0 == 1
 
   def testComputeLigandAtomCounts(self):
     """
