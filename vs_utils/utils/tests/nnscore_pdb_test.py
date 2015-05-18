@@ -10,6 +10,7 @@ import tempfile
 import shutil
 import unittest
 import numpy as np
+import tempfile
 
 from vs_utils.utils.nnscore_pdb import PDB
 from vs_utils.utils.nnscore_utils import Point
@@ -38,23 +39,17 @@ class TestPDB(unittest.TestCase):
     _, self.pdb_filename = tempfile.mkstemp(suffix=".pdb",
         dir=self.temp_dir)
 
+    prgr_pdb_path = os.path.join(data_dir(), "prgr_hyd.pdb")
+    prgr_pdbqt_path = os.path.join(data_dir(), "prgr_hyd.pdbqt")
+    self.prgr_pdb = PDB()
+    self.prgr_pdb.load_from_files(prgr_pdb_path, prgr_pdbqt_path)
+
 
   def tearDown(self):
     """
     Delete temporary directory.
     """
     shutil.rmtree(self.temp_dir)
-
-  def testSaveAndLoad(self):
-    """
-    TestPDB: Saves dummy PDB to file and verifies that it can be reloaded.
-    """
-    self.pdb.save_PDB(self.pdb_filename)
-    empty_pdb = PDB()
-    with open(self.pdb_filename) as pdb_file:
-      for line in pdb_file:
-        print line
-    empty_pdb.load_PDB_from_file(self.pdb_filename)
 
   def testAddNewAtom(self):
     """
@@ -67,25 +62,11 @@ class TestPDB(unittest.TestCase):
     # Verify that we now have one atom
     assert len(self.pdb.all_atoms.keys()) == 1
 
-  def testAssignProteinCharges(self):
-    """
-    TestPDB: Assigns charges to residues.
-    """
-    # TODO(rbharath): This test is just a stub. Break out unit tests for
-    # each of the specific residues to actually get meaningful coverage
-    # here.
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-
   def testGetResidues(self):
     """
     TestPDB: Tests that all residues in PDB are identified.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    residues = prgr_pdb.get_residues()
+    residues = self.prgr_pdb.get_residues()
     # prgr.pdb has 280 unique residues
     assert len(residues.keys()) == 280
     prgr_residues = ["LEU", "ILE", "ASN", "LEU", "LEU", "MET", "SER",
@@ -132,12 +113,8 @@ class TestPDB(unittest.TestCase):
     """
     TestPDB: Test that lysine charges are identified correctly.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    
-    res_list = prgr_pdb.get_residues()
-    lysine_charges = prgr_pdb.get_lysine_charges(res_list)
+    res_list = self.prgr_pdb.get_residues()
+    lysine_charges = self.prgr_pdb.get_lysine_charges(res_list)
     # prgr has 14 lysines.
     print len(lysine_charges)
     assert len(lysine_charges) == 14
@@ -149,12 +126,8 @@ class TestPDB(unittest.TestCase):
     """
     TestPDB: Test that arginine charges are identified correctly.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    
-    res_list = prgr_pdb.get_residues()
-    arginine_charges = prgr_pdb.get_arginine_charges(res_list)
+    res_list = self.prgr_pdb.get_residues()
+    arginine_charges = self.prgr_pdb.get_arginine_charges(res_list)
     # prgr has 10 arginines
     assert len(arginine_charges) == 10
     for charge in arginine_charges:
@@ -165,12 +138,8 @@ class TestPDB(unittest.TestCase):
     """
     TestPDB: Test that histidine charges are identified correctly.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    
-    res_list = prgr_pdb.get_residues()
-    histidine_charges = prgr_pdb.get_histidine_charges(res_list)
+    res_list = self.prgr_pdb.get_residues()
+    histidine_charges = self.prgr_pdb.get_histidine_charges(res_list)
     # prgr has 7 arginines
     assert len(histidine_charges) == 7
     for charge in histidine_charges:
@@ -181,12 +150,8 @@ class TestPDB(unittest.TestCase):
     """
     TestPDB: Test that glutamic acid charges are identified correctly.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    
-    res_list = prgr_pdb.get_residues()
-    glutamic_acid_charges = prgr_pdb.get_glutamic_acid_charges(res_list)
+    res_list = self.prgr_pdb.get_residues()
+    glutamic_acid_charges = self.prgr_pdb.get_glutamic_acid_charges(res_list)
     assert len(glutamic_acid_charges) == 16
     for charge in glutamic_acid_charges:
       # The carboxyls get deprotonated.
@@ -196,59 +161,44 @@ class TestPDB(unittest.TestCase):
     """
     TestPDB: Test that aspartic acid charges are identified correctly.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    
-    res_list = prgr_pdb.get_residues()
-    aspartic_acid_charges = prgr_pdb.get_aspartic_acid_charges(res_list)
+    res_list = self.prgr_pdb.get_residues()
+    aspartic_acid_charges = self.prgr_pdb.get_aspartic_acid_charges(res_list)
     assert len(aspartic_acid_charges) == 9
     for charge in aspartic_acid_charges:
       # The carboxyls get deprotonated
       assert not charge.positive
 
-  def testGetPhenylalanineAromatics(res_list):
+  def testGetPhenylalanineAromatics(self):
     """
     TestPDB: Test that phenylalanine aromatic rings are retrieved.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    
-    res_list = prgr_pdb.get_residues()
-    phenylalanine_aromatics = prgr_pdb.get_phenylalanine_aromatics(res_list)
+    res_list = self.prgr_pdb.get_residues()
+    phenylalanine_aromatics = (
+        self.prgr_pdb.get_phenylalanine_aromatics(res_list))
     # prgr has 13 phenylalanines, each of which has 1 aromatic ring.
     assert len(phenylalanine_aromatics) == 13
     for aromatic in phenylalanine_aromatics:
       # The aromatic rings in phenylalanine have 6 elements each
       assert len(aromatic.indices) == 6
 
-  def testGetTyrosineAromatics(res_list):
+  def testGetTyrosineAromatics(self):
     """
     TestPDB: Test that tyrosine aromatic rings are retrieved.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    
-    res_list = prgr_pdb.get_residues()
-    tyrosine_aromatics = prgr_pdb.get_tyrosine_aromatics(res_list)
+    res_list = self.prgr_pdb.get_residues()
+    tyrosine_aromatics = self.prgr_pdb.get_tyrosine_aromatics(res_list)
     # prgr has 10 tyrosines, each of which has 1 aromatic ring.
     assert len(tyrosine_aromatics) == 10
     for aromatic in tyrosine_aromatics:
       # The aromatic rings in tyrosine have 6 elements each
       assert len(aromatic.indices) == 6
 
-  def testGetHistidineAromatics(res_list):
+  def testGetHistidineAromatics(self):
     """
     TestPDB: Test that histidine aromatic rings are retrieved.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    
-    res_list = prgr_pdb.get_residues()
-    histidine_aromatics = prgr_pdb.get_histidine_aromatics(res_list)
+    res_list = self.prgr_pdb.get_residues()
+    histidine_aromatics = self.prgr_pdb.get_histidine_aromatics(res_list)
     # prgr has 7 histidines, each of which has 1 aromatic ring.
     assert len(histidine_aromatics) == 7
     for aromatic in histidine_aromatics:
@@ -256,17 +206,12 @@ class TestPDB(unittest.TestCase):
       print len(aromatic.indices)
       assert len(aromatic.indices) == 5
 
-  def testGetTryptophanAromatics(res_list):
+  def testGetTryptophanAromatics(self):
     """
     TestPDB: Test that tryptophan aromatic rings are retrieved.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    
-    res_list = prgr_pdb.get_residues()
-    print "About to get tryptophan_aromatics!"
-    tryptophan_aromatics = prgr_pdb.get_tryptophan_aromatics(res_list)
+    res_list = self.prgr_pdb.get_residues()
+    tryptophan_aromatics = self.prgr_pdb.get_tryptophan_aromatics(res_list)
     # prgr has 5 tryptophans, each of which has 2 aromatic ring.
     print len(tryptophan_aromatics)
     assert len(tryptophan_aromatics) == 10 
@@ -306,24 +251,28 @@ class TestPDB(unittest.TestCase):
     connected_hydrogens = self.pdb.connected_atoms_of_given_element(1, "H")
     assert len(connected_hydrogens) == 1
 
-  def testLoadBondsFromPDBList(self):
+  def testLoadBondsFromPDB(self):
     """
     TestPDB: Verifies that bonds can be loaded from PDB.
     """
+    pdb = PDB()
     # Test that we can load CO2
     carbon_atom = Atom(element="C")
     oxygen_atom_1 = Atom(element="O")
     oxygen_atom_2 = Atom(element="O")
 
-    self.pdb.add_new_atom(carbon_atom)
-    self.pdb.add_new_atom(oxygen_atom_1)
-    self.pdb.add_new_atom(oxygen_atom_2)
+    pdb.add_new_atom(carbon_atom)
+    pdb.add_new_atom(oxygen_atom_1)
+    pdb.add_new_atom(oxygen_atom_2)
     lines = [
       "CONECT    1    2    3                                                 "
       "CONECT    2                                                           "
       "CONECT    3                                                           "
     ]
-    self.pdb.load_bonds_from_PDB_list(lines)
+    with tempfile.NamedTemporaryFile() as temp:
+      temp.write("\n".join(lines))
+      temp.flush()
+      pdb.load_bonds_from_PDB(temp.name)
     assert len(carbon_atom.indices_of_atoms_connecting) == 2
     assert len(oxygen_atom_1.indices_of_atoms_connecting) == 0
     assert len(oxygen_atom_2.indices_of_atoms_connecting) == 0
@@ -352,23 +301,6 @@ class TestPDB(unittest.TestCase):
     assert len(connected_heavy_atoms) == 1
     assert connected_heavy_atoms[0] == 2
 
-  def testCreateNonProteinAtomBondsByDistance(self):
-    """
-    TestPDB: Verifies creation of bonds.
-    """
-    # First test a toy example
-    carbon_atom = Atom(element="C",
-        coordinates=Point(coords=np.array([0,0,1])))
-    oxygen_atom = Atom(element="O",
-        coordinates=Point(coords=np.array([0,0,2])))
-
-    self.pdb.add_new_non_protein_atom(carbon_atom)
-    self.pdb.add_new_non_protein_atom(oxygen_atom)
-
-    self.pdb.create_non_protein_atom_bonds_by_distance()
-    assert len(carbon_atom.indices_of_atoms_connecting) == 1
-    assert len(oxygen_atom.indices_of_atoms_connecting) == 1
-
   def testAssignNonProteinCharges(self):
     """
     TestPDB: Verify that charges are properly added to ligands.
@@ -377,10 +309,12 @@ class TestPDB(unittest.TestCase):
     # There should be 3 charged groups, two positive, one negative
     ammonium_sulfate_pdb = PDB()
     ammonium_sulfate_pdb_path = os.path.join(data_dir(),
-        "ammonium_sulfate.pdb")
+        "ammonium_sulfate_hyd.pdb")
+    ammonium_sulfate_pdbqt_path = os.path.join(data_dir(),
+        "ammonium_sulfate_hyd.pdbqt")
     # Notice that load automatically identifies non-protein charges.
-    ammonium_sulfate_pdb.load_PDB_from_file(
-        ammonium_sulfate_pdb_path)
+    ammonium_sulfate_pdb.load_from_files(
+        ammonium_sulfate_pdb_path, ammonium_sulfate_pdbqt_path)
     assert len(ammonium_sulfate_pdb.charges) == 3
     num_pos, num_neg = 0, 0
     for charge in ammonium_sulfate_pdb.charges:
@@ -412,9 +346,11 @@ class TestPDB(unittest.TestCase):
     # ammoniums.
     ammonium_sulfate_pdb = PDB()
     ammonium_sulfate_pdb_path = os.path.join(data_dir(),
-        "ammonium_sulfate.pdb")
-    ammonium_sulfate_pdb.load_PDB_from_file(
-        ammonium_sulfate_pdb_path)
+        "ammonium_sulfate_hyd.pdb")
+    ammonium_sulfate_pdbqt_path = os.path.join(data_dir(),
+        "ammonium_sulfate_hyd.pdbqt")
+    ammonium_sulfate_pdb.load_from_files(
+        ammonium_sulfate_pdb_path, ammonium_sulfate_pdbqt_path)
     nitrogen_charges = ammonium_sulfate_pdb.identify_nitrogen_group_charges()
     assert len(nitrogen_charges) == 2
     assert nitrogen_charges[0].positive  # Should be positive
@@ -425,8 +361,11 @@ class TestPDB(unittest.TestCase):
     # at physiological pH.
     pyrrolidine_pdb = PDB()
     pyrrolidine_pdb_path = os.path.join(data_dir(),
-        "pyrrolidine.pdb")
-    pyrrolidine_pdb.load_PDB_from_file(pyrrolidine_pdb_path)
+        "pyrrolidine_hyd.pdb")
+    pyrrolidine_pdbqt_path = os.path.join(data_dir(),
+        "pyrrolidine_hyd.pdbqt")
+    pyrrolidine_pdb.load_from_files(pyrrolidine_pdb_path,
+        pyrrolidine_pdbqt_path)
     nitrogen_charges = pyrrolidine_pdb.identify_nitrogen_group_charges()
     assert len(nitrogen_charges) == 1
     assert nitrogen_charges[0].positive  # Should be positive
@@ -438,9 +377,11 @@ class TestPDB(unittest.TestCase):
     # Guanidine is positively charged at physiological pH
     guanidine_pdb = PDB()
     guanidine_pdb_path = os.path.join(data_dir(),
-        "guanidine.pdb")
-    guanidine_pdb.load_PDB_from_file(
-        guanidine_pdb_path)
+        "guanidine_hyd.pdb")
+    guanidine_pdbqt_path = os.path.join(data_dir(),
+        "guanidine_hyd.pdbqt")
+    guanidine_pdb.load_from_files(
+        guanidine_pdb_path, guanidine_pdbqt_path)
     carbon_charges = guanidine_pdb.identify_carbon_group_charges()
     assert len(carbon_charges) == 1
     assert carbon_charges[0].positive  # Should be positive
@@ -449,9 +390,11 @@ class TestPDB(unittest.TestCase):
     # positively protonated at physiological pH
     sulfaguanidine_pdb = PDB()
     sulfaguanidine_pdb_path = os.path.join(data_dir(),
-        "sulfaguanidine.pdb")
-    sulfaguanidine_pdb.load_PDB_from_file(
-        sulfaguanidine_pdb_path)
+        "sulfaguanidine_hyd.pdb")
+    sulfaguanidine_pdbqt_path = os.path.join(data_dir(),
+        "sulfaguanidine_hyd.pdbqt")
+    sulfaguanidine_pdb.load_from_files(
+        sulfaguanidine_pdb_path, sulfaguanidine_pdbqt_path)
     carbon_charges = sulfaguanidine_pdb.identify_carbon_group_charges()
     assert len(carbon_charges) == 1
     assert carbon_charges[0].positive  # Should be positive
@@ -459,9 +402,11 @@ class TestPDB(unittest.TestCase):
     # Formic acid is a carboxylic acid, which should be negatively charged.
     formic_acid_pdb = PDB()
     formic_acid_pdb_path = os.path.join(data_dir(),
-        "formic_acid.pdb")
-    formic_acid_pdb.load_PDB_from_file(
-        formic_acid_pdb_path)
+        "formic_acid_hyd.pdb")
+    formic_acid_pdbqt_path = os.path.join(data_dir(),
+        "formic_acid_hyd.pdbqt")
+    formic_acid_pdb.load_from_files(
+        formic_acid_pdb_path, formic_acid_pdbqt_path)
     carbon_charges = formic_acid_pdb.identify_carbon_group_charges()
     assert len(carbon_charges) == 1
     assert not carbon_charges[0].positive  # Should be negatively charged.
@@ -473,9 +418,11 @@ class TestPDB(unittest.TestCase):
     # CID82671 contains a phosphate between two aromatic groups.
     phosphate_pdb = PDB()
     phosphate_pdb_path = os.path.join(data_dir(),
-      "82671.pdb")
-    phosphate_pdb.load_PDB_from_file(
-        phosphate_pdb_path)
+      "82671_hyd.pdb")
+    phosphate_pdbqt_path = os.path.join(data_dir(),
+      "82671_hyd.pdb")
+    phosphate_pdb.load_from_files(
+        phosphate_pdb_path, phosphate_pdbqt_path)
     phosphorus_charges = phosphate_pdb.identify_phosphorus_group_charges()
     assert len(phosphorus_charges) == 1
     assert not phosphorus_charges[0].positive  # Should be negatively charged.
@@ -487,9 +434,12 @@ class TestPDB(unittest.TestCase):
     """
     trifluoromethanesulfonic_acid_pdb = PDB()
     trifluoromethanesulfonic_acid_pdb_path = os.path.join(data_dir(),
-      "trifluoromethanesulfonic_acid.pdb")
-    trifluoromethanesulfonic_acid_pdb.load_PDB_from_file(
-      trifluoromethanesulfonic_acid_pdb_path)
+      "trifluoromethanesulfonic_acid_hyd.pdb")
+    trifluoromethanesulfonic_acid_pdbqt_path = os.path.join(data_dir(),
+      "trifluoromethanesulfonic_acid_hyd.pdbqt")
+    trifluoromethanesulfonic_acid_pdb.load_from_files(
+      trifluoromethanesulfonic_acid_pdb_path,
+      trifluoromethanesulfonic_acid_pdbqt_path)
     sulfur_charges = (
         trifluoromethanesulfonic_acid_pdb.identify_sulfur_group_charges())
     assert len(sulfur_charges) == 1
@@ -501,8 +451,9 @@ class TestPDB(unittest.TestCase):
     TestPDB: Verify that aromatic rings in ligands are identified.
     """
     benzene_pdb = PDB()
-    benzene_pdb_path = os.path.join(data_dir(), "benzene.pdb")
-    benzene_pdb.load_PDB_from_file(benzene_pdb_path)
+    benzene_pdb_path = os.path.join(data_dir(), "benzene_hyd.pdb")
+    benzene_pdbqt_path = os.path.join(data_dir(), "benzene_hyd.pdbqt")
+    benzene_pdb.load_from_files(benzene_pdb_path, benzene_pdbqt_path)
 
     # A benzene should have exactly one aromatic ring.
     assert len(benzene_pdb.aromatic_rings) == 1
@@ -517,19 +468,15 @@ class TestPDB(unittest.TestCase):
     # TODO(rbharath): This test is just a stub. Add a more realistic test
     # that checks that nontrivial secondary structure is computed correctly
     # here.
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    prgr_pdb.assign_secondary_structure()
+    self.prgr_pdb.assign_secondary_structure()
     
 
   def testGetStructureDict(self):
     """
     TestPDB: Verify that dict with rudimentary structure labels is generated.
+
+    TODO(rbharath): This is just a stub. Add some nontrivial tests here.
     """
-    prgr_pdb = PDB()
-    prgr_pdb_path = os.path.join(data_dir(), "prgr.pdb")
-    prgr_pdb.load_PDB_from_file(prgr_pdb_path)
-    structures = prgr_pdb.get_structure_dict()
+    structures = self.prgr_pdb.get_structure_dict()
     print structures
     print len(structures)

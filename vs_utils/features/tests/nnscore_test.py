@@ -32,22 +32,28 @@ class TestBinana(unittest.TestCase):
     self.binana = Binana()
 
     self.prgr_receptor = PDB()
-    prgr_receptor_path = os.path.join(data_dir(), "prgr_hyd.pdb")
-    self.prgr_receptor.load_PDB_from_file(prgr_receptor_path)
+    prgr_pdb = os.path.join(data_dir(), "prgr_hyd.pdb")
+    prgr_pdbqt = os.path.join(data_dir(), "prgr_hyd.pdbqt")
+    self.prgr_receptor.load_from_files(prgr_pdb, prgr_pdbqt)
 
     # This compound is CHEMBL1164248
     self.prgr_active = PDB()
-    prgr_active_path = os.path.join(data_dir(), "prgr_active0_hyd.pdb")
-    self.prgr_active.load_PDB_from_file(prgr_active_path)
+    prgr_active_pdb = os.path.join(data_dir(), "prgr_active0_hyd.pdb")
+    prgr_active_pdbqt = os.path.join(data_dir(), "prgr_active0_hyd.pdbqt")
+    self.prgr_active.load_from_files(prgr_active_pdb, prgr_active_pdbqt)
 
     self.cAbl_receptor = PDB()
-    cAbl_receptor_path = os.path.join(data_dir(), "c-Abl_hyd.pdb")
-    self.cAbl_receptor.load_PDB_from_file(cAbl_receptor_path)
+    cAbl_receptor_pdb = os.path.join(data_dir(), "c-Abl_hyd.pdb")
+    cAbl_receptor_pdbqt = os.path.join(data_dir(), "c-Abl_hyd.pdbqt")
+    self.cAbl_receptor.load_from_files(cAbl_receptor_pdb,
+        cAbl_receptor_pdbqt)
 
     # This compound is imatinib
     self.cAbl_active = PDB()
-    cAbl_active_path = os.path.join(data_dir(), "imatinib_hyd.pdb")
-    self.cAbl_active.load_PDB_from_file(cAbl_active_path)
+    cAbl_active_pdb = os.path.join(data_dir(), "imatinib_hyd.pdb")
+    cAbl_active_pdbqt = os.path.join(data_dir(), "imatinib_hyd.pdbqt")
+    self.cAbl_active.load_from_files(cAbl_active_pdb,
+        cAbl_active_pdbqt)
 
   def testComputeHydrophobicContacts(self):
     """

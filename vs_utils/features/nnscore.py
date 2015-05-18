@@ -27,7 +27,10 @@ from vs_utils.utils.nnscore_utils import MathFunctions
 from vs_utils.utils.nnscore_pdb import PDB
 from vs_utils.utils.nnscore_utils import Point
 
-ELECTROSTATIC_JOULE_PER_MOL = 138.94238460104697e4 # units?
+#ELECTROSTATIC_JOULE_PER_MOL = 138.94238460104697e4 # units?
+# This is just a scaling factor, so it's set so as to keep the network
+# inputs roughly contained in 0-1 
+ELECTROSTATIC_JOULE_PER_MOL = 10.0
 # O-H distance is 0.96 A, N-H is 1.01 A. See
 # http://www.science.uwaterloo.ca/~cchieh/cact/c120/bondel.html
 H_BOND_DIST = 1.3 # angstroms
@@ -94,6 +97,17 @@ def center(string, length):
     if len(string) < length:
       string = string + " "
   return string
+
+def clean_atomtype(atomtype):
+  """Removes extraneous charge info from atomtype
+
+  Atomtypes occasionally have charges such as O1+ or N1-. This function
+  uses regexps to replace these out.
+
+  atomtype: String
+    Raw atomtype extracted from PDB
+  """
+  return re.sub(r'[0-9]+[+-]?', r'', atomtype)
 
 
 class Binana:
@@ -247,11 +261,9 @@ class Binana:
       ligand_atom = ligand.all_atoms[ligand_index]
       for receptor_index in receptor.all_atoms:
         receptor_atom = receptor.all_atoms[receptor_index]
-        # Atomtypes occasionally have charges such as O1+ or N1-
-        # Use regexps to replace these out.
-        atomtypes = [re.sub(r'[0-9]+[+-]?', r'', atom) for atom in
+        atomtypes = [clean_atomtype(atom) for atom in
             [ligand_atom.atomtype, receptor_atom.atomtype]]
-        atomstr = "_".join(sorted(atomtypes))
+        key = "_".join(sorted(atomtypes))
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
         if dist < CONTACT_CUTOFF:
           ligand_charge = ligand_atom.charge
@@ -262,7 +274,7 @@ class Binana:
           coulomb_energy = ((ligand_charge * receptor_charge / dist)
               * ELECTROSTATIC_JOULE_PER_MOL)
           hashtable_entry_add_one(electrostatics,
-              atomstr, coulomb_energy)
+              key, coulomb_energy)
     return electrostatics
 
   def compute_active_site_flexibility(self, ligand, receptor):
@@ -397,8 +409,8 @@ class Binana:
     for atom_type in Binana.atom_types:
       ligand_atom_types[atom_type] = 0
     for ligand_index in ligand.all_atoms:
-      ligand_atom = ligand.all_atoms[ligand_index]
-      hashtable_entry_add_one(ligand_atom_types, ligand_atom.atomtype)
+      hashtable_entry_add_one(ligand_atom_types,
+          clean_atomtype(ligand.all_atoms[ligand_index].atomtype))
     return ligand_atom_types
 
   def compute_ligand_receptor_contacts(self, ligand, receptor):
@@ -426,14 +438,14 @@ class Binana:
         receptor_atom = receptor.all_atoms[receptor_index]
 
         dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
-        atomtypes = [ligand_atom.atomtype, receptor_atom.atomtype]
-        atomstr = "_".join(sorted(atomtypes))
+        key = "_".join(sorted([clean_atomtype(atom) for atom in
+            [ligand_atom.atomtype, receptor_atom.atomtype]]))
         if dist < CONTACT_CUTOFF:
           hashtable_entry_add_one(ligand_receptor_contacts,
-              atomstr)
+              key)
         if dist < CLOSE_CONTACT_CUTOFF:
           hashtable_entry_add_one(ligand_receptor_close_contacts,
-              atomstr)
+              key)
     return ligand_receptor_close_contacts, ligand_receptor_contacts
 
   def compute_pi_pi_stacking(self, ligand, receptor):

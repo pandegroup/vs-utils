@@ -54,29 +54,27 @@ class PDB:
     self.aromatic_rings = []
     self.charges = [] # a list of objects of type charge (defined below)
 
-  def load_PDB_from_file(self, filename, line_header="", impute_bonds=False):
-    """
-    Given a PDB file as a list of lines, loads fields into self.
+  def load_from_files(self, pdb_filename, pdbqt_filename):
+    """Loads this molecule from files.
+
+    This function require both a pdbqt and pdb file (which must shared
+    atomnames and indices). The reason for this dual requirement is that
+    the pdbqt contains partial-charge information (which the pdb doesn't),
+    while the pdb contains bond information (which the pdbqt doesn't).
 
     Parameters
     ----------
-    lines: list
-      List of PDB file lines.
-    line_header: string
-      The string header for PDB lines.
-    impute_bonds: bool
-      Attempt to guess missing bonds between ligand atoms.
+    pdb_filename: string 
+      Name of pdb file. 
+    pdbqt_filename: string 
+      Name of pdbqt file. 
     """
     # Reset internal state
     self.__init__()
     # Now load the file into a list
-    with open(filename,"r") as f:
-      lines = f.readlines()
-    self.load_atoms_from_PDB_list(lines, line_header=line_header)
-    self.load_bonds_from_PDB_list(lines)
+    self.load_atoms_from_PDBQT(pdbqt_filename)
+    self.load_bonds_from_PDB(pdb_filename)
     self.check_protein_format()
-    if impute_bonds:
-      self.create_non_protein_atom_bonds_by_distance()
     self.assign_non_protein_aromatic_rings()
     self.assign_protein_aromatic_rings()
     self.assign_non_protein_charges()
@@ -84,15 +82,16 @@ class PDB:
     self.assign_secondary_structure()
 
 
-  def load_atoms_from_PDB_list(self, lines, line_header=""):
-    """
-    Loads atoms from a list of PDB file lines.
+  def load_atoms_from_PDBQT(self, pdbqt_filename):
+    """Loads atoms and charges from provided PDBQT file. 
 
     Parameters
     ----------
-    lines: list
-      List of strings, one per line in original PDB file.
+    pdbqt_filename: string 
+      Name of pdbqt file. 
     """
+    with open(pdbqt_filename,"r") as f:
+      lines = f.readlines()
     autoindex = 1
     # going to keep track of atomname_resid_chain pairs, to make sure
     # redundants aren't loaded.  This basically gets rid of rotomers,
@@ -122,8 +121,7 @@ class PDB:
           if (key in atom_already_loaded
             and cur_atom.residue.strip() in self.protein_resnames
             and cur_atom.atomname.strip() != "H"):
-            print (line_header
-                + "WARNING: Duplicate receptor atom detected: \""
+            print ("WARNING: Duplicate receptor atom detected: \""
                 + cur_atom.line.strip() + "\". Not loading this duplicate.")
           else:
             # so each atom can only be loaded once. No rotamers.
@@ -135,9 +133,9 @@ class PDB:
 
             autoindex = autoindex + 1
 
-  def load_bonds_from_PDB_list(self, lines):
+  def load_bonds_from_PDB(self, pdb_filename):
     """
-    Loads bonds from list of PDB file lines.
+    Loads bonds from PDB file.
 
     Bonds in PDBs are represented by CONECT statements. These lines follow
     the following record format:
@@ -158,12 +156,15 @@ class PDB:
 
     Parameters
     ----------
-    lines: List
-      List of strings, one per line in original PDB file.
+    ----------
+    pdb_filename: string 
+      Name of pdb file. 
     Raises
     ------
     ValueError: On improperly formatted input.
     """
+    with open(pdb_filename, "r") as f:
+      lines = f.readlines()
     for line in lines:
       if "CONECT" in line:
         if len(line) < 31:
@@ -446,26 +447,6 @@ class PDB:
 
   # Functions to determine the bond connectivity based on distance
   # ==============================================================
-
-  def create_non_protein_atom_bonds_by_distance(self):
-    """
-    Creates bonds between non-protein atoms close to each other in PDB.
-
-    This function is only approximate! Avoid using if possible.
-    """
-    for AtomIndex1 in self.non_protein_atoms:
-      atom1 = self.non_protein_atoms[AtomIndex1]
-      if not atom1.residue[-3:] in self.protein_resnames: # so it's not a protein residue
-        for AtomIndex2 in self.non_protein_atoms:
-          if AtomIndex1 != AtomIndex2:
-            atom2 = self.non_protein_atoms[AtomIndex2]
-            if not atom2.residue[-3:] in self.protein_resnames: # so it's not a protein residue
-              dist = self.functions.distance(atom1.coordinates, atom2.coordinates)
-              if (dist < self.bond_length(atom1.element, atom2.element) * 1.2):
-                print "Adding bond between %d and %d" % (AtomIndex1, AtomIndex2)
-                print "Distance between %d and %d is %f" % (AtomIndex1, AtomIndex2, dist)
-                atom1.add_neighbor_atom_indices([AtomIndex2])
-                atom2.add_neighbor_atom_indices([AtomIndex1])
 
   def bond_length(self, element1, element2):
     """
