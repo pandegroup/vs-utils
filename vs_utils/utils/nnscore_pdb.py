@@ -118,20 +118,26 @@ class PDB:
           # Note that non-receptor atoms can have redundant names, but
           # receptor atoms cannot.  This is because protein residues often
           # contain rotamers
-          if (key in atom_already_loaded
-            and cur_atom.residue.strip() in self.protein_resnames
-            and cur_atom.atomname.strip() != "H"):
-            print ("WARNING: Duplicate receptor atom detected: \""
-                + cur_atom.line.strip() + "\". Not loading this duplicate.")
-          else:
-            # so each atom can only be loaded once. No rotamers.
-            atom_already_loaded.append(key)
-            # So you're actually reindexing everything here.
-            self.all_atoms[autoindex] = cur_atom
-            if (not cur_atom.residue[-3:] in self.protein_resnames):
-              self.non_protein_atoms[autoindex] = cur_atom
+          # TODO(rbharath): Removing this check since it causes the code to
+          # bork on pdbbind input (some pdbbind files fail to properly
+          # number their residues. Maybe use pdbfixer?). Make sure this
+          # doesn't trigger collapse elsewhere...
+          #if (key in atom_already_loaded
+          #  and cur_atom.residue.strip() in self.protein_resnames
+          #  and cur_atom.atomname.strip() != "H"):
+          #  print ("WARNING: Duplicate receptor atom detected: \""
+          #      + cur_atom.line.strip() + "\". Not loading this duplicate.")
+          #  print key
+          #else:
 
-            autoindex = autoindex + 1
+          # so each atom can only be loaded once. No rotamers.
+          atom_already_loaded.append(key)
+          # So you're actually reindexing everything here.
+          self.all_atoms[autoindex] = cur_atom
+          if (not cur_atom.residue[-3:] in self.protein_resnames):
+            self.non_protein_atoms[autoindex] = cur_atom
+
+          autoindex = autoindex + 1
 
   def load_bonds_from_PDB(self, pdb_filename):
     """

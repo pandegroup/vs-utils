@@ -372,7 +372,7 @@ class Binana:
                     receptor_atom.coordinates) < H_BOND_DIST):
                   hydrogens.append(receptor.all_atoms[atm_index])
 
-            print "nearby hydrogens: " + str(hydrogens)
+            #print "nearby hydrogens: " + str(hydrogens)
             # now we need to check the angles
             # TODO(rbharath): Rather than using this heuristic, it seems like
             # it might be better to just report the angle in the feature
@@ -381,7 +381,7 @@ class Binana:
               angle = math.fabs(180 - self.functions.angle_between_three_points(
                 ligand_atom.coordinates, hydrogen.coordinates,
                 receptor_atom.coordinates) * 180.0 / math.pi)
-              print "angle: " + str(angle)
+              #print "angle: " + str(angle)
               if (angle <= H_BOND_ANGLE):
                 hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
                     receptor_atom.side_chain_or_backbone() + "_" +
