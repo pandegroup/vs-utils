@@ -468,7 +468,10 @@ class Binana:
       protein to dock agains.
     """
     pi_stacking = {'STACKING_ALPHA': 0, 'STACKING_BETA': 0, 'STACKING_OTHER': 0}
+    #print "ligand_aromatic_rings: " + str(ligand.aromatic_rings)
+    print "receptor.aromatic_rings: " + str(receptor.aromatic_rings)
     for lig_aromatic in ligand.aromatic_rings:
+      #print "lig_aromatic.center: " + str(lig_aromatic.center)
       for rec_aromatic in receptor.aromatic_rings:
         dist = lig_aromatic.center.dist_to(rec_aromatic.center)
         if dist < PI_PI_CUTOFF:

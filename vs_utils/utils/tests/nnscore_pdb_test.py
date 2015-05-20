@@ -39,10 +39,17 @@ class TestPDB(unittest.TestCase):
     _, self.pdb_filename = tempfile.mkstemp(suffix=".pdb",
         dir=self.temp_dir)
 
+    self.prgr_pdb = PDB()
     prgr_pdb_path = os.path.join(data_dir(), "prgr_hyd.pdb")
     prgr_pdbqt_path = os.path.join(data_dir(), "prgr_hyd.pdbqt")
-    self.prgr_pdb = PDB()
     self.prgr_pdb.load_from_files(prgr_pdb_path, prgr_pdbqt_path)
+
+    _1r5y_protein = PDB()
+    _1r5y_protein_pdb = os.path.join(data_dir(), "1r5y_protein_hyd.pdb")
+    _1r5y_protein_pdbqt = os.path.join(data_dir(), "1r5y_protein_hyd.pdbqt")
+    _1r5y_protein.load_from_files(_1r5y_protein_pdb, _1r5y_protein_pdbqt)
+
+    self.proteins = [self.prgr_pdb, self._1r5y_protein]
 
 
   def tearDown(self):
