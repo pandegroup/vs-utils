@@ -24,15 +24,16 @@ def main(pdbbind_dir, pickle_out):
   feature_vectors = {}
 
   assert os.path.isdir(pdbbind_dir)
-  subdirs = [d for d in os.listdir(pdbbind_dir) if
-      os.path.isdir(os.path.join(pdbbind_dir, d))]
+  #subdirs = [d for d in os.listdir(pdbbind_dir) if
+  #    os.path.isdir(os.path.join(pdbbind_dir, d))]
+  subdirs = ['1r5y']
 
   N = len(Binana.atom_types)
   # See features/tests/nnscore_test.py:TestBinana.testComputeInputVector
   # for derivation.
   feature_len = 3*N*(N+1)/2 + N + 12 + 6 + 3 + 6 + 3 + 6 + 3 + 1
   for d in subdirs:
-    print "processing %s" % d
+    print "\nprocessing %s" % d
     subdir = os.path.join(pdbbind_dir, d)
     ligand_pdb, ligand_pdbqt = None, None
     protein_pdb, protein_pdbqt = None, None
@@ -68,7 +69,6 @@ def main(pdbbind_dir, pickle_out):
     feature_vectors[d] = vector
     if len(vector) != feature_len:
       raise ValueError("Feature length incorrect on %s" % d)
-    break
 
   with open(pickle_out, "wb") as f:
     pickle.dump(feature_vectors, f)

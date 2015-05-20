@@ -360,17 +360,22 @@ class Binana:
             # TODO(rbharath): This is a horrible inner-loop search. Can
             # this be made more efficient?
             for atm_index in ligand.all_atoms:
-              if ligand.all_atoms[atm_index].element == "H":
-                # so it's a hydrogen
-                if (ligand.all_atoms[atm_index].coordinates.dist_to(
-                    ligand_atom.coordinates) < H_BOND_DIST):
-                  hydrogens.append(ligand.all_atoms[atm_index])
+              atom = ligand.all_atoms[atm_index]
+              if atom.element == "H":
+                # Make sure to set comment (used below) 
+                atom.comment = "LIGAND"
+                if (atom.coordinates.dist_to(ligand_atom.coordinates)
+                      < H_BOND_DIST):
+                  hydrogens.append(atom)
 
             for atm_index in receptor.all_atoms:
-              if receptor.all_atoms[atm_index].element == "H":
-                if (receptor.all_atoms[atm_index].coordinates.dist_to(
-                    receptor_atom.coordinates) < H_BOND_DIST):
-                  hydrogens.append(receptor.all_atoms[atm_index])
+              atom = receptor.all_atoms[atm_index]
+              if atom.element == "H":
+                # Make sure to set comment (used below) 
+                atom.comment = "RECEPTOR"
+                if (atom.coordinates.dist_to(receptor_atom.coordinates)
+                    < H_BOND_DIST):
+                  hydrogens.append(atom)
 
             #print "nearby hydrogens: " + str(hydrogens)
             # now we need to check the angles
@@ -381,7 +386,6 @@ class Binana:
               angle = math.fabs(180 - self.functions.angle_between_three_points(
                 ligand_atom.coordinates, hydrogen.coordinates,
                 receptor_atom.coordinates) * 180.0 / math.pi)
-              #print "angle: " + str(angle)
               if (angle <= H_BOND_ANGLE):
                 hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
                     receptor_atom.side_chain_or_backbone() + "_" +
