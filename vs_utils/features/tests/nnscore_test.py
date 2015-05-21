@@ -80,10 +80,23 @@ class TestBinana(unittest.TestCase):
     _1r5y_ligand_pdbqt = os.path.join(data_dir(), "1r5y_ligand_hyd.pdbqt")
     _1r5y_ligand.load_from_files(_1r5y_ligand_pdb, _1r5y_ligand_pdbqt)
 
+    ### 3ao4 comes from PDBBind-CN
+    _3ao4_protein = PDB()
+    _3ao4_protein_pdb = os.path.join(data_dir(), "3ao4_protein_hyd.pdb")
+    _3ao4_protein_pdbqt = os.path.join(data_dir(), "3ao4_protein_hyd.pdbqt")
+    _3ao4_protein.load_from_files(_3ao4_protein_pdb, _3ao4_protein_pdbqt)
+    # The ligand is also specified by pdbbind
+    _3ao4_ligand = PDB()
+    _3ao4_ligand_pdb = os.path.join(data_dir(), "3ao4_ligand_hyd.pdb")
+    _3ao4_ligand_pdbqt = os.path.join(data_dir(), "3ao4_ligand_hyd.pdbqt")
+    _3ao4_ligand.load_from_files(_3ao4_ligand_pdb, _3ao4_ligand_pdbqt)
+
+
     self.test_cases = [("prgr", prgr_receptor, prgr_active),
                        ("cAbl", cAbl_receptor, cAbl_active),
                        ("1zea", _1zea_protein, _1zea_ligand),
-                       ("1r5y", _1r5y_protein, _1r5y_ligand)]
+                       ("1r5y", _1r5y_protein, _1r5y_ligand),
+                       ("3ao4", _3ao4_protein, _3ao4_ligand)]
 
   def testComputeHydrophobicContacts(self):
     """

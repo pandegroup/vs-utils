@@ -117,6 +117,9 @@ class Point:
   def magnitude(self):
     return self.dist_to(Point(coords=np.array([0, 0, 0])))
 
+  def as_array(self):
+    return np.array([self.x, self.y, self.z])
+
 
 class Atom:
   """

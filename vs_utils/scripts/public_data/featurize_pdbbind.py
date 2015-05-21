@@ -24,9 +24,9 @@ def main(pdbbind_dir, pickle_out):
   feature_vectors = {}
 
   assert os.path.isdir(pdbbind_dir)
-  #subdirs = [d for d in os.listdir(pdbbind_dir) if
-  #    os.path.isdir(os.path.join(pdbbind_dir, d))]
-  subdirs = ['1r5y']
+  subdirs = [d for d in os.listdir(pdbbind_dir) if
+      os.path.isdir(os.path.join(pdbbind_dir, d))]
+  #subdirs = ['1r5y']
 
   N = len(Binana.atom_types)
   # See features/tests/nnscore_test.py:TestBinana.testComputeInputVector

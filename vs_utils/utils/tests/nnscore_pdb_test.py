@@ -13,6 +13,7 @@ import numpy as np
 import tempfile
 
 from vs_utils.utils.nnscore_pdb import PDB
+from vs_utils.utils.nnscore_pdb import remove_redundant_rings 
 from vs_utils.utils.nnscore_utils import Point
 from vs_utils.utils.nnscore_utils import Atom
 from vs_utils.utils.nnscore_utils import average_point
@@ -44,12 +45,13 @@ class TestPDB(unittest.TestCase):
     prgr_pdbqt_path = os.path.join(data_dir(), "prgr_hyd.pdbqt")
     self.prgr_pdb.load_from_files(prgr_pdb_path, prgr_pdbqt_path)
 
-    _1r5y_protein = PDB()
+    self._1r5y_protein = PDB()
     _1r5y_protein_pdb = os.path.join(data_dir(), "1r5y_protein_hyd.pdb")
     _1r5y_protein_pdbqt = os.path.join(data_dir(), "1r5y_protein_hyd.pdbqt")
-    _1r5y_protein.load_from_files(_1r5y_protein_pdb, _1r5y_protein_pdbqt)
+    self._1r5y_protein.load_from_files(_1r5y_protein_pdb, _1r5y_protein_pdbqt)
 
-    self.proteins = [self.prgr_pdb, self._1r5y_protein]
+    self.proteins = [("prgr", self.prgr_pdb), ("1r5y", self._1r5y_protein)]
+
 
 
   def tearDown(self):
@@ -175,6 +177,43 @@ class TestPDB(unittest.TestCase):
       # The carboxyls get deprotonated
       assert not charge.positive
 
+  def testAssignNonProteinAromaticRings(self):
+    """
+    TestPDB: Test that non-protein aromatic rings are assigned correctly.
+    """
+    ### 3ao4 comes from PDBBind-CN and contains some cruft in the PDB file:
+    ### atoms without residues labelled. This triggered some problems with
+    ### non-protein aromatics complaining.
+    _3ao4_protein = PDB()
+    _3ao4_protein_pdb = os.path.join(data_dir(), "3ao4_protein_hyd.pdb")
+    _3ao4_protein_pdbqt = os.path.join(data_dir(), "3ao4_protein_hyd.pdbqt")
+    _3ao4_protein.load_from_files(_3ao4_protein_pdb, _3ao4_protein_pdbqt)
+
+  def testRemoveRedundantRings(self):
+    """
+    TestPDB: Test that redundant rings are removed.
+    """
+    # Recall that each ring is represented as a list of atom indices.
+    # Test that rings of length 0 are removed
+    assert remove_redundant_rings([[]]) == []
+    # Set that supersets are removed
+    assert (remove_redundant_rings([[1, 2, 3], [1, 3, 4, 5], [1, 2, 3, 4, 5]])
+        == [[1, 2, 3], [1, 3, 4, 5]])
+    # Ensure that duplicate rings are handled correctly (that is, only one
+    # copy of a duplicate ring should remain)
+    assert remove_redundant_rings([[1, 2, 3], [1, 3, 2]]) == [[1, 2, 3]]
+
+  def testAssignProteinAromaticRings(self):
+    """
+    TestPDB: Test that aromatic rings are assigned correctly.
+    """
+    for name, protein in self.proteins:
+      # The proteins should have aromatic rings assigned already by
+      # load_from_files()
+      print "Processing aromatics for %s" % name
+      for aromatic in protein.aromatic_rings:
+        assert aromatic is not None
+
   def testGetPhenylalanineAromatics(self):
     """
     TestPDB: Test that phenylalanine aromatic rings are retrieved.
@@ -182,6 +221,7 @@ class TestPDB(unittest.TestCase):
     res_list = self.prgr_pdb.get_residues()
     phenylalanine_aromatics = (
         self.prgr_pdb.get_phenylalanine_aromatics(res_list))
+
     # prgr has 13 phenylalanines, each of which has 1 aromatic ring.
     assert len(phenylalanine_aromatics) == 13
     for aromatic in phenylalanine_aromatics:
@@ -192,9 +232,9 @@ class TestPDB(unittest.TestCase):
     """
     TestPDB: Test that tyrosine aromatic rings are retrieved.
     """
+    # prgr has 10 tyrosines, each of which has 1 aromatic ring.
     res_list = self.prgr_pdb.get_residues()
     tyrosine_aromatics = self.prgr_pdb.get_tyrosine_aromatics(res_list)
-    # prgr has 10 tyrosines, each of which has 1 aromatic ring.
     assert len(tyrosine_aromatics) == 10
     for aromatic in tyrosine_aromatics:
       # The aromatic rings in tyrosine have 6 elements each
@@ -463,6 +503,7 @@ class TestPDB(unittest.TestCase):
     benzene_pdb.load_from_files(benzene_pdb_path, benzene_pdbqt_path)
 
     # A benzene should have exactly one aromatic ring.
+    print benzene_pdb.aromatic_rings
     assert len(benzene_pdb.aromatic_rings) == 1
     # The first 6 atoms in the benzene pdb form the aromatic ring.
     assert (set(benzene_pdb.aromatic_rings[0].indices)

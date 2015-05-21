@@ -15,6 +15,8 @@ file:
 __author__ = "Bharath Ramsundar and Jacob Durrant"
 __license__ = "GNU General Public License"
 
+import ast
+import itertools
 import math
 import textwrap
 import numpy as np
@@ -25,6 +27,43 @@ from vs_utils.utils.nnscore_utils import Charged
 from vs_utils.utils.nnscore_utils import Point
 from vs_utils.utils.nnscore_utils import MathFunctions
 
+def remove_redundant_rings(rings):
+  """Filters out those rings which are supersets of other rings.
+
+  Rings can be supersets of other rings, especially in molecules like
+  polycyclic aromatic hydrocarbons. This function ensures that only
+  "non-decomposable" rings remain in our list. Rings of length-0 are also
+  removed.
+
+  TODO(rbharath): There should be no rings of length zero if my
+  understanding is correct. See if we can remove this check.
+
+  Parameters
+  ----------
+  rings: list
+    List of all rings in molecule.
+  """
+  # Remove rings of length 0
+  rings = [ring for ring in rings if ring]
+  # To remove duplicate entries, we convert rings from a list to set, and
+  # then back to a list again. There's a snafu since each ring in rings is
+  # itself a list (and lists are unhashable in python). To circumvent this
+  # issue, we convert each ring into a string (after sorting). For example,
+  # [2, 1] maps to '[1, 2]'. These strings are hashable. To recover the
+  # original lists, we use ast.literal_eval.
+  rings = [ast.literal_eval(ring_str) for ring_str in
+      list(set([str(sorted(ring)) for ring in rings]))]
+  # Use dictionary to maintain state about which rings are supersets.
+  ring_dict = dict(zip(range(len(rings)), rings))
+
+  for fst_index, fst_ring in enumerate(rings):
+    for snd_index, snd_ring in enumerate(rings):
+      if fst_index == snd_index:
+        continue
+      if (set(fst_ring).issubset(set(snd_ring))
+          and snd_index in ring_dict):
+        del ring_dict[snd_index]
+  return ring_dict.values()
 
 class PDB:
   """
@@ -99,6 +138,7 @@ class PDB:
     atom_already_loaded = []
 
     for line in lines:
+      #print line
       if "between atoms" in line and " A " in line:
         self.rotatable_bonds_count = self.rotatable_bonds_count + 1
 
@@ -134,7 +174,10 @@ class PDB:
           atom_already_loaded.append(key)
           # So you're actually reindexing everything here.
           self.all_atoms[autoindex] = cur_atom
+          #### TODO(rbharath): Disabling loading of non
           if (not cur_atom.residue[-3:] in self.protein_resnames):
+            print "NON-STANDARD-RESIDUE: %s" % cur_atom.residue
+            print "line: %s" % line
             self.non_protein_atoms[autoindex] = cur_atom
 
           autoindex = autoindex + 1
@@ -322,12 +365,13 @@ class PDB:
     need: string
       Description of need for this atom in residue.
     """
-    text = ('WARNING: There is no atom named "%s"' % atom
-        + 'in the protein residue ' + residue + '.'
-        + ' Please use standard naming conventions for all'
-        + ' protein residues. This atom is needed to determine'
-        + ' %s. If this residue is far from the' % need
-        + ' active site, this warning may not affect the NNScore.')
+    text = ""
+    #text = ('WARNING: There is no atom named "%s"' % atom
+    #    + 'in the protein residue ' + residue + '.'
+    #    + ' Please use standard naming conventions for all'
+    #    + ' protein residues. This atom is needed to determine'
+    #    + ' %s. If this residue is far from the' % need
+    #    + ' active site, this warning may not affect the NNScore.')
     lines = textwrap.wrap(text, 80)
     for line in lines:
       print line
@@ -981,32 +1025,35 @@ class PDB:
   def get_aromatic_marker(self, indices_of_ring):
     """Identify aromatic markers.
 
+    The aromatic marker is an object of class AromaticRing that specifies
+    the aromatic ring's center, radius, indices of ring-atoms, and equation
+    of aromatic plane (recall that an aromatic ring must be planar).
+
     Parameters
     ----------
     indices_of_ring: list
       Contains atom indices for all atoms in the ring.
+    Raises
+    ------
+    ValueError:
+      If len(indices_of_ring) < 3.  In this case, it is not possible to
+      construct an aromatic marker (3 points are required to specify the
+      aromatic plane). This happens most often when a residue is missing
+      atoms (when the crystal structure failed to resolve an atom, it is
+      often omitted from the PDB file).
     """
+    if len(indices_of_ring) < 3:
+      raise ValueError("3 points must be specified to compute aromatic plane")
     # first identify the center point
     points_list = []
-    total = len(indices_of_ring)
-    x_sum = 0.0
-    y_sum = 0.0
-    z_sum = 0.0
+    pos = np.array([0, 0, 0])
 
     for index in indices_of_ring:
       atom = self.all_atoms[index]
       points_list.append(atom.coordinates)
-      x_sum = x_sum + atom.coordinates.x
-      y_sum = y_sum + atom.coordinates.y
-      z_sum = z_sum + atom.coordinates.z
+      pos += atom.coordinates.as_array()
 
-    if total == 0:
-      return # to prevent errors in some cases
-
-    center = Point(coords=np.array([x_sum / total, y_sum / total, z_sum /
-        total]))
-
-    # now get the radius of the aromatic ring
+    center = Point(coords=pos/len(indices_of_ring))
     radius = 0.0
     for index in indices_of_ring:
       atom = self.all_atoms[index]
@@ -1014,11 +1061,9 @@ class PDB:
       if dist > radius:
         radius = dist
 
-    # now get the plane that defines this ring
-    if len(indices_of_ring) < 3:
-      # to prevent an error in some cases. If there aren't three point, you can't define a plane
-      return
-    elif len(indices_of_ring) == 3:
+    # now get the plane that defines this ring. Recall that there are
+    # atleast 3-points in indices_of_ring by ValueError above.
+    if len(indices_of_ring) == 3:
       A = self.all_atoms[indices_of_ring[0]].coordinates
       B = self.all_atoms[indices_of_ring[1]].coordinates
       C = self.all_atoms[indices_of_ring[2]].coordinates
@@ -1026,7 +1071,7 @@ class PDB:
       A = self.all_atoms[indices_of_ring[0]].coordinates
       B = self.all_atoms[indices_of_ring[1]].coordinates
       C = self.all_atoms[indices_of_ring[3]].coordinates
-    else: # best, for 5 and 6 member rings
+    elif len(indices_of_ring) > 4: # best, for 5 and 6 member rings
       A = self.all_atoms[indices_of_ring[0]].coordinates
       B = self.all_atoms[indices_of_ring[2]].coordinates
       C = self.all_atoms[indices_of_ring[4]].coordinates
@@ -1040,93 +1085,71 @@ class PDB:
     y1 = self.all_atoms[indices_of_ring[0]].coordinates.y
     z1 = self.all_atoms[indices_of_ring[0]].coordinates.z
 
-    a = ABXAC.x
-    b = ABXAC.y
-    c = ABXAC.z
+    a, b, c = ABXAC.x, ABXAC.y, ABXAC.z
     d = a*x1 + b*y1 + c*z1
 
-    ar_ring = AromaticRing(center, indices_of_ring, [a,b,c,d], radius)
-    #self.aromatic_rings.append(ar_ring)
-    return ar_ring
+    return AromaticRing(center, indices_of_ring, [a,b,c,d], radius)
 
-  def assign_non_protein_aromatic_rings(self):
-    """Identifies aromatic rings in ligand atoms.
+  def ring_is_flat(self, ring):
+    """Checks whether specified ring is flat.
 
-    TODO(rbharath): This function is still monolithic. Better refactoring?
+    Parameters
+    ----------
+    ring: list
+      List of the atom indices for ring.
     """
-    # Get all the rings containing each of the atoms in the ligand
-    all_rings = []
-    for atom_index in self.non_protein_atoms:
-      all_rings.extend(self.all_rings_containing_atom(atom_index))
+    #is_flat = True
+    for t in range(-3, len(ring)-3):
+      pt1 = self.non_protein_atoms[ring[t]].coordinates
+      pt2 = self.non_protein_atoms[ring[t+1]].coordinates
+      pt3 = self.non_protein_atoms[ring[t+2]].coordinates
+      pt4 = self.non_protein_atoms[ring[t+3]].coordinates
 
-    # Ensure that no ring is a subset of another.
-    # TODO(rbharath): When is this ever the case?
-    for ring_index_1 in range(len(all_rings)):
-      ring1 = all_rings[ring_index_1]
-      if len(ring1) != 0:
-        for ring_index_2 in range(len(all_rings)):
-          if ring_index_1 != ring_index_2:
-            ring2 = all_rings[ring_index_2]
-            if len(ring2) != 0:
-              if self.set1_is_subset_of_set2(ring1, ring2) == True:
-                all_rings[ring_index_2] = []
+      # first, let's see if the last atom in this ring is a carbon
+      # connected to four atoms. That would be a quick way of
+      # telling this is not an aromatic ring
+      cur_atom = self.non_protein_atoms[ring[t+3]]
+      if cur_atom.element == "C" and cur_atom.number_of_neighbors() == 4:
+        #is_flat = False
+        #break
+        return False
 
-    while [] in all_rings:
-      all_rings.remove([])
+      # now check the dihedral between the ring atoms to see if
+      # it's flat
+      angle = self.functions.dihedral(pt1, pt2, pt3, pt4) * 180 / math.pi
+      # 15 degrees is the cutoff, ring[t], ring[t+1], ring[t+2],
+      # ring[t+3] range of this function is -pi to pi
+      if (angle > -165 and angle < -15) or (angle > 15 and angle < 165):
+        is_flat = False
+        break
 
-    # Now we need to figure out which of these ligands are aromatic
-    # (planar)
-    for ring_index in range(len(all_rings)):
-      ring = all_rings[ring_index]
-      is_flat = True
-      for t in range(-3, len(ring)-3):
-        pt1 = self.non_protein_atoms[ring[t]].coordinates
-        pt2 = self.non_protein_atoms[ring[t+1]].coordinates
-        pt3 = self.non_protein_atoms[ring[t+2]].coordinates
-        pt4 = self.non_protein_atoms[ring[t+3]].coordinates
-
-        # first, let's see if the last atom in this ring is a carbon
-        # connected to four atoms. That would be a quick way of
-        # telling this is not an aromatic ring
-        cur_atom = self.non_protein_atoms[ring[t+3]]
-        if cur_atom.element == "C" and cur_atom.number_of_neighbors() == 4:
-          is_flat = False
-          break
-
-        # now check the dihedral between the ring atoms to see if
-        # it's flat
-        angle = self.functions.dihedral(pt1, pt2, pt3, pt4) * 180 / math.pi
-        # 15 degrees is the cutoff, ring[t], ring[t+1], ring[t+2],
-        # ring[t+3] range of this function is -pi to pi
+      # now check the dihedral between the ring atoms and an atom
+      # connected to the current atom to see if that's flat too.
+      for substituent_atom_index in cur_atom.indices_of_atoms_connecting:
+        pt_sub = self.non_protein_atoms[substituent_atom_index].coordinates
+        angle = self.functions.dihedral(pt2, pt3, pt4, pt_sub) * 180 / math.pi
+        # 15 degress is the cutoff, ring[t], ring[t+1], ring[t+2],
+        # ring[t+3], range of this function is -pi to pi
         if (angle > -165 and angle < -15) or (angle > 15 and angle < 165):
           is_flat = False
           break
+    return is_flat
 
-        # now check the dihedral between the ring atoms and an atom
-        # connected to the current atom to see if that's flat too.
-        for substituent_atom_index in cur_atom.indices_of_atoms_connecting:
-          pt_sub = self.non_protein_atoms[substituent_atom_index].coordinates
-          angle = self.functions.dihedral(pt2, pt3, pt4, pt_sub) * 180 / math.pi
-          # 15 degress is the cutoff, ring[t], ring[t+1], ring[t+2],
-          # ring[t+3], range of this function is -pi to pi
-          if (angle > -165 and angle < -15) or (angle > 15 and angle < 165):
-            is_flat = False
-            break
+  def assign_non_protein_aromatic_rings(self):
+    """Identifies aromatic rings in ligands.
+    """
+    # Get all the rings containing each of the atoms in the ligand
+    rings = []
+    for atom_index in self.non_protein_atoms:
+      rings.extend(self.all_rings_containing_atom(atom_index))
 
-      if is_flat == False:
-        all_rings[ring_index] = []
-      # While I'm at it, three and four member rings are not aromatic
-      if len(ring) < 5:
-        all_rings[ring_index] = []
-      # While I'm at it, if the ring has more than 6, also throw it out. So
-      # only 5 and 6 member rings are allowed.
-      if len(ring) > 6:
-        all_rings[ring_index] = []
+    rings = remove_redundant_rings(rings)
+    # Aromatic rings are of length 5 or 6
+    rings = [ring for ring in rings if len(ring) == 5 or len(ring) == 6]
+    # Aromatic rings are flat
+    rings = [ring for ring in rings if self.ring_is_flat(ring)]
 
-    while [] in all_rings:
-      all_rings.remove([])
-
-    for ring in all_rings:
+    for ring in rings:
       self.aromatic_rings.append(self.get_aromatic_marker(ring))
 
   def all_rings_containing_atom(self, index):
@@ -1139,11 +1162,9 @@ class PDB:
     """
 
     all_rings = []
-
     atom = self.all_atoms[index]
     for connected_atom in atom.indices_of_atoms_connecting:
       self.ring_recursive(connected_atom, [index], index, all_rings)
-
     return all_rings
 
   def ring_recursive(self, index, already_crossed, orig_atom, all_rings):
@@ -1154,28 +1175,28 @@ class PDB:
     index: int
       Index of specified atom.
     already_crossed: list
-      TODO(rbharath)
+      List of atom-indices of atoms already seen in recursive traversal of
+      molecular graph. 
     orig_atom: int
       Index of the original atom in ring.
     all_rings: list
       Used to recursively build up ring structure.
     """
 
+    # Aromatic rings are of length <= 6
     if len(already_crossed) > 6:
-      # since you're only considering aromatic rings containing 5 or 6
-      # members anyway, save yourself some time.
       return
 
     atom = self.all_atoms[index]
-
-    temp = already_crossed[:]
-    temp.append(index)
+    updated_crossings = already_crossed[:]
+    updated_crossings.append(index)
 
     for connected_atom in atom.indices_of_atoms_connecting:
       if not connected_atom in already_crossed:
-        self.ring_recursive(connected_atom, temp, orig_atom, all_rings)
+        self.ring_recursive(connected_atom, updated_crossings,
+            orig_atom, all_rings)
       if connected_atom == orig_atom and orig_atom != already_crossed[-1]:
-        all_rings.append(temp)
+        all_rings.append(updated_crossings)
 
 
   def assign_protein_aromatic_rings(self):
@@ -1205,17 +1226,22 @@ class PDB:
       List of Aromatic objects.
     """
     aromatics = []
-    num_matches = 0
     for key, res in residues.iteritems():
-      real_resname, resid, chain = key.strip().split("_")[-3:]
+      real_resname, resid, chain = key.strip().split("_")
       indices_of_ring = []
       if real_resname in resname:
-        num_matches += 1
         indices_of_ring = []
         for index in res:
           if self.all_atoms[index].atomname.strip() in ring_atomnames:
             indices_of_ring.append(index)
-        aromatics.append(self.get_aromatic_marker(indices_of_ring))
+        # At least 3 indices are required to identify the aromatic plane.
+        if len(indices_of_ring) < 3:
+          continue
+        else:
+          aromatics.append(self.get_aromatic_marker(indices_of_ring))
+        #if self.get_aromatic_marker(indices_of_ring) is None:
+        #  raise ValueError("None at %s for %s" % (key,
+        #  str(indices_of_ring)))
     return aromatics
 
 
@@ -1285,16 +1311,6 @@ class PDB:
         ["TRP"],
         ["CE2", "CD2", "CE3", "CZ3", "CH2", "CZ2"])
     return small_ring + large_ring
-
-  # TODO(bramsundar): This looks like it should be a standard
-  # python function.
-  def set1_is_subset_of_set2(self, set1, set2):
-    is_subset = True
-    for item in set1:
-      if not item in set2:
-        is_subset = False
-        break
-    return is_subset
 
   # Functions to assign secondary structure to protein residues
   # ===========================================================
