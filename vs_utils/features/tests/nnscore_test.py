@@ -6,16 +6,24 @@ salt-bridge interactions. There might be a bug in the pi-T interaction
 finger, and the H-bonds are known to miss some potential bonds with an
 overly-conservative bond-angle cutoff. 
 """
+# pylint mistakenly reports numpy errors:
+#     pylint: disable=E1101
 import os
 import numpy as np
-import re
 import unittest
-import itertools
 
 from vs_utils.features.nnscore import Binana
+from vs_utils.features.nnscore import compute_hydrophobic_contacts 
+from vs_utils.features.nnscore import compute_electrostatic_energy
+from vs_utils.features.nnscore import compute_ligand_atom_counts
+from vs_utils.features.nnscore import compute_active_site_flexibility
+from vs_utils.features.nnscore import compute_pi_t
+from vs_utils.features.nnscore import compute_pi_cation
+from vs_utils.features.nnscore import compute_pi_pi_stacking
+from vs_utils.features.nnscore import compute_hydrogen_bonds
+from vs_utils.features.nnscore import compute_contacts
+from vs_utils.features.nnscore import compute_salt_bridges
 from vs_utils.utils.nnscore_pdb import PDB
-from vs_utils.utils.nnscore_utils import Atom
-from vs_utils.utils.nnscore_utils import Point
 from vs_utils.utils.tests import __file__ as test_directory
 
 def data_dir():
@@ -44,17 +52,17 @@ class TestBinana(unittest.TestCase):
     prgr_active.load_from_files(prgr_active_pdb, prgr_active_pdbqt)
 
     ### c-Abl is taken from the Autodock Vina examples
-    cAbl_receptor = PDB()
-    cAbl_receptor_pdb = os.path.join(data_dir(), "c-Abl_hyd.pdb")
-    cAbl_receptor_pdbqt = os.path.join(data_dir(), "c-Abl_hyd.pdbqt")
-    cAbl_receptor.load_from_files(cAbl_receptor_pdb,
-        cAbl_receptor_pdbqt)
+    cabl_receptor = PDB()
+    cabl_receptor_pdb = os.path.join(data_dir(), "c-Abl_hyd.pdb")
+    cabl_receptor_pdbqt = os.path.join(data_dir(), "c-Abl_hyd.pdbqt")
+    cabl_receptor.load_from_files(cabl_receptor_pdb,
+        cabl_receptor_pdbqt)
     # This compound is imatinib
-    cAbl_active = PDB()
-    cAbl_active_pdb = os.path.join(data_dir(), "imatinib_hyd.pdb")
-    cAbl_active_pdbqt = os.path.join(data_dir(), "imatinib_hyd.pdbqt")
-    cAbl_active.load_from_files(cAbl_active_pdb,
-        cAbl_active_pdbqt)
+    cabl_active = PDB()
+    cabl_active_pdb = os.path.join(data_dir(), "imatinib_hyd.pdb")
+    cabl_active_pdbqt = os.path.join(data_dir(), "imatinib_hyd.pdbqt")
+    cabl_active.load_from_files(cabl_active_pdb,
+        cabl_active_pdbqt)
 
     ### 1zea comes from PDBBind-CN
     # Python complains about variables starting with numbers, so put an
@@ -91,20 +99,32 @@ class TestBinana(unittest.TestCase):
     _3ao4_ligand_pdbqt = os.path.join(data_dir(), "3ao4_ligand_hyd.pdbqt")
     _3ao4_ligand.load_from_files(_3ao4_ligand_pdb, _3ao4_ligand_pdbqt)
 
+    ### 2jdm comes from PDBBind-CN
+    _2jdm_protein = PDB()
+    _2jdm_protein_pdb = os.path.join(data_dir(), "2jdm_protein_hyd.pdb")
+    _2jdm_protein_pdbqt = os.path.join(data_dir(), "2jdm_protein_hyd.pdbqt")
+    _2jdm_protein.load_from_files(_2jdm_protein_pdb, _2jdm_protein_pdbqt)
+    # The ligand is also specified by pdbbind
+    _2jdm_ligand = PDB()
+    _2jdm_ligand_pdb = os.path.join(data_dir(), "2jdm_ligand_hyd.pdb")
+    _2jdm_ligand_pdbqt = os.path.join(data_dir(), "2jdm_ligand_hyd.pdbqt")
+    _2jdm_ligand.load_from_files(_2jdm_ligand_pdb, _2jdm_ligand_pdbqt)
+
 
     self.test_cases = [("prgr", prgr_receptor, prgr_active),
-                       ("cAbl", cAbl_receptor, cAbl_active),
+                       ("cabl", cabl_receptor, cabl_active),
                        ("1zea", _1zea_protein, _1zea_ligand),
                        ("1r5y", _1r5y_protein, _1r5y_ligand),
-                       ("3ao4", _3ao4_protein, _3ao4_ligand)]
+                       ("3ao4", _3ao4_protein, _3ao4_ligand),
+                       ("2jdm", _2jdm_protein, _2jdm_ligand)]
 
-  def testComputeHydrophobicContacts(self):
+  def test_compute_hydrophobic(self):
     """
     TestBinana: Test that hydrophobic contacts are established.
     """
     hydrophobics_dict = {}
     for name, protein, ligand in self.test_cases:
-      hydrophobics_dict[name] = self.binana.compute_hydrophobic_contacts(
+      hydrophobics_dict[name] = compute_hydrophobic_contacts(
           ligand, protein)
     for name, hydrophobics in hydrophobics_dict.iteritems():
       print "Processing hydrohobics for %s" % name
@@ -116,30 +136,30 @@ class TestBinana(unittest.TestCase):
       assert "SIDECHAIN_BETA" in hydrophobics
       assert "SIDECHAIN_OTHER" in hydrophobics
 
-  def testComputeElectrostaticEnergy(self):
+  def test_compute_electrostatics(self):
     """
     TestBinana: Test that electrostatic energies are computed.
     """
     electrostatics_dict = {}
     for name, protein, ligand in self.test_cases:
-      electrostatics_dict[name] = self.binana.compute_electrostatic_energy(
+      electrostatics_dict[name] = compute_electrostatic_energy(
           ligand, protein)
     for name, electrostatics in electrostatics_dict.iteritems():
       print "Processing electrostatics for %s" % name
       # The keys of these dicts are pairs of atomtypes, but the keys are
       # sorted so that ("C", "O") is always written as "C_O". Thus, for N
       # atom types, there are N*(N+1)/2 unique pairs.
-      N = len(Binana.atom_types)
-      assert len(electrostatics) == N*(N+1)/2
+      num_atoms = len(Binana.atom_types)
+      assert len(electrostatics) == num_atoms*(num_atoms+1)/2
       assert np.count_nonzero(np.array(electrostatics.values())) > 0
 
-  def testComputeActiveSiteFlexibility(self):
+  def test_compute_flexibility(self):
     """
     TestBinana: Gather statistics about active site protein atoms.
     """
     active_site_dict = {}
     for name, protein, ligand in self.test_cases:
-      active_site_dict[name] = self.binana.compute_active_site_flexibility(
+      active_site_dict[name] = compute_active_site_flexibility(
           ligand, protein)
     for name, active_site_flexibility in active_site_dict.iteritems():
       print "Processing active site flexibility for %s" % name
@@ -151,7 +171,7 @@ class TestBinana(unittest.TestCase):
       assert "SIDECHAIN_BETA" in active_site_flexibility
       assert "SIDECHAIN_OTHER" in active_site_flexibility
 
-  def testComputeHydrogenBonds(self):
+  def test_compute_hydrogen_bonds(self):
     """
     TestBinana: Compute the number of hydrogen bonds.
 
@@ -167,7 +187,7 @@ class TestBinana(unittest.TestCase):
     """
     hbonds_dict = {}
     for name, protein, ligand in self.test_cases:
-      hbonds_dict[name] = self.binana.compute_hydrogen_bonds(
+      hbonds_dict[name] = compute_hydrogen_bonds(
           ligand, protein)
     for name, hbonds in hbonds_dict.iteritems():
       print "Processing hydrogen bonds for %s" % name
@@ -185,25 +205,25 @@ class TestBinana(unittest.TestCase):
       assert "HDONOR-RECEPTOR_SIDECHAIN_BETA" in hbonds
       assert "HDONOR-RECEPTOR_SIDECHAIN_OTHER" in hbonds
 
-  def testComputeLigandAtomCounts(self):
+  def test_compute_ligand_atom_counts(self):
     """
     TestBinana: Compute the Number of Ligand Atom Counts.
     """
     counts_dict = {}
     for name, _, ligand in self.test_cases:
-      counts_dict[name] = self.binana.compute_ligand_atom_counts(
+      counts_dict[name] = compute_ligand_atom_counts(
           ligand)
     for name, counts in counts_dict.iteritems():
       print "Processing ligand atom counts for %s" % name
       assert len(counts) == len(Binana.atom_types)
 
-  def testComputeLigandReceptorContacts(self):
+  def test_compute_contacts(self):
     """
     TestBinana: Compute contacts between Ligand and receptor.
     """
     contacts_dict = {}
     for name, protein, ligand in self.test_cases:
-      contacts_dict[name] = self.binana.compute_ligand_receptor_contacts(
+      contacts_dict[name] = compute_contacts(
           ligand, protein)
     for name, (close_contacts, contacts) in contacts_dict.iteritems():
       print "Processing contacts for %s" % name
@@ -211,25 +231,27 @@ class TestBinana(unittest.TestCase):
       for key, val in close_contacts.iteritems():
         if val != 0:
           print (key, val)
+      print "len(close_contacts): " + str(len(close_contacts))
       print "contacts"
       for key, val in contacts.iteritems():
         if val != 0:
           print (key, val)
+      print "len(contacts): " + str(len(contacts))
       # The keys of these dicts are pairs of atomtypes, but the keys are
       # sorted so that ("C", "O") is always written as "C_O". Thus, for N
       # atom types, there are N*(N+1)/2 unique pairs.
-      N = len(Binana.atom_types)
-      assert len(close_contacts) == N*(N+1)/2
-      assert len(contacts) == N*(N+1)/2
+      num_atoms = len(Binana.atom_types)
+      assert len(close_contacts) == num_atoms*(num_atoms+1)/2
+      assert len(contacts) == num_atoms*(num_atoms+1)/2
 
-  def testComputePiPiStacking(self):
+  def test_compute_pi_pi_stacking(self):
     """
     TestBinana: Compute Pi-Pi Stacking.
     """
     # 1zea is the only example that has any pi-stacking.
     pi_stacking_dict = {}
     for name, protein, ligand in self.test_cases:
-      pi_stacking_dict[name] = self.binana.compute_pi_pi_stacking(
+      pi_stacking_dict[name] = compute_pi_pi_stacking(
           ligand, protein)
     for name, pi_stacking in pi_stacking_dict.iteritems():
       print "Processing pi-stacking for %s" % name
@@ -240,32 +262,32 @@ class TestBinana(unittest.TestCase):
       assert "STACKING_OTHER" in pi_stacking
 
 
-  def testComputePiT(self):
+  def test_compute_pi_t(self):
     """
     TestBinana: Compute Pi-T Interactions.
 
-    TODO(rbharath): I believe that the imatininb-cAbl complex has a pi-T
+    TODO(rbharath): I believe that the imatininb-cabl complex has a pi-T
     interaction. This code has a bug since it reports that no such
     interaction is found.
     """
-    pi_T_dict = {}
+    pi_t_dict = {}
     for name, protein, ligand in self.test_cases:
-      pi_T_dict[name] = self.binana.compute_pi_T(
+      pi_t_dict[name] = compute_pi_t(
           ligand, protein)
-    for name, pi_T in pi_T_dict.iteritems():
+    for name, pi_t in pi_t_dict.iteritems():
       print "Processing pi-T for %s" % name
-      assert len(pi_T) == 3
-      assert "T-SHAPED_ALPHA" in pi_T
-      assert "T-SHAPED_BETA" in pi_T
-      assert "T-SHAPED_OTHER" in pi_T
+      assert len(pi_t) == 3
+      assert "T-SHAPED_ALPHA" in pi_t
+      assert "T-SHAPED_BETA" in pi_t
+      assert "T-SHAPED_OTHER" in pi_t
 
-  def testComputePiCation(self):
+  def test_compute_pi_cation(self):
     """
     TestBinana: Compute Pi-Cation Interactions.
     """
     pi_cation_dict = {}
     for name, protein, ligand in self.test_cases:
-      pi_cation_dict[name] = self.binana.compute_pi_cation(
+      pi_cation_dict[name] = compute_pi_cation(
           ligand, protein)
     for name, pi_cation in pi_cation_dict.iteritems():
       print "Processing pi-cation for %s" % name
@@ -277,7 +299,7 @@ class TestBinana(unittest.TestCase):
       assert 'PI-CATION_RECEPTOR-CHARGED_BETA' in pi_cation
       assert 'PI-CATION_RECEPTOR-CHARGED_OTHER' in pi_cation
 
-  def testComputeSaltBridges(self):
+  def test_compute_salt_bridges(self):
     """
     TestBinana: Compute Salt Bridges.
 
@@ -286,7 +308,7 @@ class TestBinana(unittest.TestCase):
     """
     salt_bridges_dict = {}
     for name, protein, ligand in self.test_cases:
-      salt_bridges_dict[name] = self.binana.compute_salt_bridges(
+      salt_bridges_dict[name] = compute_salt_bridges(
           ligand, protein)
     for name, salt_bridges in salt_bridges_dict.iteritems():
       print "Processing salt-bridges for %s" % name
@@ -296,7 +318,7 @@ class TestBinana(unittest.TestCase):
       assert 'SALT-BRIDGE_BETA' in salt_bridges
       assert 'SALT-BRIDGE_OTHER' in salt_bridges
 
-  def testComputeInputVector(self):
+  def test_compute_input_vector(self):
     """
     TestBinana: Compute Input Vector.
     """
@@ -304,7 +326,7 @@ class TestBinana(unittest.TestCase):
     for name, protein, ligand in self.test_cases:
       features_dict[name] = self.binana.compute_input_vector(
           ligand, protein)
-    N = len(Binana.atom_types)
+    num_atoms = len(Binana.atom_types)
     # Lengths:
     # ligand_receptor_close_contacts: N*(N+1)/2
     # ligand_receptor_contacts: N*(N+1)/2
@@ -318,7 +340,8 @@ class TestBinana(unittest.TestCase):
     # active_site_flexibility: 6
     # salt_bridges: 3
     # rotatable_boonds_count: 1
-    total_len = 3*N*(N+1)/2 + N + 12 + 6 + 3 + 6 + 3 + 6 + 3 + 1
+    total_len = (3*num_atoms*(num_atoms+1)/2 + num_atoms + 12 + 6 + 3 + 6 +
+        3 + 6 + 3 + 1)
     for name, input_vector in features_dict.iteritems():
       print "Processing input-vector for %s" % name
       assert len(input_vector) == total_len
