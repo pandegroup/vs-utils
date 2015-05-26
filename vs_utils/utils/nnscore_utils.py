@@ -1,10 +1,6 @@
 """
 Helper Classes and Functions for docking fingerprint computation.
 
-TODO(bramsundar): Most of the files below cannot be meaningfully tested
-without a body of PDBs that exhibit the various amino-acids in questions.
-Build up such a body of PDBs which we can use in the test work.
-
 The code below contains heavily modified parts of Jacob Durrant's
 NNScore 2.0.1. The following notice is copied from the original NNScore
 file:
@@ -15,13 +11,84 @@ file:
 # edu. If you use NNScore 2.01 in your work, please cite [REFERENCE
 # HERE].
 """
+# pylint mistakenly reports numpy errors:
+#     pylint: disable=E1101
+
 __author__ = "Bharath Ramsundar and Jacob Durrant"
 __license__ = "GNU General Public License"
 
 import math
-import textwrap
+import openbabel
+import os
 import numpy as np
 
+def force_partial_charge_computation(mol):
+  """Force computation of partial charges for molecule.
+
+  This function uses GetPartialCharge to force computation of the Gasteiger
+  partial charges. This is an unfortunate hack, since it looks like the
+  python openbabel API doesn't expose the OBGastChrg object which actually
+  computes partial charges.
+
+  Parameters
+  ----------
+  mol: OBMol
+    Molecule on which we compute partial charges.
+  """
+  for obatom in openbabel.OBMolAtomIter(mol):
+    obatom.GetPartialCharge()
+
+
+def hydrogenate_and_compute_partial_charges(input_file, input_format, output_directory):
+  """Outputs a hydrogenated pdb and a pdbqt with partial charges.
+
+  Takes an input file in specified format. Generates two outputs:
+
+  -) A pdb file that contains a hydrogenated (at pH 7.4) version of
+     original compound.
+  -) A pdbqt file that has computed Gasteiger partial charges. This pdbqt
+     file is build from the hydrogenated pdb.
+
+  Parameters
+  ----------
+  input_file: String
+    Path to input file.
+  input_format: String
+    Name of input format.
+  output_directory: String
+    Path to desired output directory.
+  """
+  basename = os.path.basename(input_file).split(".")[0]
+
+  hyd_output = os.path.join(output_directory, basename + "_hyd.pdb")
+  pdbqt_output = os.path.join(output_directory, basename + "_hyd.pdbqt")
+
+  # Create pdb with hydrogens added
+  hyd_conversion = openbabel.OBConversion()
+  hyd_conversion.SetInAndOutFormats(input_format, "pdb")
+  mol = openbabel.OBMol()
+  hyd_conversion.ReadFile(mol, input_file)  
+  # AddHydrogens(polaronly, correctForPH, pH)
+  mol.AddHydrogens(True, True, 7.4)
+  hyd_conversion.WriteFile(mol, hyd_output)
+
+  # Create a pdbqt file from the hydrogenated pdb above.
+  charge_conversion = openbabel.OBConversion()
+  charge_conversion.SetInAndOutFormats("pdb", "pdbqt")
+  # Make protein rigid
+  charge_conversion.AddOption("c", charge_conversion.OUTOPTIONS)
+  charge_conversion.AddOption("r", charge_conversion.OUTOPTIONS)
+  # Preserve hydrogens
+  charge_conversion.AddOption("h", charge_conversion.OUTOPTIONS)
+  # Preserve atom indices
+  charge_conversion.AddOption("p", charge_conversion.OUTOPTIONS)
+  # Preserve atom indices
+  charge_conversion.AddOption("n", charge_conversion.OUTOPTIONS)
+
+  mol = openbabel.OBMol()
+  charge_conversion.ReadFile(mol, hyd_output)
+  force_partial_charge_computation(mol)
+  charge_conversion.WriteFile(mol, pdbqt_output)
 
 class AromaticRing():
   """Holds information about an aromatic ring."""
@@ -62,9 +129,7 @@ def average_point(points):
   """
   coords = np.array([0, 0, 0])
   for point in points:
-    coords[0] += point.x
-    coords[1] += point.y
-    coords[2] += point.z
+    coords += point.as_array()
   if len(points) > 0:
     return Point(coords=coords/len(points))
   else:
@@ -75,10 +140,6 @@ class Point:
   """
   Simple implementation for a point in 3-space.
   """
-  x=99999.0
-  y=99999.0
-  z=99999.0
-
   def __init__(self, x=None, y=None, z=None, coords=None):
     """
     Inputs can be specified either by explicitly providing x, y, z coords
@@ -99,23 +160,32 @@ class Point:
     ValueError: If no arguments are provided.
     """
     if x and y and z:
-      self.x, self.y, self.z = x, y, z
+      #self.x, self.y, self.z = x, y, z
+      self.coords = np.array([x, y, z])
     elif coords is not None:  # Implicit eval doesn't work on numpy arrays.
-      self.x, self.y, self.z = coords[0], coords[1], coords[2]
+      #self.x, self.y, self.z = coords[0], coords[1], coords[2]
+      self.coords = coords
     else:
       raise ValueError("Must specify coordinates for Point!")
 
   # TODO(bramsundar): Should this be __copy__?
   def copy_of(self):
-    return Point(coords=np.array([self.x, self.y, self.z]))
+    """Return a copy of this point."""
+    return Point(coords=np.copy(self.coords))
 
-  def dist_to(self, apoint):
-    return (math.sqrt(math.pow(self.x - apoint.x,2)
-                    + math.pow(self.y - apoint.y,2)
-                    + math.pow(self.z - apoint.z,2)))
+  def dist_to(self, point):
+    """Distance (in 2-norm) from this point to another."""
+    return np.linalg.norm(self.coords - point.coords)
 
   def magnitude(self):
-    return self.dist_to(Point(coords=np.array([0, 0, 0])))
+    """Magnitude of this point (in 2-norm)."""
+    return np.linalg.norm(self.coords)
+    #return self.dist_to(Point(coords=np.array([0, 0, 0])))
+
+  def as_array(self):
+    """Return the coordinates of this point as array."""
+    #return np.array([self.x, self.y, self.z])
+    return self.coords
 
 
 class Atom:
@@ -125,8 +195,8 @@ class Atom:
   """
 
   def __init__ (self, atomname="", residue="",
-                coordinates=Point(coords=np.array([99999, 99999, 99999])), element="",
-                PDBIndex="", line="", atomtype="",
+                coordinates=Point(coords=np.array([99999, 99999, 99999])),
+                element="", pdb_index="", line="", atomtype="",
                 indices_of_atoms_connecting=None, charge=0, resid=0,
                 chain="", structure="", comment=""):
     """
@@ -139,14 +209,13 @@ class Atom:
     atomname: string
       Name of atom. Note that atomname is not the same as residue since
       atomnames often have extra annotations (e.g., CG, NZ, etc).
-      TODO(bramsundar): Find a reference for all possible atomnames.
     residue: string:
       Name of protein residue this atom belongs to.
     element: string
       Name of atom's element.
     coordinate: point
       A point object (x, y, z are in Angstroms).
-    PDBIndex: string
+    pdb_index: string
       Index of the atom in source PDB file.
     line: string
       The line in the PDB file which specifies this atom.
@@ -173,7 +242,7 @@ class Atom:
     self.residue = residue
     self.coordinates = coordinates
     self.element = element
-    self.PDBIndex = PDBIndex
+    self.pdb_index = pdb_index
     self.line = line
     self.atomtype = atomtype
     if indices_of_atoms_connecting is not None:
@@ -187,14 +256,15 @@ class Atom:
     self.comment = comment
 
   def copy_of(self):
+    """Make a copy of this atom."""
     theatom = Atom()
     theatom.atomname = self.atomname
     theatom.residue = self.residue
     theatom.coordinates = self.coordinates.copy_of()
     theatom.element = self.element
-    theatom.PDBIndex = self.PDBIndex
-    theatom.line= self.line
-    theatom.atomtype= self.atomtype
+    theatom.pdb_index = self.pdb_index
+    theatom.line = self.line
+    theatom.atomtype = self.atomtype
     theatom.indices_of_atoms_connecting = self.indices_of_atoms_connecting[:]
     theatom.charge = self.charge
     theatom.resid = self.resid
@@ -204,7 +274,7 @@ class Atom:
 
     return theatom
 
-  def create_PDB_line(self, index):
+  def create_pdb_line(self, index):
     """
     Generates appropriate ATOM line for pdb file.
 
@@ -214,10 +284,12 @@ class Atom:
       Index in associated PDB file.
     """
     output = "ATOM "
-    output = output + str(index).rjust(6) + self.atomname.rjust(5) + self.residue.rjust(4)
-    output = output + ("%.3f" % self.coordinates.x).rjust(18)
-    output = output + ("%.3f" % self.coordinates.y).rjust(8)
-    output = output + ("%.3f" % self.coordinates.z).rjust(8)
+    output = (output + str(index).rjust(6) + self.atomname.rjust(5) +
+        self.residue.rjust(4))
+    coords = self.coordinates.as_array()  # [x, y, z]
+    output = output + ("%.3f" % coords[0]).rjust(18)
+    output = output + ("%.3f" % coords[1]).rjust(8)
+    output = output + ("%.3f" % coords[2]).rjust(8)
     output = output + self.element.rjust(24)
     return output
 
@@ -248,7 +320,7 @@ class Atom:
     else:
       return "SIDECHAIN"
 
-  def read_atom_PDB_line(self, Line):
+  def read_atom_pdb_line(self, line):
     """
     TODO(rbharath): This method probably belongs in the PDB class, and not
     in the Atom class.
@@ -278,8 +350,8 @@ class Atom:
     77 - 78   LString(2)      element           Element symbol, right-justified.
     79 - 80   LString(2)      charge            Charge on the atom.
     """
-    self.line = Line
-    self.atomname = Line[11:16].strip()
+    self.line = line
+    self.atomname = line[11:16].strip()
 
     if len(self.atomname)==1:
       self.atomname = self.atomname + "  "
@@ -290,23 +362,22 @@ class Atom:
       # the PDB would have this line commented out
       self.atomname = self.atomname + " "
 
-    self.coordinates = Point(coords=np.array([float(Line[30:38]),
-        float(Line[38:46]), float(Line[46:54])]))
+    self.coordinates = Point(coords=np.array([float(line[30:38]),
+        float(line[38:46]), float(line[46:54])]))
 
     # now atom type (for pdbqt)
-    if Line[77:79].strip():
-      self.atomtype = Line[77:79].strip().upper()
+    if line[77:79].strip():
+      self.atomtype = line[77:79].strip().upper()
     elif self.atomname:
       # If atomtype is not specified, but atomname is, set atomtype to the
       # first letter of atomname. This heuristic suffices for proteins,
       # since no two-letter elements appear in standard amino acids.
-      # TODO(rbharath): Fix this hack for small-molecules if necessary.
       self.atomtype = self.atomname[:1]
     else:
       self.atomtype = ""
 
-    if Line[69:76].strip() != "":
-      self.charge = float(Line[69:76])
+    if line[69:76].strip() != "":
+      self.charge = float(line[69:76])
     else:
       self.charge = 0.0
 
@@ -333,17 +404,19 @@ class Atom:
 
         self.element = self.element[0:1].strip().upper()
 
-    self.PDBIndex = Line[6:12].strip()
-    self.residue = Line[16:20]
+    self.pdb_index = line[6:12].strip()
+    self.residue = line[16:20]
     # this only uses the rightmost three characters, essentially
     # removing unique rotamer identification
     self.residue = " " + self.residue[-3:]
 
-    if Line[23:26].strip() != "": self.resid = int(Line[23:26])
+    if line[23:26].strip() != "":
+      self.resid = int(line[23:26])
     else: self.resid = 1
 
-    self.chain = Line[21:22]
-    if self.residue.strip() == "": self.residue = " MOL"
+    self.chain = line[21:22]
+    if self.residue.strip() == "":
+      self.residue = " MOL"
 
 
 class Charged():
@@ -367,91 +440,78 @@ class Charged():
     self.positive = positive
 
 
-# TODO(bramsundar): Rework this to use numpy instead of custom
-# implementations.
-class MathFunctions:
+def vector_subtraction(point1, point2): # point1 - point2
+  """Subtracts the coordinates of the provided points."""
+  return Point(coords=point1.as_array() - point2.as_array())
 
-  def vector_subtraction(self, vector1, vector2): # vector1 - vector2
-    return Point(coords=np.array([vector1.x - vector2.x, vector1.y -
-        vector2.y, vector1.z - vector2.z]))
+def cross_product(point1, point2): # never tested
+  """Calculates the cross-product of provided points."""
+  return Point(coords=np.cross(point1.as_array(), point2.as_array()))
 
-  def CrossProduct(self, Pt1, Pt2): # never tested
-    Response = Point(coords=np.array([0,0,0]))
+def vector_scalar_multiply(point, scalar):
+  """Multiplies the provided point by scalar."""
+  return Point(coords=scalar*point.as_array())
 
-    Response.x = Pt1.y * Pt2.z - Pt1.z * Pt2.y
-    Response.y = Pt1.z * Pt2.x - Pt1.x * Pt2.z
-    Response.z = Pt1.x * Pt2.y - Pt1.y * Pt2.x
+def dot_product(point1, point2):
+  """Dot product of points."""
+  return np.dot(point1.as_array(), point2.as_array())
 
-    return Response;
+def dihedral(point1, point2, point3, point4): # never tested
+  """Compute dihedral angle between 4 points.
+  
+    TODO(rbharath): Write a nontrivial test for this. 
+  """
 
-  def vector_scalar_multiply(self, vector, scalar):
-    return Point(coords=np.array([vector.x * scalar, vector.y * scalar,
-    vector.z * scalar]))
+  b1 = vector_subtraction(point2, point1)
+  b2 = vector_subtraction(point3, point2)
+  b3 = vector_subtraction(point4, point3)
 
-  def dot_product(self, point1, point2):
-    return point1.x * point2.x + point1.y * point2.y + point1.z * point2.z
+  b2Xb3 = cross_product(b2, b3)
+  b1Xb2 = cross_product(b1, b2)
 
-  def dihedral(self, point1, point2, point3, point4): # never tested
-    """Compute dihedral angle between 4 points."""
+  b1XMagb2 = vector_scalar_multiply(b1, b2.magnitude())
+  radians = math.atan2(dot_product(b1XMagb2, b2Xb3),
+      dot_product(b1Xb2, b2Xb3))
+  return radians
 
-    b1 = self.vector_subtraction(point2, point1)
-    b2 = self.vector_subtraction(point3, point2)
-    b3 = self.vector_subtraction(point4, point3)
+def angle_between_three_points(point1, point2, point3):
+  """Computes the angle (in radians) between the three provided points."""
+  return angle_between_points(
+      vector_subtraction(point1, point2),
+      vector_subtraction(point3, point2))
 
-    b2Xb3 = self.CrossProduct(b2,b3)
-    b1Xb2 = self.CrossProduct(b1,b2)
+def angle_between_points(point1, point2):
+  """Computes the angle (in radians) between two points."""
+  return math.acos(
+      dot_product(point1, point2)/(point1.magnitude()*point2.magnitude()))
 
-    b1XMagb2 = self.vector_scalar_multiply(b1,b2.magnitude())
-    radians = math.atan2(self.dot_product(b1XMagb2,b2Xb3), self.dot_product(b1Xb2,b2Xb3))
-    return radians
+def normalized_vector(point):
+  """Normalize provided point."""
+  return Point(coords=point.as_array()/np.linalg.norm(point.as_array()))
 
-  def angle_between_three_points(self, point1, point2, point3): # As in three connected atoms
-    vector1 = self.vector_subtraction(point1, point2)
-    vector2 = self.vector_subtraction(point3, point2)
-    return self.angle_between_points(vector1, vector2)
+def distance(point1, point2):
+  """Computes distance between two points."""
+  return point1.dist_to(point2)
 
-  def angle_between_points(self, point1, point2):
-    new_point1 = self.return_normalized_vector(point1)
-    new_point2 = self.return_normalized_vector(point2)
-    dot_prod = self.dot_product(new_point1, new_point2)
-    if dot_prod > 1.0: dot_prod = 1.0 # to prevent errors that can rarely occur
-    if dot_prod < -1.0: dot_prod = -1.0
-    return math.acos(dot_prod)
+def project_point_onto_plane(point, plane_coefficients):
+  """Finds nearest point on specified plane to given point.
 
-  def return_normalized_vector(self, vector):
-    dist = self.distance(Point(coords=np.array([0,0,0])), vector)
-    return Point(coords=np.array([vector.x/dist, vector.y/dist,
-        vector.z/dist]))
-
-  def distance(self, point1, point2):
-    return point1.dist_to(point2)
-
-  def project_point_onto_plane(self, apoint, plane_coefficients):
-    # essentially finds the point on the plane that is closest to the
-    # specified point the plane_coefficients are [a,b,c,d], where the
-    # plane is ax + by + cz = d
-
-    # First, define a plane using cooeficients a, b, c, d such that ax + by + cz = d
-    a = plane_coefficients[0]
-    b = plane_coefficients[1]
-    c = plane_coefficients[2]
-    d = plane_coefficients[3]
-
-    # Now, define a point in space (s,u,v)
-    s = apoint.x
-    u = apoint.y
-    v = apoint.z
-
-    # the formula of a line perpendicular to the plan passing through (s,u,v) is:
-    #x = s + at
-    #y = u + bt
-    #z = v + ct
-
-    t = (d - a*s - b*u - c*v) / (a*a + b*b + c*c)
-
-    # here's the point closest on the plane
-    x = s + a*t
-    y = u + b*t
-    z = v + c*t
-
-    return Point(coords=np.array([x,y,z]))
+  Parameters
+  ----------
+  point: Point
+    Given point
+  plane_coefficients: list
+    [a, b, c, d] where place equation is ax + by + cz = d
+  """
+  # The normal vector to plane is n = [a, b, c]
+  offset = plane_coefficients[3]
+  normal = np.array(plane_coefficients[:3])
+  # We first shift by basepoint (a point on given plane) to make math
+  # simpler. basepoint is given by d/||n||^2 * n
+  basepoint = (offset/np.linalg.norm(normal)**2) * normal
+  diff = point.as_array() - basepoint
+  # The perpendicular component of diff to plane is
+  # (n^T diff / ||n||^2) * n
+  perp = (np.dot(normal, diff) / np.linalg.norm(normal)**2) * normal
+  closest = basepoint + (diff - perp)
+  return Point(coords=np.array(closest))
