@@ -1,0 +1,16 @@
+REMARK  Name = /home/rbharath/pdbbind/website-refined-set/1nu3/1nu3_ligand_hyd.pdb
+REMARK                            x       y       z     vdW  Elec       q    Type
+REMARK                         _______ _______ _______ _____ _____    ______ ____
+ATOM      1  C5  VPR A   1      15.767  21.081   5.872  0.00  0.00    +0.000 C 
+ATOM      2  C4  VPR A   1      16.503  21.722   6.999  0.00  0.00    +0.000 C 
+ATOM      3  C3  VPR A   1      15.710  21.958   8.265  0.00  0.00    +0.009 C 
+ATOM      4  C2  VPR A   1      16.074  23.229   9.029  0.00  0.00    +0.076 C 
+ATOM      5  C3A VPR A   1      17.573  23.416   9.166  0.00  0.00    +0.009 C 
+ATOM      6  C4A VPR A   1      17.881  24.671   9.969  0.00  0.00    +0.000 C 
+ATOM      7  C5A VPR A   1      19.290  25.208   9.809  0.00  0.00    +0.000 C 
+ATOM      8  C1  VPR A   1      15.356  23.326  10.378  0.00  0.00    +0.219 C 
+ATOM      9  N   VPR A   1      15.798  22.750  11.526  0.00  0.00    -0.329 N 
+ATOM     10  O   VPR A   1      14.360  24.021  10.419  0.00  0.00    -0.275 OA
+ATOM     11  H   VPR A   1      16.603  22.183  11.514  0.00  0.00    +0.145 HD
+ATOM     12  H   VPR A   1      15.313  22.899  12.370  0.00  0.00    +0.145 HD
+TER 

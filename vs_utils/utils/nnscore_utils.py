@@ -107,9 +107,6 @@ class Point:
   def dist_to(self, point):
     """Distance (in 2-norm) from this point to another."""
     return np.linalg.norm(self.coords - point.coords)
-    #return (math.sqrt(math.pow(self.x - apoint.x, 2)
-    #                + math.pow(self.y - apoint.y, 2)
-    #                + math.pow(self.z - apoint.z, 2)))
 
   def magnitude(self):
     """Magnitude of this point (in 2-norm)."""

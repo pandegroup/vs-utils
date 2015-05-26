@@ -11,6 +11,7 @@ overly-conservative bond-angle cutoff.
 import os
 import numpy as np
 import unittest
+import itertools
 
 from vs_utils.features.nnscore import Binana
 from vs_utils.features.nnscore import compute_hydrophobic_contacts 
@@ -39,6 +40,8 @@ class TestBinana(unittest.TestCase):
     Instantiate local copy of Binana object.
     """
     self.binana = Binana()
+
+    # TODO(rbharath): This load sequence is getting unwieldy. Refactor.
 
     ### PRGR is from the DUD-E collection
     prgr_receptor = PDB()
@@ -110,13 +113,61 @@ class TestBinana(unittest.TestCase):
     _2jdm_ligand_pdbqt = os.path.join(data_dir(), "2jdm_ligand_hyd.pdbqt")
     _2jdm_ligand.load_from_files(_2jdm_ligand_pdb, _2jdm_ligand_pdbqt)
 
+    ### 3g5k comes from PDBBind-CN
+    _3g5k_protein = PDB()
+    _3g5k_protein_pdb = os.path.join(data_dir(), "3g5k_protein_hyd.pdb")
+    _3g5k_protein_pdbqt = os.path.join(data_dir(), "3g5k_protein_hyd.pdbqt")
+    _3g5k_protein.load_from_files(_3g5k_protein_pdb, _3g5k_protein_pdbqt)
+    # The ligand is also specified by pdbbind
+    _3g5k_ligand = PDB()
+    _3g5k_ligand_pdb = os.path.join(data_dir(), "3g5k_ligand_hyd.pdb")
+    _3g5k_ligand_pdbqt = os.path.join(data_dir(), "3g5k_ligand_hyd.pdbqt")
+    _3g5k_ligand.load_from_files(_3g5k_ligand_pdb, _3g5k_ligand_pdbqt)
+
+    ### 3str comes from PDBBind-CN
+    _3str_protein = PDB()
+    _3str_protein_pdb = os.path.join(data_dir(), "3str_protein_hyd.pdb")
+    _3str_protein_pdbqt = os.path.join(data_dir(), "3str_protein_hyd.pdbqt")
+    _3str_protein.load_from_files(_3str_protein_pdb, _3str_protein_pdbqt)
+    # The ligand is also specified by pdbbind
+    _3str_ligand = PDB()
+    _3str_ligand_pdb = os.path.join(data_dir(), "3str_ligand_hyd.pdb")
+    _3str_ligand_pdbqt = os.path.join(data_dir(), "3str_ligand_hyd.pdbqt")
+    _3str_ligand.load_from_files(_3str_ligand_pdb, _3str_ligand_pdbqt)
+
+    ### 1nu3 comes from PDBBind-CN
+    _1nu3_protein = PDB()
+    _1nu3_protein_pdb = os.path.join(data_dir(), "1nu3_protein_hyd.pdb")
+    _1nu3_protein_pdbqt = os.path.join(data_dir(), "1nu3_protein_hyd.pdbqt")
+    _1nu3_protein.load_from_files(_1nu3_protein_pdb, _1nu3_protein_pdbqt)
+    # The ligand is also specified by pdbbind
+    _1nu3_ligand = PDB()
+    _1nu3_ligand_pdb = os.path.join(data_dir(), "1nu3_ligand_hyd.pdb")
+    _1nu3_ligand_pdbqt = os.path.join(data_dir(), "1nu3_ligand_hyd.pdbqt")
+    _1nu3_ligand.load_from_files(_1nu3_ligand_pdb, _1nu3_ligand_pdbqt)
+
+    ### 2rio comes from PDBBind-CN
+    _2rio_protein = PDB()
+    _2rio_protein_pdb = os.path.join(data_dir(), "2rio_protein_hyd.pdb")
+    _2rio_protein_pdbqt = os.path.join(data_dir(), "2rio_protein_hyd.pdbqt")
+    _2rio_protein.load_from_files(_2rio_protein_pdb, _2rio_protein_pdbqt)
+    # The ligand is also specified by pdbbind
+    _2rio_ligand = PDB()
+    _2rio_ligand_pdb = os.path.join(data_dir(), "2rio_ligand_hyd.pdb")
+    _2rio_ligand_pdbqt = os.path.join(data_dir(), "2rio_ligand_hyd.pdbqt")
+    _2rio_ligand.load_from_files(_2rio_ligand_pdb, _2rio_ligand_pdbqt)
+
 
     self.test_cases = [("prgr", prgr_receptor, prgr_active),
                        ("cabl", cabl_receptor, cabl_active),
                        ("1zea", _1zea_protein, _1zea_ligand),
                        ("1r5y", _1r5y_protein, _1r5y_ligand),
                        ("3ao4", _3ao4_protein, _3ao4_ligand),
-                       ("2jdm", _2jdm_protein, _2jdm_ligand)]
+                       ("2jdm", _2jdm_protein, _2jdm_ligand),
+                       ("3g5k", _3g5k_protein, _3g5k_ligand),
+                       ("3str", _3str_protein, _3str_ligand),
+                       ("2rio", _2rio_protein, _2rio_ligand)]
+
 
   def test_compute_hydrophobic(self):
     """
@@ -225,6 +276,7 @@ class TestBinana(unittest.TestCase):
     for name, protein, ligand in self.test_cases:
       contacts_dict[name] = compute_contacts(
           ligand, protein)
+    num_atoms = len(Binana.atom_types)
     for name, (close_contacts, contacts) in contacts_dict.iteritems():
       print "Processing contacts for %s" % name
       print "close_contacts"
@@ -237,10 +289,22 @@ class TestBinana(unittest.TestCase):
         if val != 0:
           print (key, val)
       print "len(contacts): " + str(len(contacts))
-      # The keys of these dicts are pairs of atomtypes, but the keys are
-      # sorted so that ("C", "O") is always written as "C_O". Thus, for N
-      # atom types, there are N*(N+1)/2 unique pairs.
-      num_atoms = len(Binana.atom_types)
+      print "Desired Number: " + str(num_atoms*(num_atoms+1)/2)
+      # TODO(rbharath): The following code has proved very useful for
+      # debugging. Remove once the code is stable enough that it's not
+      # required.
+      #if name == '2rio':
+      #  for first, second in itertools.product(Binana.atom_types,
+      #    Binana.atom_types):
+      #    key = "_".join(sorted([first, second]))
+      #    if key in close_contacts:
+      #      del close_contacts[key]
+      #    if key in contacts:
+      #      del contacts[key]
+      #  print "Residuals close_contacts:"
+      #  print close_contacts
+      #  print "Residuals contacts:"
+      #  print contacts
       assert len(close_contacts) == num_atoms*(num_atoms+1)/2
       assert len(contacts) == num_atoms*(num_atoms+1)/2
 

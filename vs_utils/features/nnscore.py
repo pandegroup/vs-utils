@@ -536,10 +536,6 @@ def compute_contacts(ligand, receptor):
     key = "_".join(sorted([first, second]))
     ligand_receptor_contacts[key] = 0
     ligand_receptor_close_contacts[key] = 0
-  #for ind in ligand.all_atoms:
-  #  print ligand.all_atoms[ind].atomtype
-  #for ind in receptor.all_atoms:
-  #  print receptor.all_atoms[ind].atomtype
   for ligand_index in ligand.all_atoms:
     for receptor_index in receptor.all_atoms:
       ligand_atom = ligand.all_atoms[ligand_index]
@@ -632,8 +628,8 @@ class Binana:
   """
   # TODO(rbharath): What is atom type A here?
   atom_types = [
-      "A", "BR", "C", "CA", "CD", "CL", "CU", "F", "FE", "H",  "HD", "I",
-      "MG", "MN", "N", "NA", "O", "OA", "P", "S", "SA", "ZN"]
+      "A", "BR", "C", "CA", "CD", "CO", "CL", "CU", "F", "FE", "H",  "HD", "I",
+      "MG", "MN", "N", "NA", "NI", "O", "OA", "P", "S", "SA", "SE", "SR", "ZN"]
 
 
   def compute_input_vector_from_files(self, ligand_pdb_filename,
