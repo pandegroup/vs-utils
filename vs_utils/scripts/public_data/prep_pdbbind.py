@@ -3,7 +3,7 @@ Prep PDBBind molecules for processing by nnscore.
 """
 import argparse
 import os
-from vs_utils.scripts.public_data.nnscore_utilities import hydrogenate_and_compute_partial_charges
+from vs_utils.utils.nnscore_utils import hydrogenate_and_compute_partial_charges
 
 def parse_args(input_args=None):
   """Parse command-line arguments."""
@@ -23,19 +23,19 @@ def preprocess_pdbbind(pdbbind_dir):
   print "About to preprocess following subdirectories:"
   print subdirs
 
-  for count, d in enumerate(subdirs):
-    print "Processing %d-th entry %s" % (count, d)
-    subdir = os.path.join(pdbbind_dir, d)
+  for count, dirname in enumerate(subdirs):
+    print "Processing %d-th entry %s" % (count, dirname)
+    subdir = os.path.join(pdbbind_dir, dirname)
     ligand, protein = None, None
-    for f in os.listdir(subdir):
-      if "_ligand.mol2" in f:
-        print "Input ligand: %s" % f
-        ligand = f
-      elif "_protein.pdb" in f:
-        print "Input protein: %s" % f
-        protein = f
+    for molfile in os.listdir(subdir):
+      if "_ligand.mol2" in molfile:
+        print "Input ligand: %s" % molfile 
+        ligand = molfile 
+      elif "_protein.pdb" in molfile:
+        print "Input protein: %s" % molfile
+        protein = molfile 
     if not ligand or not protein:
-      raise ValueError("Ligand or Protein missing in %s" % d)
+      raise ValueError("Ligand or Protein missing in %s" % dirname)
     ligand_file = os.path.join(subdir, ligand)
     protein_file = os.path.join(subdir, protein)
 
@@ -46,5 +46,4 @@ def preprocess_pdbbind(pdbbind_dir):
     hydrogenate_and_compute_partial_charges(protein_file, "pdb", subdir)
 
 if __name__ == '__main__':
-  args = parse_args()
-  preprocess_pdbbind(args.pdbbind_dir)
+  preprocess_pdbbind(parse_args().pdbbind_dir)
