@@ -1,0 +1,5 @@
+[MESSAGES CONTROL]
+disable=W0311
+
+[FORMAT]
+indent-string=' '
