@@ -11,7 +11,7 @@ overly-conservative bond-angle cutoff.
 import os
 import numpy as np
 import unittest
-import itertools
+#import itertools
 
 from vs_utils.features.nnscore import Binana
 from vs_utils.features.nnscore import compute_hydrophobic_contacts 
