@@ -18,7 +18,6 @@ from vs_utils.utils.nnscore_pdb import PDB
 from vs_utils.utils.nnscore_pdb import remove_redundant_rings 
 from vs_utils.utils.nnscore_utils import Point
 from vs_utils.utils.nnscore_utils import Atom
-from vs_utils.utils.nnscore_utils import average_point
 from vs_utils.utils.tests import __file__ as test_directory
 
 
