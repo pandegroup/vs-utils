@@ -19,6 +19,7 @@ __license__ = "GNU General Public License"
 
 import math
 import openbabel
+import subprocess
 import os
 import numpy as np
 
@@ -38,6 +39,39 @@ def force_partial_charge_computation(mol):
   for obatom in openbabel.OBMolAtomIter(mol):
     obatom.GetPartialCharge()
 
+def pdbqt_to_pdb(input_file, output_directory):
+  """Convert pdbqt file to pdb file.
+  
+  Parameters
+  ----------
+  input_file: String
+    Path to input file.
+  output_directory: String
+    Path to desired output directory.
+  """
+  basename = os.path.basename(input_file).split(".")[0]
+  pdb_output = os.path.join(output_directory, basename + ".pdb")
+  print "About to write to"
+  print pdb_output
+  with open(pdb_output, "wb") as outfile:
+    obabel_command = ["obabel", "-ipdbqt", input_file, "-opdb"]
+    subprocess.Popen(obabel_command, stdout=outfile)
+  #conversion = openbabel.OBConversion()
+  #conversion.SetInAndOutFormats("pdb", "pdbqt")
+  ## Make molecule rigid
+  #conversion.AddOption("c", conversion.OUTOPTIONS)
+  #conversion.AddOption("r", conversion.OUTOPTIONS)
+  ## Preserve hydrogens
+  #conversion.AddOption("h", conversion.OUTOPTIONS)
+  ## Preserve atom indices
+  #conversion.AddOption("p", conversion.OUTOPTIONS)
+  ## Preserve atom indices
+  #conversion.AddOption("n", conversion.OUTOPTIONS)
+
+  #mol = openbabel.OBMol()
+  #conversion.ReadFile(mol, input_file)
+  #conversion.WriteFile(mol, pdb_output)
+
 
 def hydrogenate_and_compute_partial_charges(input_file, input_format,
 output_directory, rigid=True):
@@ -49,6 +83,9 @@ output_directory, rigid=True):
      original compound.
   -) A pdbqt file that has computed Gasteiger partial charges. This pdbqt
      file is build from the hydrogenated pdb.
+
+  TODO(rbharath): Can do a bit of refactoring between this function and
+  pdbqt_to_pdb.
 
   Parameters
   ----------

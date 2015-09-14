@@ -7,6 +7,7 @@ from vs_utils.utils.nnscore_pdb import MultiStructure
 def featurize_autodock(pdb_filename, pdbqt_filename):
   multi = MultiStructure()
   multi.load_from_files(pdb_filename, pdbqt_filename)
+  print len(multi.molecules)
 
 def parse_args(input_args=None):
   """Parse command-line arguments."""

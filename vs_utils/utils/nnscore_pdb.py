@@ -185,7 +185,22 @@ class MultiStructure:
   """
 
   def __init__(self):
-    self.molecules = []
+    self.molecules = {} 
+
+  def _separate_into_models(self, lines):
+    """Separate lines into a list of models."""
+    models = []
+    current = None
+    for line in lines:
+      if "MODEL" in line and current is None:
+        current = [line]
+      elif "ENDMDL" in line and current is not None:
+        current.append(line)
+        models.append(current)
+        current = None
+      elif current is not None:
+        current.append(line)
+    return models
 
   def load_from_files(self, pdb_filename, pdbqt_filename):
     """Loads a collection of molecular structures from input files."""
@@ -193,22 +208,17 @@ class MultiStructure:
       pdbqt_lines = f.readlines()
     with open(pdb_filename,"r") as f:
       pdb_lines = f.readlines()
-    all_models = []
-    for source in [pdbqt_lines, pdb_lines]:
-      models = []
-      current = None
-      current_in_progress = False
-      for line in pdbqt:
-        if "MODEL" in line and not current_in_progress:
-          current_in_progress = True
-          current = [line]
-        elif "ENDMDL" in line and current_in_progress:
-          current.append(line)
-          models.append(current)
-          current_in_progress = False
-        elif current_in_progress:
-          current.append(line)
-      print models
+    pdb_models = self._separate_into_models(pdb_lines)
+    pdbqt_models = self._separate_into_models(pdbqt_lines)
+    print "len(pdb_models)"
+    print len(pdb_models)
+    print "len(pdbqt_models)"
+    print len(pdbqt_models)
+    assert len(pdb_models) == len(pdbqt_models)
+    for index, (pdb_lines, pdbqt_lines) in enumerate(
+      zip(pdb_models, pdbqt_models)):
+      self.molecules[index] = PDB()
+      self.molecules[index].load_from_lines(pdb_lines, pdbqt_lines)
 
 
 class PDB:
@@ -257,11 +267,19 @@ class PDB:
     pdbqt_filename: string
       Name of pdbqt file.
     """
+    with open(pdbqt_filename,"r") as f:
+      pdbqt_lines = f.readlines()
+    with open(pdb_filename,"r") as f:
+      pdb_lines = f.readlines()
+    self.load_from_lines(pdb_lines, pdbqt_lines)
+
+  def load_from_lines(self, pdb_lines, pdbqt_lines):
+    """Loads the molecule from lines rather than files."""
     # Reset internal state
     self.__init__()
     # Now load the file into a list
-    self.load_atoms_from_pdbqt(pdbqt_filename)
-    self.load_bonds_from_pdb(pdb_filename)
+    self.load_atoms_from_pdbqt_lines(pdbqt_lines)
+    self.load_bonds_from_pdb_lines(pdb_lines)
     self.check_protein_format()
     self.assign_ligand_aromatics()
     self.assign_protein_aromatics()
@@ -278,7 +296,7 @@ class PDB:
       Name of pdbqt file.
     """
     with open(pdbqt_filename,"r") as f:
-      lines = f.readlines()
+      pdbqt_lines = f.readlines()
     self.load_atoms_from_pdbqt_lines(lines)
 
   def load_atoms_from_pdbqt_lines(self, lines):
@@ -332,7 +350,7 @@ class PDB:
       lines = f.readlines()
     self.load_bonds_from_pdb_lines(lines)
 
-  def load_bonds_from_pdb_lines(self, pdb_filename):
+  def load_bonds_from_pdb_lines(self, pdb_lines):
     """
     Loads bonds from PDB file.
 
@@ -361,9 +379,7 @@ class PDB:
     ------
     ValueError: On improperly formatted input.
     """
-    with open(pdb_filename, "r") as f:
-      lines = f.readlines()
-    for line in lines:
+    for line in pdb_lines:
       if "CONECT" in line:
         if len(line) < 31:
           raise ValueError("Bad PDB! "
