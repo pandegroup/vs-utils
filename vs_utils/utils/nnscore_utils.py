@@ -39,7 +39,8 @@ def force_partial_charge_computation(mol):
     obatom.GetPartialCharge()
 
 
-def hydrogenate_and_compute_partial_charges(input_file, input_format, output_directory):
+def hydrogenate_and_compute_partial_charges(input_file, input_format,
+output_directory, rigid=True):
   """Outputs a hydrogenated pdb and a pdbqt with partial charges.
 
   Takes an input file in specified format. Generates two outputs:
@@ -75,9 +76,10 @@ def hydrogenate_and_compute_partial_charges(input_file, input_format, output_dir
   # Create a pdbqt file from the hydrogenated pdb above.
   charge_conversion = openbabel.OBConversion()
   charge_conversion.SetInAndOutFormats("pdb", "pdbqt")
-  # Make protein rigid
-  charge_conversion.AddOption("c", charge_conversion.OUTOPTIONS)
-  charge_conversion.AddOption("r", charge_conversion.OUTOPTIONS)
+  # Make molecule rigid
+  if rigid:
+    charge_conversion.AddOption("c", charge_conversion.OUTOPTIONS)
+    charge_conversion.AddOption("r", charge_conversion.OUTOPTIONS)
   # Preserve hydrogens
   charge_conversion.AddOption("h", charge_conversion.OUTOPTIONS)
   # Preserve atom indices

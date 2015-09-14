@@ -179,16 +179,115 @@ class TestBinana(unittest.TestCase):
     #_1pi5_ligand_pdbqt = os.path.join(data_dir(), "1pi5_ligand_hyd.pdbqt")
     #_1pi5_ligand.load_from_files(_1pi5_ligand_pdb, _1pi5_ligand_pdbqt)
 
-    ### 3fxz comes from PDBBind-CN
-    _3fxz_protein = PDB()
-    _3fxz_protein_pdb = os.path.join(data_dir(), "3fxz_protein_hyd.pdb")
-    _3fxz_protein_pdbqt = os.path.join(data_dir(), "3fxz_protein_hyd.pdbqt")
-    _3fxz_protein.load_from_files(_3fxz_protein_pdb, _3fxz_protein_pdbqt)
+    #### 3fxz comes from PDBBind-CN
+    #_3fxz_protein = PDB()
+    #_3fxz_protein_pdb = os.path.join(data_dir(), "3fxz_protein_hyd.pdb")
+    #_3fxz_protein_pdbqt = os.path.join(data_dir(), "3fxz_protein_hyd.pdbqt")
+    #_3fxz_protein.load_from_files(_3fxz_protein_pdb, _3fxz_protein_pdbqt)
+    ## The ligand is also specified by pdbbind
+    #_3fxz_ligand = PDB()
+    #_3fxz_ligand_pdb = os.path.join(data_dir(), "3fxz_ligand_hyd.pdb")
+    #_3fxz_ligand_pdbqt = os.path.join(data_dir(), "3fxz_ligand_hyd.pdbqt")
+    #_3fxz_ligand.load_from_files(_3fxz_ligand_pdb, _3fxz_ligand_pdbqt)
+
+    #### 4i60 comes from PDBBind-CN
+    #_4i60_protein = PDB()
+    #_4i60_protein_pdb = os.path.join(data_dir(), "4i60_protein_hyd.pdb")
+    #_4i60_protein_pdbqt = os.path.join(data_dir(), "4i60_protein_hyd.pdbqt")
+    #_4i60_protein.load_from_files(_4i60_protein_pdb, _4i60_protein_pdbqt)
+    ## The ligand is also specified by pdbbind
+    #_4i60_ligand = PDB()
+    #_4i60_ligand_pdb = os.path.join(data_dir(), "4i60_ligand_hyd.pdb")
+    #_4i60_ligand_pdbqt = os.path.join(data_dir(), "4i60_ligand_hyd.pdbqt")
+    #_4i60_ligand.load_from_files(_4i60_ligand_pdb, _4i60_ligand_pdbqt)
+
+    #### 1hyv comes from PDBBind-CN
+    #_1hyv_protein = PDB()
+    #_1hyv_protein_pdb = os.path.join(data_dir(), "1hyv_protein_hyd.pdb")
+    #_1hyv_protein_pdbqt = os.path.join(data_dir(), "1hyv_protein_hyd.pdbqt")
+    #_1hyv_protein.load_from_files(_1hyv_protein_pdb, _1hyv_protein_pdbqt)
+    ## The ligand is also specified by pdbbind
+    #_1hyv_ligand = PDB()
+    #_1hyv_ligand_pdb = os.path.join(data_dir(), "1hyv_ligand_hyd.pdb")
+    #_1hyv_ligand_pdbqt = os.path.join(data_dir(), "1hyv_ligand_hyd.pdbqt")
+    #_1hyv_ligand.load_from_files(_1hyv_ligand_pdb, _1hyv_ligand_pdbqt)
+
+    #### 3m1j comes from PDBBind-CN
+    #_3m1j_protein = PDB()
+    #_3m1j_protein_pdb = os.path.join(data_dir(), "3m1j_protein_hyd.pdb")
+    #_3m1j_protein_pdbqt = os.path.join(data_dir(), "3m1j_protein_hyd.pdbqt")
+    #_3m1j_protein.load_from_files(_3m1j_protein_pdb, _3m1j_protein_pdbqt)
+    ## The ligand is also specified by pdbbind
+    #_3m1j_ligand = PDB()
+    #_3m1j_ligand_pdb = os.path.join(data_dir(), "3m1j_ligand_hyd.pdb")
+    #_3m1j_ligand_pdbqt = os.path.join(data_dir(), "3m1j_ligand_hyd.pdbqt")
+    #_3m1j_ligand.load_from_files(_3m1j_ligand_pdb, _3m1j_ligand_pdbqt)
+
+    #### 1y3g comes from PDBBind-CN
+    #_1y3g_protein = PDB()
+    #_1y3g_protein_pdb = os.path.join(data_dir(), "1y3g_protein_hyd.pdb")
+    #_1y3g_protein_pdbqt = os.path.join(data_dir(), "1y3g_protein_hyd.pdbqt")
+    #_1y3g_protein.load_from_files(_1y3g_protein_pdb, _1y3g_protein_pdbqt)
+    ## The ligand is also specified by pdbbind
+    #_1y3g_ligand = PDB()
+    #_1y3g_ligand_pdb = os.path.join(data_dir(), "1y3g_ligand_hyd.pdb")
+    #_1y3g_ligand_pdbqt = os.path.join(data_dir(), "1y3g_ligand_hyd.pdbqt")
+    #_1y3g_ligand.load_from_files(_1y3g_ligand_pdb, _1y3g_ligand_pdbqt)
+
+    #### 6rsa comes from PDBBind-CN
+    #_6rsa_protein = PDB()
+    #_6rsa_protein_pdb = os.path.join(data_dir(), "6rsa_protein_hyd.pdb")
+    #_6rsa_protein_pdbqt = os.path.join(data_dir(), "6rsa_protein_hyd.pdbqt")
+    #_6rsa_protein.load_from_files(_6rsa_protein_pdb, _6rsa_protein_pdbqt)
+    ## The ligand is also specified by pdbbind
+    #_6rsa_ligand = PDB()
+    #_6rsa_ligand_pdb = os.path.join(data_dir(), "6rsa_ligand_hyd.pdb")
+    #_6rsa_ligand_pdbqt = os.path.join(data_dir(), "6rsa_ligand_hyd.pdbqt")
+    #_6rsa_ligand.load_from_files(_6rsa_ligand_pdb, _6rsa_ligand_pdbqt)
+
+    #### 1lvk comes from PDBBind-CN
+    #_1lvk_protein = PDB()
+    #_1lvk_protein_pdb = os.path.join(data_dir(), "1lvk_protein_hyd.pdb")
+    #_1lvk_protein_pdbqt = os.path.join(data_dir(), "1lvk_protein_hyd.pdbqt")
+    #_1lvk_protein.load_from_files(_1lvk_protein_pdb, _1lvk_protein_pdbqt)
+    ## The ligand is also specified by pdbbind
+    #_1lvk_ligand = PDB()
+    #_1lvk_ligand_pdb = os.path.join(data_dir(), "1lvk_ligand_hyd.pdb")
+    #_1lvk_ligand_pdbqt = os.path.join(data_dir(), "1lvk_ligand_hyd.pdbqt")
+    #_1lvk_ligand.load_from_files(_1lvk_ligand_pdb, _1lvk_ligand_pdbqt)
+
+    #### 3rj7 comes from PDBBind-CN
+    #_3rj7_protein = PDB()
+    #_3rj7_protein_pdb = os.path.join(data_dir(), "3rj7_protein_hyd.pdb")
+    #_3rj7_protein_pdbqt = os.path.join(data_dir(), "3rj7_protein_hyd.pdbqt")
+    #_3rj7_protein.load_from_files(_3rj7_protein_pdb, _3rj7_protein_pdbqt)
+    ## The ligand is also specified by pdbbind
+    #_3rj7_ligand = PDB()
+    #_3rj7_ligand_pdb = os.path.join(data_dir(), "3rj7_ligand_hyd.pdb")
+    #_3rj7_ligand_pdbqt = os.path.join(data_dir(), "3rj7_ligand_hyd.pdbqt")
+    #_3rj7_ligand.load_from_files(_3rj7_ligand_pdb, _3rj7_ligand_pdbqt)
+
+    ### 3zp9 comes from PDBBind-CN
+    _3zp9_protein = PDB()
+    _3zp9_protein_pdb = os.path.join(data_dir(), "3zp9_protein_hyd.pdb")
+    _3zp9_protein_pdbqt = os.path.join(data_dir(), "3zp9_protein_hyd.pdbqt")
+    _3zp9_protein.load_from_files(_3zp9_protein_pdb, _3zp9_protein_pdbqt)
     # The ligand is also specified by pdbbind
-    _3fxz_ligand = PDB()
-    _3fxz_ligand_pdb = os.path.join(data_dir(), "3fxz_ligand_hyd.pdb")
-    _3fxz_ligand_pdbqt = os.path.join(data_dir(), "3fxz_ligand_hyd.pdbqt")
-    _3fxz_ligand.load_from_files(_3fxz_ligand_pdb, _3fxz_ligand_pdbqt)
+    _3zp9_ligand = PDB()
+    _3zp9_ligand_pdb = os.path.join(data_dir(), "3zp9_ligand_hyd.pdb")
+    _3zp9_ligand_pdbqt = os.path.join(data_dir(), "3zp9_ligand_hyd.pdbqt")
+    _3zp9_ligand.load_from_files(_3zp9_ligand_pdb, _3zp9_ligand_pdbqt)
+
+    ### 3bwf comes from PDBBind-CN
+    _3bwf_protein = PDB()
+    _3bwf_protein_pdb = os.path.join(data_dir(), "3bwf_protein_hyd.pdb")
+    _3bwf_protein_pdbqt = os.path.join(data_dir(), "3bwf_protein_hyd.pdbqt")
+    _3bwf_protein.load_from_files(_3bwf_protein_pdb, _3bwf_protein_pdbqt)
+    # The ligand is also specified by pdbbind
+    _3bwf_ligand = PDB()
+    _3bwf_ligand_pdb = os.path.join(data_dir(), "3bwf_ligand_hyd.pdb")
+    _3bwf_ligand_pdbqt = os.path.join(data_dir(), "3bwf_ligand_hyd.pdbqt")
+    _3bwf_ligand.load_from_files(_3bwf_ligand_pdb, _3bwf_ligand_pdbqt)
 
     #self.test_cases = [("prgr", prgr_receptor, prgr_active),
     #                   ("cabl", cabl_receptor, cabl_active),
@@ -199,7 +298,7 @@ class TestBinana(unittest.TestCase):
     #                   ("3g5k", _3g5k_protein, _3g5k_ligand),
     #                   ("3str", _3str_protein, _3str_ligand),
     #                   ("2rio", _2rio_protein, _2rio_ligand)]
-    self.test_cases = [("3fxz", _3fxz_protein, _3fxz_ligand)]
+    self.test_cases = [("3bwf", _3bwf_protein, _3bwf_ligand)]
 
 
   def test_compute_hydrophobic(self):

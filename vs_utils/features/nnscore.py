@@ -628,8 +628,10 @@ class Binana:
   """
   # TODO(rbharath): What is atom type A here?
   atom_types = [
-      "A", "AL", "B", "BR", "C", "CA", "CD", "CO", "CL", "CU", "F", "FE", "H",  "HD", "I",
-      "MG", "MN", "N", "NA", "NI", "O", "OA", "P", "RU", "S", "SA", "SE", "SR", "ZN"]
+      "A", "AL", "AS", "B", "BE", "BR", "C", "CA", "CD", "CO", "CL", "CU",
+      "F", "FE", "H", "HG",  "HD", "I", "IR", "MG", "MN", "N", "NA", "NI",
+      "O", "OA", "OS", "P", "PT", "RE", "RH", "RU", "S", "SA", "SE", "SI",
+      "SR", "V", "ZN"]
 
 
   def compute_input_vector_from_files(self, ligand_pdb_filename,
