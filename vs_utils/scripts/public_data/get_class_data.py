@@ -1,6 +1,6 @@
 """
 Build data frames for classification datasets with separate files for active
-and inactive molecules (e.g. DUD-E).
+and inactive molecules (e.g. DUD-E and MUV).
 """
 import argparse
 import numpy as np
