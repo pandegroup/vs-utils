@@ -55,7 +55,9 @@ def pdbqt_to_pdb(input_file, output_directory):
   print pdb_output
   with open(pdb_output, "wb") as outfile:
     obabel_command = ["obabel", "-ipdbqt", input_file, "-opdb"]
-    subprocess.Popen(obabel_command, stdout=outfile)
+    subprocess.Popen(obabel_command, stdout=outfile).wait()
+ 
+
   #conversion = openbabel.OBConversion()
   #conversion.SetInAndOutFormats("pdb", "pdbqt")
   ## Make molecule rigid

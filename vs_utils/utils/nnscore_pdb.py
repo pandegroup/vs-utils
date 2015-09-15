@@ -187,8 +187,13 @@ class MultiStructure:
   def __init__(self):
     self.molecules = {} 
 
-  def _separate_into_models(self, lines):
+  def _separate_into_models(self, lines, noisy):
     """Separate lines into a list of models."""
+    if noisy:
+      print "len(lines)"
+      print len(lines)
+      for line in lines:
+        print line
     models = []
     current = None
     for line in lines:
@@ -200,18 +205,23 @@ class MultiStructure:
         current = None
       elif current is not None:
         current.append(line)
+    if noisy:
+      print "len(models)"
+      print len(models)
     return models
 
   def load_from_files(self, pdb_filename, pdbqt_filename):
     """Loads a collection of molecular structures from input files."""
     with open(pdbqt_filename,"r") as f:
       pdbqt_lines = f.readlines()
-    with open(pdb_filename,"r") as f:
-      pdb_lines = f.readlines()
-    pdb_models = self._separate_into_models(pdb_lines)
-    pdbqt_models = self._separate_into_models(pdbqt_lines)
+    with open(pdb_filename,"r") as g:
+      pdb_lines = g.readlines()
+    print "pdb_filename"
+    print pdb_filename
+    pdb_models = self._separate_into_models(pdb_lines, True)
     print "len(pdb_models)"
     print len(pdb_models)
+    pdbqt_models = self._separate_into_models(pdbqt_lines, False)
     print "len(pdbqt_models)"
     print len(pdbqt_models)
     assert len(pdb_models) == len(pdbqt_models)
