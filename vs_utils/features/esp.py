@@ -135,6 +135,13 @@ class ESP(Featurizer):
         antechamber = amber_utils.Antechamber()
         charges, radii = antechamber.get_charges_and_radii(mol)
 
+        # set charge and radius property on each atom
+        for idx, atom in enumerate(mol.GetAtoms()):
+            if not atom.HasProp('AntechamberCharge'):
+                atom.SetProp('AntechamberCharge', str(charges[idx]))
+            if not atom.HasProp('AntechamberRadius'):
+                atom.SetProp('AntechamberRadius', str(radii[idx]))
+
         # get ESP grid for each conformer
         grids = []
         pbsa = amber_utils.PBSA(self.size, self.resolution, self.nb_cutoff,
