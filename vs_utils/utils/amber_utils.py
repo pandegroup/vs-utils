@@ -197,7 +197,7 @@ class PBSA(object):
         Use PBSA to calculate an electrostatic potential grid for a
         molecule (one conformer only) in PQR format.
 
-        The grid is written is ASCII format to pbsa.phi.
+        The grid is written is ASCII format to pbsa_phi.phi.
 
         Parameters
         ----------
@@ -233,7 +233,7 @@ class PBSA(object):
             raise e
 
         # extract ESP grid
-        with open(os.path.join(self.temp_dir, 'pbsa.phi')) as f:
+        with open(os.path.join(self.temp_dir, 'pbsa_phi.phi')) as f:
             grid, center = self.parse_esp_grid(f)
 
         return grid, center
