@@ -137,10 +137,10 @@ class ESP(Featurizer):
 
         # set charge and radius property on each atom
         for idx, atom in enumerate(mol.GetAtoms()):
-            if not atom.HasProp('AntechamberCharge'):
-                atom.SetProp('AntechamberCharge', str(charges[idx]))
-            if not atom.HasProp('AntechamberRadius'):
-                atom.SetProp('AntechamberRadius', str(radii[idx]))
+            if not atom.HasProp("AntechamberCharge"):
+                atom.SetProp("AntechamberCharge", str(charges[idx]))
+            if not atom.HasProp("AntechamberRadius"):
+                atom.SetProp("AntechamberRadius", str(radii[idx]))
 
         # get ESP grid for each conformer
         grids = []
