@@ -299,7 +299,7 @@ class PBSA(object):
         """
         h = gox = goy = goz = None
         xm = ym = zm = None
-        phi = None
+        phi_list = []
         for line in grid:
             line = line.strip()
             if line.startswith('#'):
@@ -309,8 +309,9 @@ class PBSA(object):
             elif xm is None:
                 xm, ym, zm = np.asarray(line.split(), dtype=int)
             else:
-                phi = np.asarray(line.split(), dtype=float)
+                phi_list.extend(line.split())
         dim = (xm, ym, zm)
+        phi = np.asarray(phi_list, dtype=float)
         grid = np.reshape(phi, dim, order='F')
         origin = (gox, goy, goz)
         center = tuple(o + h * (m + 1) / 2. for o, m in zip(origin, dim))
