@@ -102,9 +102,9 @@ class ESP(Featurizer):
                 rval = [None]  # list b/c conformers
         return rval
 
-    def calculate_esp(self, mol):
+    def calculate_charges_radii_and_esp(self, mol):
         """
-        Calculate electrostatic potential grid.
+        Calculate partial charges, atomic radii and electrostatic potential grid.
 
         Procedure
         ---------
@@ -116,6 +116,10 @@ class ESP(Featurizer):
         PBSA requires PQR input, which is similar to PDB with charge and
         radius information added. Neither Antechamber nor PBSA take piped
         input, so we have to use a lot of temporary files and directories.
+
+        Returns a 3-tuple consisting of partial charges calculated by PBSA,
+        followed by atomic radii used, followed by ESP grids calculated by
+        Antechamber.
 
         Parameters
         ----------
@@ -164,4 +168,28 @@ class ESP(Featurizer):
                 grids.append(None)
 
         grids = np.asarray(grids)
+        return charges, radii, grids
+
+    def calculate_esp(self, mol):
+        """
+        Calculate electrostatic potential grid.
+
+        Procedure
+        ---------
+        1. Prepare molecule by adding hydrogens and canonicalizing the
+            orientation and alignment.
+        2. Calculate charges and radii with Antechamber.
+        3. Calculate electrostatic potential grids with PBSA.
+
+        PBSA requires PQR input, which is similar to PDB with charge and
+        radius information added. Neither Antechamber nor PBSA take piped
+        input, so we have to use a lot of temporary files and directories.
+
+        Parameters
+        ----------
+        mol : RDMol
+            Molecule.
+        """
+
+        charges, radii, grids = self.calculate_charges_radii_and_esp(mol)
         return grids
