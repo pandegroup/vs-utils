@@ -183,7 +183,7 @@ def average_point(points):
   """
   coords = np.array([0, 0, 0])
   for point in points:
-    coords += point.as_array()
+    coords += point.as_array().astype(coords.dtype)
   if len(points) > 0:
     return Point(coords=coords/len(points))
   else:
