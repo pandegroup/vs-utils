@@ -628,9 +628,17 @@ class Binana:
   """
   # TODO(rbharath): What is atom type A here?
   atom_types = [
-      "A", "BR", "C", "CA", "CD", "CO", "CL", "CU", "F", "FE", "H",  "HD", "I",
-      "MG", "MN", "N", "NA", "NI", "O", "OA", "P", "S", "SA", "SE", "SR", "ZN"]
+      "A", "AL", "AS", "B", "BE", "BR", "C", "CA", "CD", "CO", "CL", "CU",
+      "F", "FE", "H", "HG",  "HD", "I", "IR", "MG", "MN", "N", "NA", "NI",
+      "O", "OA", "OS", "P", "PT", "RE", "RH", "RU", "S", "SA", "SE", "SI",
+      "SR", "V", "ZN"]
 
+  def num_features(self):
+    """Returns the length of Binana's feature vectors."""
+    num_atoms = len(Binana.atom_types)
+    feature_len = (3*num_atoms*(num_atoms+1)/2 + num_atoms + 12 + 6 + 3 + 6 +
+        3 + 6 + 3 + 1)
+    return feature_len
 
   def compute_input_vector_from_files(self, ligand_pdb_filename,
       receptor_pdb_filename, line_header):
@@ -687,4 +695,6 @@ class Binana:
         rotatable_bonds_count]:
       for key in sorted(features.keys()):
         input_vector.append(features[key])
+    if len(input_vector) != self.num_features():
+      raise ValueError("Feature length incorrect!")
     return input_vector

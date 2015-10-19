@@ -269,28 +269,32 @@ def collate_mols(mols, mol_names, targets, target_ids):
     return mol_indices, target_indices
 
 
-def read_mols(input_filename, mol_id_prefix=None):
+def read_mols(input_filename, mol_id_prefix=None, log_every_N=1000):
     """
     Read molecules from an input file and extract names.
 
     Parameters
     ----------
     input_filename : str
-        Filename containing molecules.
+      Filename containing molecules.
+    log_every_N: int
+      Print log statement every N molecules read.
     """
     print "Reading molecules..."
     mols = []
     names = []
     with serial.MolReader().open(input_filename) as reader:
-        for mol in reader.get_mols():
-            mols.append(mol)
-            if mol.HasProp('_Name'):
-                name = mol.GetProp('_Name')
-                if mol_id_prefix is not None:
-                    name = mol_id_prefix + name
-                names.append(name)
-            else:
-                names.append(None)
+      for num, mol in enumerate(reader.get_mols()):
+        if num % 1000 == 0:
+          print "Reading molecule %d" % num
+        mols.append(mol)
+        if mol.HasProp('_Name'):
+          name = mol.GetProp('_Name')
+          if mol_id_prefix is not None:
+            name = mol_id_prefix + name
+          names.append(name)
+        else:
+          names.append(None)
     mols = np.asarray(mols)
     names = np.asarray(names)
     return mols, names
