@@ -104,28 +104,41 @@ output_directory, rigid=True):
   pdbqt_output = os.path.join(output_directory, basename + "_hyd.pdbqt")
 
   # Create pdb with hydrogens added
+  print "Create pdb with hydrogens added"
   hyd_conversion = openbabel.OBConversion()
+  print "1"
   hyd_conversion.SetInAndOutFormats(input_format, "pdb")
+  print "2"
   mol = openbabel.OBMol()
+  print "3"
   hyd_conversion.ReadFile(mol, input_file)  
+  print "4"
   # AddHydrogens(polaronly, correctForPH, pH)
   mol.AddHydrogens(True, True, 7.4)
+  print "5"
   hyd_conversion.WriteFile(mol, hyd_output)
+  print "6"
 
   # Create a pdbqt file from the hydrogenated pdb above.
+  print "Create a pdbqt file from the hydrogenated pdb above."
   charge_conversion = openbabel.OBConversion()
   charge_conversion.SetInAndOutFormats("pdb", "pdbqt")
-  # Make molecule rigid
-  if rigid:
-    charge_conversion.AddOption("c", charge_conversion.OUTOPTIONS)
-    charge_conversion.AddOption("r", charge_conversion.OUTOPTIONS)
+
+  # Make protein rigid
+  print "Make protein rigid."
+  charge_conversion.AddOption("c", charge_conversion.OUTOPTIONS)
+  charge_conversion.AddOption("r", charge_conversion.OUTOPTIONS)
   # Preserve hydrogens
+  print "Preserve hydrogens"
   charge_conversion.AddOption("h", charge_conversion.OUTOPTIONS)
   # Preserve atom indices
+  print "Preserve atom indices"
   charge_conversion.AddOption("p", charge_conversion.OUTOPTIONS)
   # Preserve atom indices
+  print "preserve atom indices."
   charge_conversion.AddOption("n", charge_conversion.OUTOPTIONS)
 
+  print "About to run obabel conversion."
   mol = openbabel.OBMol()
   charge_conversion.ReadFile(mol, hyd_output)
   force_partial_charge_computation(mol)
@@ -170,7 +183,7 @@ def average_point(points):
   """
   coords = np.array([0, 0, 0])
   for point in points:
-    coords += point.as_array()
+    coords += point.as_array().astype(coords.dtype)
   if len(points) > 0:
     return Point(coords=coords/len(points))
   else:

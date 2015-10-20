@@ -1125,7 +1125,7 @@ class PDB:
     for index in indices_of_ring:
       atom = self.all_atoms[index]
       points_list.append(atom.coordinates)
-      pos += atom.coordinates.as_array()
+      pos += atom.coordinates.as_array().astype(pos.dtype)
 
     center = Point(coords=pos/len(indices_of_ring))
     radius = 0.0
