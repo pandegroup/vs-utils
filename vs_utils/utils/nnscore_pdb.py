@@ -256,7 +256,7 @@ class PDB:
     self.rotatable_bonds_count = 0
     self.protein_resnames = ["ALA", "ARG", "ASN", "ASP", "ASH", "ASX",
       "CYS", "CYM", "CYX", "GLN", "GLU", "GLH", "GLX", "GLY", "HIS",
-      "HID", "HIE", "HIP", "ILE", "LEU", "LYS", "LYN", "MET", "PHE",
+      "HID", "HIE", "HIP", "HSE", "HSD", "ILE", "LEU", "LYS", "LYN", "MET", "PHE",
       "PRO", "SER", "THR", "TRP", "TYR", "VAL"]
     self.aromatic_rings = []
     self.charges = [] # a list of objects of type charge (defined below)
