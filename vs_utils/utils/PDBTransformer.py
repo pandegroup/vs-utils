@@ -80,15 +80,10 @@ class PDBTransformer:
     ligand_centroid = compute_centroid(self.ligand)
     self.ligand = self.subtract_centroid(self.ligand, ligand_centroid)
     print(self.ligand)
-    #print(self.ligand.all_atoms[1])
     self.protein = self.subtract_centroid(self.protein, ligand_centroid)
 
     self.system = self.merge_molecules(self.protein, self.ligand)
     print(self.system)
-    #print(self.system.all_atoms[1])
-    #for atomindex in self.system.all_atoms:
-    # print(self.system.all_atoms[atomindex])
-    # print(self.system.all_atoms[atomindex].create_pdb_line(atomindex))
     self.system.save_pdb(system_pdb)
 
     self.box = self.generate_box(self.system)
@@ -142,18 +137,11 @@ class PDBTransformer:
     and returns the new instance of class PDB called system that contains both sets of atoms.
     '''
 
-
     system = deepcopy(protein)
     greatest_index = len(protein.all_atoms) + 1
     autoindex = greatest_index + 1
-    #print(ligand.all_atoms)
     for index, ligand_atom in ligand.all_atoms.iteritems():
-      #print(ligand_atom)
-      #system.all_atoms[autoindex] = ligand_atom
-      #autoindex += 1
       system.add_new_atom(ligand_atom)
-    #system.add_new_atoms(ligand_atoms)
-    #print system.all_atoms[greatest_index+1]
     return(system)
 
 
