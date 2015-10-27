@@ -339,9 +339,9 @@ class Atom:
     """
     output = "ATOM "
     output = (output + str(index).rjust(6) + self.atomname.rjust(5) +
-        self.residue.rjust(4))
+        self.residue.rjust(4) + self.chain.rjust(2) + str(self.resid).rjust(4))
     coords = self.coordinates.as_array()  # [x, y, z]
-    output = output + ("%.3f" % coords[0]).rjust(18)
+    output = output + ("%.3f" % coords[0]).rjust(12)
     output = output + ("%.3f" % coords[1]).rjust(8)
     output = output + ("%.3f" % coords[2]).rjust(8)
     output = output + self.element.rjust(24)
