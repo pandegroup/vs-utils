@@ -1,3 +1,6 @@
+#Written by Evan N. Feinberg at Stanford University, contact: enf@stanford.edu
+
+
 from nnscore_pdb import PDB 
 from copy import deepcopy
 import numpy as np
@@ -7,9 +10,10 @@ import pickle
 
 1. Create objects of class PDB for protein and ligand
 2. Compute centroid of ligand
-3. translate coordinates of all other atoms such that ligand centroid is now origin, for both ligand PDB and protein PDB
+3. translate coordinates of all other atoms such that ligand centroid is now origin, for both 
+	ligand PDB and protein PDB
 4. combine PDB objects
-5. Write out new PDB 
+5. Write out new PDB (.pdb and pickle of PDB() object)
 '''
 
 '''
@@ -17,9 +21,11 @@ Pseudocode, detail:
 
 1. Create objects of class PDB for protein and ligand 
 2. Compute centroid of ligand
-	a. define a function for computing centroid given a PDB object. Maybe extend to make it accept just coordinates?
+	a. define a function for computing centroid given a PDB object. Maybe extend to make it 
+		accept just coordinates?
 		-further decomposition:
-			Take object as input --> convert to coordinates --> then send to separate method that computes centroid 
+			Take object as input --> convert to coordinates --> then send to separate method 
+			that computes centroid 
 3. For each atom for each PDB oject: 
 	-change x, y, and z coordinates by subtracting out centroid x, y, and z
 4. Function that combines PDB objects: 
@@ -47,7 +53,8 @@ class PDBTransformer:
 		self.box_z = 100000.0
 
 
-	def transform(self, protein_pdb, protein_pdbqt, ligand_pdb, ligand_pdbqt, system_pdb, box_pdb, box_pickle, box_x, box_y, box_z):
+	def transform(self, protein_pdb, protein_pdbqt, ligand_pdb, ligand_pdbqt, 
+                system_pdb, box_pdb, box_pickle, box_x, box_y, box_z):
 		'''Takes as input files (strings) for pdb/pdbqt of the protein, pdb/pdbqt of the ligand, a filename to be saved 
 		of the merged system called system_pdb, a filename to be saved of the box called box_pdb, a filename with a .p extension
 		of the box in pickle format called box_pickle, and 3 floats for the x,y,z dimensions of the box

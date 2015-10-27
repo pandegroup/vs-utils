@@ -26,8 +26,8 @@ class GridGenerator:
 			self.periodic_table = pickle.load(handle)
 		self.periodic_table = dict((k.upper(),v) for k,v in self.periodic_table.iteritems())
 
-		#with open(os.path.join(path, '/info/protein_heavy_atoms.p'), 'rb') as handle:
-		#	self.protein_heavy_atoms = pickle.load(handle)
+		with open(os.path.join(path, 'info/protein_heavy_atoms.p'), 'rb') as handle:
+			self.protein_heavy_atoms = pickle.load(handle)
 
 		with open(os.path.join(path, 'info/all_atom_names.p'), 'rb') as handle:
 			self.all_atom_names = pickle.load(handle)
@@ -111,7 +111,8 @@ class GridGenerator:
 			if resname in self.box.protein_resnames:
 				res_int = self.box.protein_resnames.index(resname) + 1
 				try:
-					atom_type_int = self.all_atom_names.index(atomname) + 1
+					atom_type_int = self.protein_heavy_atoms.index(atomname) + 1
+					#atom_type_int = self.all_atom_names.index(atomname) + 1
 				except:
 					atom_type_int = 0
 			else:
