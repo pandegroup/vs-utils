@@ -37,7 +37,7 @@ class GridGenerator:
     self.all_atom_names = list(set(self.all_atom_names))
 
 
-  def transform(self, box_pickle, box_x, box_y, box_z, voxel_width, grid_pickle_file, num_features=3):
+  def transform(self, box, box_x, box_y, box_z, voxel_width, grid_pickle_file, num_features=3):
     '''
     Takes as input a pickle file of a "box" generated from PDBTransformer's transform() function. This "box" will be an
     instance of class PDB defined in nnscore_pdb.py. It will contain all atoms within a rectangular prism with edge lengths 
@@ -55,7 +55,7 @@ class GridGenerator:
     self.box_z = float(box_z)
     self.grid_res = float(voxel_width)
     self.num_features = 3
-    self.box = pickle.load(open(box_pickle, "rb"))
+    self.box = box
 
 
     self.initialize_grid()
