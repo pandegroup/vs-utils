@@ -39,7 +39,6 @@ def featurize_pdbbind(pdbbind_dir, pickle_out):
   subdirs = [d for d in os.listdir(pdbbind_dir) if
       os.path.isdir(os.path.join(pdbbind_dir, d))]
   # TODO(rbharath): ONLY FOR DEBUGGING!
-  subdirs = subdirs[900:]
 
   num_atoms = len(Binana.atom_types)
   # See features/tests/nnscore_test.py:TestBinana.testComputeInputVector

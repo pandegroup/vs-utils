@@ -1,0 +1,15 @@
+REMARK  Name = /home/rbharath/pdbbind/website/3m1j/3m1j_ligand_hyd.pdb
+REMARK                            x       y       z     vdW  Elec       q    Type
+REMARK                         _______ _______ _______ _____ _____    ______ ____
+ATOM      1  CE1 MBO A   1      -1.394  11.328  26.401  0.00  0.00    +0.000 A 
+ATOM      2  CE2 MBO A   1      -0.990  12.653  26.550  0.00  0.00    +0.000 A 
+ATOM      3  CE3 MBO A   1      -0.541  13.091  27.798  0.00  0.00    +0.000 A 
+ATOM      4  CE4 MBO A   1      -0.506  12.204  28.879  0.00  0.00    +0.000 A 
+ATOM      5  CE5 MBO A   1      -0.909  10.881  28.724  0.00  0.00    +0.000 A 
+ATOM      6  CE6 MBO A   1      -1.356  10.440  27.484  0.00  0.00    +0.000 A 
+ATOM      7  CZ  MBO A   1      -0.033  12.661  30.232  0.00  0.00    +0.000 C 
+ATOM      8  OZ1 MBO A   1       0.373  13.828  30.364  0.00  0.00    +0.000 OA
+ATOM      9  OZ2 MBO A   1      -0.080  11.865  31.196  0.00  0.00    +0.000 OA
+ATOM     10 HG   MBO A   1      -2.145  10.578  24.375  0.00  0.00    +0.000 Hg
+ATOM     11  H   MBO A   1      -0.391  10.991  31.067  0.00  0.00    +0.000 HD
+TER 

@@ -176,10 +176,67 @@ def bond_length(element1, element2):
     raise ValueError("Distance between %s and %s is unknown" %
         (element1, element2))
 
+class MultiStructure:
+  """
+  Handler for PDB files with multiple models.
+
+  The output from autodock vina provides multiple output conformers in the
+  generated file. This class handles this type of output.
+  """
+
+  def __init__(self):
+    self.molecules = {} 
+
+  def _separate_into_models(self, lines, noisy):
+    """Separate lines into a list of models."""
+    if noisy:
+      print "len(lines)"
+      print len(lines)
+      for line in lines:
+        print line
+    models = []
+    current = None
+    for line in lines:
+      if "MODEL" in line and current is None:
+        current = [line]
+      elif "ENDMDL" in line and current is not None:
+        current.append(line)
+        models.append(current)
+        current = None
+      elif current is not None:
+        current.append(line)
+    if noisy:
+      print "len(models)"
+      print len(models)
+    return models
+
+  def load_from_files(self, pdb_filename, pdbqt_filename):
+    """Loads a collection of molecular structures from input files."""
+    with open(pdbqt_filename,"r") as f:
+      pdbqt_lines = f.readlines()
+    with open(pdb_filename,"r") as g:
+      pdb_lines = g.readlines()
+    print "pdb_filename"
+    print pdb_filename
+    pdb_models = self._separate_into_models(pdb_lines, True)
+    print "len(pdb_models)"
+    print len(pdb_models)
+    pdbqt_models = self._separate_into_models(pdbqt_lines, False)
+    print "len(pdbqt_models)"
+    print len(pdbqt_models)
+    assert len(pdb_models) == len(pdbqt_models)
+    for index, (pdb_lines, pdbqt_lines) in enumerate(
+      zip(pdb_models, pdbqt_models)):
+      self.molecules[index] = PDB()
+      self.molecules[index].load_from_lines(pdb_lines, pdbqt_lines)
+
 
 class PDB:
   """
   PDB file handler class.
+
+  TODO(rbharath): The class name here is misleading. This class actually
+  depends on both the pdb and pdbqt files.
 
   Provides functionality for loading PDB files. Performs a number of
   clean-up and annotation steps (filling in missing bonds, identifying
@@ -194,15 +251,16 @@ class PDB:
     self.min_x = 9999.99
     self.max_y = -9999.99
     self.min_y = 9999.99
-    self.max_z = -9999.99
+    self.max_z = -9998.99
     self.min_z = 9999.99
     self.rotatable_bonds_count = 0
     self.protein_resnames = ["ALA", "ARG", "ASN", "ASP", "ASH", "ASX",
       "CYS", "CYM", "CYX", "GLN", "GLU", "GLH", "GLX", "GLY", "HIS",
-      "HID", "HIE", "HIP", "ILE", "LEU", "LYS", "LYN", "MET", "PHE",
+      "HID", "HIE", "HIP", "HSE", "HSD", "ILE", "LEU", "LYS", "LYN", "MET", "PHE",
       "PRO", "SER", "THR", "TRP", "TYR", "VAL"]
     self.aromatic_rings = []
     self.charges = [] # a list of objects of type charge (defined below)
+
 
   def load_from_files(self, pdb_filename, pdbqt_filename):
     """Loads this molecule from files.
@@ -219,18 +277,25 @@ class PDB:
     pdbqt_filename: string
       Name of pdbqt file.
     """
+    with open(pdbqt_filename,"r") as f:
+      pdbqt_lines = f.readlines()
+    with open(pdb_filename,"r") as f:
+      pdb_lines = f.readlines()
+    self.load_from_lines(pdb_lines, pdbqt_lines)
+
+  def load_from_lines(self, pdb_lines, pdbqt_lines):
+    """Loads the molecule from lines rather than files."""
     # Reset internal state
     self.__init__()
     # Now load the file into a list
-    self.load_atoms_from_pdbqt(pdbqt_filename)
-    self.load_bonds_from_pdb(pdb_filename)
+    self.load_atoms_from_pdbqt_lines(pdbqt_lines)
+    self.load_bonds_from_pdb_lines(pdb_lines)
     self.check_protein_format()
     self.assign_ligand_aromatics()
     self.assign_protein_aromatics()
     self.assign_non_protein_charges()
     self.assign_protein_charges()
     self.assign_secondary_structure()
-
 
   def load_atoms_from_pdbqt(self, pdbqt_filename):
     """Loads atoms and charges from provided PDBQT file.
@@ -241,15 +306,24 @@ class PDB:
       Name of pdbqt file.
     """
     with open(pdbqt_filename,"r") as f:
-      lines = f.readlines()
+      pdbqt_lines = f.readlines()
+    self.load_atoms_from_pdbqt_lines(lines)
+
+  def load_atoms_from_pdbqt_lines(self, lines):
+    """Loads atoms and charges from provided PDBQT lines.
+
+    TODO(rbharath): I'm no longer sure that this stateful paradigm is the
+    right way to do things. Can I make this functional?
+
+    Parameters
+    ----------
+    lines: list 
+      List of lines in pdbqt file  
+    """
     autoindex = 1
-    # going to keep track of atomname_resid_chain pairs, to make sure
-    # redundants aren't loaded.  This basically gets rid of rotomers,
-    # I think.
     atom_already_loaded = []
 
     for line in lines:
-      #print line
       if "between atoms" in line and " A " in line:
         self.rotatable_bonds_count = self.rotatable_bonds_count + 1
 
@@ -263,23 +337,6 @@ class PDB:
           key = (cur_atom.atomname.strip() + "_" +
             str(cur_atom.resid) + "_" + cur_atom.residue.strip() +
             "_" + cur_atom.chain.strip())
-          # Check whether receptor atom has already been loaded. Hydrogens
-          # form an exception to this check, since there can be multiple
-          # hydrogens (all with atomname "H") attached to the same residue.
-          # Note that non-receptor atoms can have redundant names, but
-          # receptor atoms cannot.  This is because protein residues often
-          # contain rotamers
-          # TODO(rbharath): Removing this check since it causes the code to
-          # bork on pdbbind input (some pdbbind files fail to properly
-          # number their residues. Maybe use pdbfixer?). Make sure this
-          # doesn't trigger collapse elsewhere...
-          #if (key in atom_already_loaded
-          #  and cur_atom.residue.strip() in self.protein_resnames
-          #  and cur_atom.atomname.strip() != "H"):
-          #  print ("WARNING: Duplicate receptor atom detected: \""
-          #      + cur_atom.line.strip() + "\". Not loading this duplicate.")
-          #  print key
-          #else:
 
           # so each atom can only be loaded once. No rotamers.
           atom_already_loaded.append(key)
@@ -292,6 +349,18 @@ class PDB:
           autoindex = autoindex + 1
 
   def load_bonds_from_pdb(self, pdb_filename):
+    """Loads bonds from PDB file.
+
+    Parameters
+    ----------
+    pdb_filename: string
+      Name of pdb file.
+    """
+    with open(pdb_filename, "r") as f:
+      lines = f.readlines()
+    self.load_bonds_from_pdb_lines(lines)
+
+  def load_bonds_from_pdb_lines(self, pdb_lines):
     """
     Loads bonds from PDB file.
 
@@ -314,16 +383,13 @@ class PDB:
 
     Parameters
     ----------
-    ----------
     pdb_filename: string
       Name of pdb file.
     Raises
     ------
     ValueError: On improperly formatted input.
     """
-    with open(pdb_filename, "r") as f:
-      lines = f.readlines()
-    for line in lines:
+    for line in pdb_lines:
       if "CONECT" in line:
         if len(line) < 31:
           raise ValueError("Bad PDB! "
@@ -1059,7 +1125,7 @@ class PDB:
     for index in indices_of_ring:
       atom = self.all_atoms[index]
       points_list.append(atom.coordinates)
-      pos += atom.coordinates.as_array()
+      pos += atom.coordinates.as_array().astype(pos.dtype)
 
     center = Point(coords=pos/len(indices_of_ring))
     radius = 0.0

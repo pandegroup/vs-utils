@@ -19,6 +19,7 @@ __license__ = "GNU General Public License"
 
 import math
 import openbabel
+import subprocess
 import os
 import numpy as np
 
@@ -38,8 +39,26 @@ def force_partial_charge_computation(mol):
   for obatom in openbabel.OBMolAtomIter(mol):
     obatom.GetPartialCharge()
 
+def pdbqt_to_pdb(input_file, output_directory):
+  """Convert pdbqt file to pdb file.
+  
+  Parameters
+  ----------
+  input_file: String
+    Path to input file.
+  output_directory: String
+    Path to desired output directory.
+  """
+  basename = os.path.basename(input_file).split(".")[0]
+  pdb_output = os.path.join(output_directory, basename + ".pdb")
+  print "About to write to"
+  print pdb_output
+  with open(pdb_output, "wb") as outfile:
+    obabel_command = ["obabel", "-ipdbqt", input_file, "-opdb"]
+    subprocess.Popen(obabel_command, stdout=outfile).wait()
 
-def hydrogenate_and_compute_partial_charges(input_file, input_format, output_directory):
+def hydrogenate_and_compute_partial_charges(input_file, input_format,
+output_directory, rigid=True):
   """Outputs a hydrogenated pdb and a pdbqt with partial charges.
 
   Takes an input file in specified format. Generates two outputs:
@@ -48,6 +67,9 @@ def hydrogenate_and_compute_partial_charges(input_file, input_format, output_dir
      original compound.
   -) A pdbqt file that has computed Gasteiger partial charges. This pdbqt
      file is build from the hydrogenated pdb.
+
+  TODO(rbharath): Can do a bit of refactoring between this function and
+  pdbqt_to_pdb.
 
   Parameters
   ----------
@@ -64,6 +86,7 @@ def hydrogenate_and_compute_partial_charges(input_file, input_format, output_dir
   pdbqt_output = os.path.join(output_directory, basename + "_hyd.pdbqt")
 
   # Create pdb with hydrogens added
+  print "Create pdb with hydrogens added"
   hyd_conversion = openbabel.OBConversion()
   hyd_conversion.SetInAndOutFormats(input_format, "pdb")
   mol = openbabel.OBMol()
@@ -73,18 +96,25 @@ def hydrogenate_and_compute_partial_charges(input_file, input_format, output_dir
   hyd_conversion.WriteFile(mol, hyd_output)
 
   # Create a pdbqt file from the hydrogenated pdb above.
+  print "Create a pdbqt file from the hydrogenated pdb above."
   charge_conversion = openbabel.OBConversion()
   charge_conversion.SetInAndOutFormats("pdb", "pdbqt")
+
   # Make protein rigid
+  print "Make protein rigid."
   charge_conversion.AddOption("c", charge_conversion.OUTOPTIONS)
   charge_conversion.AddOption("r", charge_conversion.OUTOPTIONS)
   # Preserve hydrogens
+  print "Preserve hydrogens"
   charge_conversion.AddOption("h", charge_conversion.OUTOPTIONS)
   # Preserve atom indices
+  print "Preserve atom indices"
   charge_conversion.AddOption("p", charge_conversion.OUTOPTIONS)
   # Preserve atom indices
+  print "preserve atom indices."
   charge_conversion.AddOption("n", charge_conversion.OUTOPTIONS)
 
+  print "About to run obabel conversion."
   mol = openbabel.OBMol()
   charge_conversion.ReadFile(mol, hyd_output)
   force_partial_charge_computation(mol)
@@ -129,7 +159,7 @@ def average_point(points):
   """
   coords = np.array([0, 0, 0])
   for point in points:
-    coords += point.as_array()
+    coords += point.as_array().astype(coords.dtype)
   if len(points) > 0:
     return Point(coords=coords/len(points))
   else:
@@ -285,9 +315,9 @@ class Atom:
     """
     output = "ATOM "
     output = (output + str(index).rjust(6) + self.atomname.rjust(5) +
-        self.residue.rjust(4))
+        self.residue.rjust(4) + self.chain.rjust(2) + str(self.resid).rjust(4))
     coords = self.coordinates.as_array()  # [x, y, z]
-    output = output + ("%.3f" % coords[0]).rjust(18)
+    output = output + ("%.3f" % coords[0]).rjust(12)
     output = output + ("%.3f" % coords[1]).rjust(8)
     output = output + ("%.3f" % coords[2]).rjust(8)
     output = output + self.element.rjust(24)
