@@ -56,24 +56,6 @@ def pdbqt_to_pdb(input_file, output_directory):
   with open(pdb_output, "wb") as outfile:
     obabel_command = ["obabel", "-ipdbqt", input_file, "-opdb"]
     subprocess.Popen(obabel_command, stdout=outfile).wait()
- 
-
-  #conversion = openbabel.OBConversion()
-  #conversion.SetInAndOutFormats("pdb", "pdbqt")
-  ## Make molecule rigid
-  #conversion.AddOption("c", conversion.OUTOPTIONS)
-  #conversion.AddOption("r", conversion.OUTOPTIONS)
-  ## Preserve hydrogens
-  #conversion.AddOption("h", conversion.OUTOPTIONS)
-  ## Preserve atom indices
-  #conversion.AddOption("p", conversion.OUTOPTIONS)
-  ## Preserve atom indices
-  #conversion.AddOption("n", conversion.OUTOPTIONS)
-
-  #mol = openbabel.OBMol()
-  #conversion.ReadFile(mol, input_file)
-  #conversion.WriteFile(mol, pdb_output)
-
 
 def hydrogenate_and_compute_partial_charges(input_file, input_format,
 output_directory, rigid=True):
@@ -106,18 +88,12 @@ output_directory, rigid=True):
   # Create pdb with hydrogens added
   print "Create pdb with hydrogens added"
   hyd_conversion = openbabel.OBConversion()
-  print "1"
   hyd_conversion.SetInAndOutFormats(input_format, "pdb")
-  print "2"
   mol = openbabel.OBMol()
-  print "3"
   hyd_conversion.ReadFile(mol, input_file)  
-  print "4"
   # AddHydrogens(polaronly, correctForPH, pH)
   mol.AddHydrogens(True, True, 7.4)
-  print "5"
   hyd_conversion.WriteFile(mol, hyd_output)
-  print "6"
 
   # Create a pdbqt file from the hydrogenated pdb above.
   print "Create a pdbqt file from the hydrogenated pdb above."

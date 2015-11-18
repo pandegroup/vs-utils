@@ -1,5 +1,4 @@
 #Written by Evan N. Feinberg at Stanford University, contact: enf@stanford.edu
-
 from copy import deepcopy
 import numpy as np
 import pickle
@@ -10,8 +9,6 @@ from pybel import *
 import networkx as nx
 from collections import deque
 import hashlib
-
-
 
 
 def compute_centroid(coordinates):
@@ -31,7 +28,6 @@ def generate_random_unit_vector():
   b. Choose random z \element [-1, 1]
   c. Compute output: (x,y,z) = (sqrt(1-z^2)*cos(theta), sqrt(1-z^2)*sin(theta),z)
   d. output u
-
   '''
 
   theta = np.random.uniform(low = 0.0, high = 2*np.pi)
@@ -85,34 +81,33 @@ def compute_pairwise_distances(protein_xyz, ligand_xyz):
 
   return(pairwise_distances)
 
-
 '''following two functions adapted from:
 http://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
 '''
 
 def unit_vector(vector):
-    """ Returns the unit vector of the vector.  """
-    return vector / np.linalg.norm(vector)
+  """ Returns the unit vector of the vector.  """
+  return vector / np.linalg.norm(vector)
 
 def angle_between(v1, v2):
-    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+  """ Returns the angle in radians between vectors 'v1' and 'v2'::
 
-            >>> angle_between((1, 0, 0), (0, 1, 0))
-            1.5707963267948966
-            >>> angle_between((1, 0, 0), (1, 0, 0))
-            0.0
-            >>> angle_between((1, 0, 0), (-1, 0, 0))
-            3.141592653589793
-    """
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    angle = np.arccos(np.dot(v1_u, v2_u))
-    if np.isnan(angle):
-        if (v1_u == v2_u).all():
-            return 0.0
-        else:
-            return np.pi
-    return angle
+          >>> angle_between((1, 0, 0), (0, 1, 0))
+          1.5707963267948966
+          >>> angle_between((1, 0, 0), (1, 0, 0))
+          0.0
+          >>> angle_between((1, 0, 0), (-1, 0, 0))
+          3.141592653589793
+  """
+  v1_u = unit_vector(v1)
+  v2_u = unit_vector(v2)
+  angle = np.arccos(np.dot(v1_u, v2_u))
+  if np.isnan(angle):
+    if (v1_u == v2_u).all():
+      return 0.0
+    else:
+      return np.pi
+  return angle
 
 class grid_featurizer:
   def __init__(self, box_x=16.0, box_y=16.0, box_z=16.0, 
@@ -251,7 +246,6 @@ class grid_featurizer:
     and an openbabel object representing that molecule 
     '''
 
-
     if ".mol2" in molecule_file:
       obConversion = ob.OBConversion()
       obConversion.SetInAndOutFormats("mol2", "pdb")
@@ -273,6 +267,7 @@ class grid_featurizer:
     '''
     generate_box takes as input a molecule of class PDB and removes all atoms outside of the given box dims
     '''
+
     molecule = deepcopy(mol)
     atoms_to_keep = []
     all_atoms = [a for a in molecule.topology.atoms]
@@ -286,6 +281,7 @@ class grid_featurizer:
     '''
     subtracts the centroid, a numpy array of dim 3, from all coordinates of all atoms in the molecule
     '''
+
     xyz -= np.transpose(centroid)
     return(xyz)
 
@@ -299,6 +295,7 @@ class grid_featurizer:
     2. Apply R to all atomic coordinatse. 
     3. Return rotated molecule
     '''
+
     molecule = deepcopy(mol)
     R = generate_random_rotation_matrix()
     all_coordinates = np.column_stack([molecule.all_atoms[index].coordinates.coords for index in molecule.all_atoms.iterkeys()])
@@ -315,6 +312,7 @@ class grid_featurizer:
     2. For each atom, project its coordinates onto the random unit vector from (1),
       and subtract twice the projection from the original coordinates to obtain its reflection 
     '''
+
     molecule = deepcopy(mol)
     a = generate_random_unit_vector()
     for index, atom in molecule.all_atoms.iteritems():
@@ -328,6 +326,7 @@ class grid_featurizer:
     Takes as input protein and ligand objects of class PDB and adds ligand atoms to the protein,
     and returns the new instance of class PDB called system that contains both sets of atoms.
     '''
+
     system_xyz = np.array(np.vstack(np.vstack((protein_xyz, ligand_xyz))))
 
     system_ob = ob.OBMol(protein_ob)
@@ -344,24 +343,22 @@ class grid_featurizer:
     finds all bonds out to degree D via a breath-first search 
     '''
 
-
-
     visited_atoms = set()
     atoms_to_add = []
     bonds_to_add = []
     queue = deque([(startatom, 0)])
     while queue:
-        atom, depth = queue.popleft()
-        index = atom.GetIndex()
-        visited_atoms.add(index)
-        atomtype = atom.GetType()
-        if depth < D:
-          for bond in ob.OBAtomBondIter(atom):
-            if bond not in bonds_to_add: bonds_to_add.append(bond)
-        if depth < D:
-            for atom in ob.OBAtomAtomIter(atom):
-               if atom.GetIndex() not in visited_atoms:
-                   queue.append((atom, depth+1))
+      atom, depth = queue.popleft()
+      index = atom.GetIndex()
+      visited_atoms.add(index)
+      atomtype = atom.GetType()
+      if depth < D:
+        for bond in ob.OBAtomBondIter(atom):
+          if bond not in bonds_to_add: bonds_to_add.append(bond)
+      if depth < D:
+        for atom in ob.OBAtomAtomIter(atom):
+          if atom.GetIndex() not in visited_atoms:
+            queue.append((atom, depth+1))
     return(bonds_to_add)
 
   def construct_fragment_from_bonds(self, bonds):
@@ -370,6 +367,7 @@ class grid_featurizer:
     openbabel molecule from those bonds and the atoms that constitute 
     the start and end of those bonds. 
     '''
+
     fragment = ob.OBMol()
     added_atoms = []
     
@@ -431,6 +429,7 @@ class grid_featurizer:
     Returns an int of size 2^power representing that 
     ECFP pair. Input must be a tuple of strings. 
     '''
+
     ecfp = "%s,%s" %(ecfp_pair[0],ecfp_pair[1])
     md5 = hashlib.md5()
     md5.update(ecfp)
@@ -474,7 +473,6 @@ class grid_featurizer:
     '''
     Computes array of ECFP for both the ligand and the binding pocket region of the protein.
     '''
-
 
     if pairwise_distances is None: pairwise_distances = compute_pairwise_distances(protein_xyz, ligand_xyz)
     contacts = np.nonzero((pairwise_distances < 4.5))
@@ -531,6 +529,7 @@ class grid_featurizer:
     Determine if a pair of atoms (contact = tuple of protein_atom_index, ligand_atom_index)
     between protein and ligand represents a hydrogen bond. Returns a boolean result. 
     '''
+
     protein_atom_index = contact[0]
     ligand_atom_index = contact[1]
     protein_atom = protein.GetAtomById(protein_atom_index)
@@ -565,7 +564,9 @@ class grid_featurizer:
     bins will be defined as in: 
     http://evans.rc.fas.harvard.edu/pdf/smnr_2009_Kwan_Eugene.pdf
     '''
+
     if pairwise_distances is None: pairwise_distances = compute_pairwise_distances(protein_xyz, ligand_xyz)
+
     contacts = np.nonzero(pairwise_distances < self.hbond_dist_cutoff)
     protein_atoms = set([int(c) for c in contacts[0].tolist()])
     protein_ecfp_dict = self.compute_all_ecfp(protein, indices = protein_atoms, degree = self.ecfp_degree)
@@ -583,10 +584,12 @@ class grid_featurizer:
     print("There are %d h-bonds" %(len([f for f in splif_array if f == 1.])))
     return(splif_array)
 
+  #TODO(enf): add flag to specify which features to perform and then concat.
   def concatenate_features(self, protein_xyz, protein, ligand_xyz, ligand):
     '''
     Compute all feature types and concatenate them into one vector. 
     '''
+
     a = time.time()
     pairwise_distances = compute_pairwise_distances(protein_xyz, ligand_xyz)
     print("Computing pairwise_distances took %f seconds" %(time.time()-a))
@@ -602,9 +605,3 @@ class grid_featurizer:
 
     features = np.concatenate([binding_pocket_ecfp_features, splif_features])
     return(features)
-
-
-
-
-
-

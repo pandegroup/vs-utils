@@ -1,5 +1,10 @@
 #Written by Evan N. Feinberg at Stanford University, contact: enf@stanford.edu
 
+'''
+This code is temporarily deprecated and will ultimately be removed. If it's still here by 12/1/2015, 
+please yell at enf@stanford.edu
+'''
+
 
 from nnscore_pdb import PDB 
 from copy import deepcopy
