@@ -11,40 +11,15 @@ import networkx as nx
 from collections import deque
 import hashlib
 
-'''Pseudocode 
-
-1. Create objects of class PDB for protein and ligand
-2. Compute centroid of ligand
-3. translate coordinates of all other atoms such that ligand centroid is now origin, for both 
-  ligand PDB and protein PDB
-4. combine PDB objects
-5. Write out new PDB (.pdb and pickle of PDB() object)
-'''
-
-'''
-Pseudocode, detail: 
-
-1. Create objects of class PDB for protein and ligand 
-2. Compute centroid of ligand
-  a. define a function for computing centroid given a PDB object. Maybe extend to make it 
-    accept just coordinates?
-    -further decomposition:
-      Take object as input --> convert to coordinates --> then send to separate method 
-      that computes centroid 
-3. For each atom for each PDB oject: 
-  -change x, y, and z coordinates by subtracting out centroid x, y, and z
-4. Function that combines PDB objects: 
-  def mergePDBs(pdb1, pdb2)
-    copy pdb1
-    add all from pdb2 to pdb1, but offset atom indices by max(atom index of pdb 1)
-'''
 
 
-def compute_centroid(molecule):
+
+def compute_centroid(coordinates):
   '''given molecule, an instance of class PDB, compute the x,y,z centroid of that molecule'''
 
-  coordinates = molecule.xyz 
-  centroid = np.mean(coordinates, axis=1)
+  print(coordinates)
+  centroid = np.mean(coordinates, axis=0)
+  print(centroid)
   return(centroid)
 
 def generate_random_unit_vector():
@@ -94,79 +69,133 @@ def generate_random_rotation_matrix():
   R = np.column_stack((u, vp, w))
   return(R)
 
+def compute_pairwise_distances(protein_xyz, ligand_xyz):
+  '''
+  Takes an input m x 3 and n x 3 np arrays of 3d coords of protein and ligand,
+  respectively, and outputs an m x n np array of pairwise distances in Angstroms
+  between protein and ligand atoms. entry (i,j) is dist between the i'th protein
+  atom and the j'th ligand atom
+  '''
+
+  pairwise_distances = np.zeros((np.shape(protein_xyz)[0], np.shape(ligand_xyz)[0]))
+  for j in range(0, np.shape(ligand_xyz)[0]):
+    differences = protein_xyz - ligand_xyz[j,:]
+    squared_differences = np.square(differences)
+    pairwise_distances[:,j] = np.sqrt(np.sum(squared_differences,1))
+
+  return(pairwise_distances)
+
+
+'''following two functions adapted from:
+http://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
+'''
+
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+def angle_between(v1, v2):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+
+            >>> angle_between((1, 0, 0), (0, 1, 0))
+            1.5707963267948966
+            >>> angle_between((1, 0, 0), (1, 0, 0))
+            0.0
+            >>> angle_between((1, 0, 0), (-1, 0, 0))
+            3.141592653589793
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    angle = np.arccos(np.dot(v1_u, v2_u))
+    if np.isnan(angle):
+        if (v1_u == v2_u).all():
+            return 0.0
+        else:
+            return np.pi
+    return angle
 
 class grid_featurizer:
-  def __init__(self):
-    self.protein = None
-    self.protein_graph = None 
-    self.protein_ob = None 
-    self.ligand = None
-    self.ligand_graph = None
-    self.ligand_ob = None
-    self.system = None
-    self.system_graph = None
-    self.system_ob = None
+  def __init__(self, box_x=16.0, box_y=16.0, box_z=16.0, 
+    nb_rotations = 0, nb_reflections=0, feature_types="ecfp", 
+    ecfp_degree=2, ecfp_power = 8, splif_power = 8, 
+    save_intermediates=False, ligand_only = False, **kwargs):
+
     self.box = None
-    self.ecfp_power = 10
-    self.ecfp_degree = 2
 
     self.box_x = 100000.0
     self.box_y = 100000.0
     self.box_z = 100000.0
 
+    self.box_x = float(box_x)/10.0
+    self.box_y = float(box_y)/10.0
+    self.box_z = float(box_z)/10.0
 
-  def transform(self, protein_pdb, ligand_pdb, save_dir, box_x=16.0, box_y=16.0, box_z=16.0, 
-    nb_rotations = 0, nb_reflections=0, feature_types="ecfp", 
-    ecfp_degree=2, ecfp_power = 10, save_intermediates=False, ligand_only = False, **kwargs):
-    '''Takes as input files (strings) for pdb/pdbqt of the protein, pdb/pdbqt of the ligand, a filename to be saved 
-    of the merged system called system_pdb, a filename to be saved of the box called box_pdb, a filename with a .p extension
-    of the box in pickle format called box_pickle, and 3 floats for the x,y,z dimensions of the box in Angstroms
+
+    self.ecfp_degree = ecfp_degree
+    self.ecfp_power = ecfp_power
+    self.splif_power = splif_power
+
+    self.nb_rotations = nb_rotations
+    self.nb_reflections = nb_reflections
+    self.feature_types = feature_types
+
+    self.save_intermediates = save_intermediates
+    self.ligand_only = ligand_only
+
+    self.hbond_angle_cutoff = 90.
+    self.hbond_dist_cutoff = 4.0
+
+  def transform(self, protein_pdb, ligand_pdb, save_dir):
+    '''Takes as input files (strings) for pdb of the protein, pdb of the ligand, and a directory 
+    to save intermediate files. 
 
     This function then computes the centroid of the ligand; decrements this centroid from the atomic coordinates of protein and
     ligand atoms, and then merges the translated protein and ligand. This combined system/complex is then saved.
 
-    This function then removes all atoms outside of the given box dimensions, and saves the resulting box in PDB file format
-    as well as in a pickle format of the box's instance of the PDB object.
+    This function then computes a featurization with scheme specified by the user.
     '''
     a = time.time()
     protein_name = str(protein_pdb).split("/")[len(str(protein_pdb).split("/"))-2]
     system_pdb_file = "%s/%s.pdb" %(save_dir, protein_name)
     system_pickle_file = "%s/%s.pickle" %(save_dir, protein_name)
 
-    features = []
+    if not self.ligand_only:
+      protein_xyz, protein_ob = self.load_molecule(protein_pdb) 
+    ligand_xyz, ligand_ob = self.load_molecule(ligand_pdb)
 
-    self.box_x = float(box_x)/10.0
-    self.box_y = float(box_y)/10.0
-    self.box_z = float(box_z)/10.0
-
-    self.ecfp_degree = ecfp_degree
-    self.ecfp_power = ecfp_power
-    print("Starting")
-    if not ligand_only:
-      self.protein, self.protein_ob = self.load_molecule(protein_pdb) 
-    print("Loading ligand")
-    self.ligand, self.ligand_ob = self.load_molecule(ligand_pdb)
-    print("Loaded ligand")
-
-    if "ecfp" in feature_types:
-      ecfp_array = self.compute_ecfp_features(self.ligand_ob, ecfp_degree, ecfp_power)
+    if "ecfp" in self.feature_types:
+      ecfp_array = self.compute_ecfp_features(ligand_ob, self.ecfp_degree, self.ecfp_power)
       with gzip.open("%s/%s_ecfp_array.pkl.gz" %(save_dir, protein_name), "wb") as f:
         pickle.dump(ecfp_array, f)
       return({(0,0): ecfp_array})
 
-    centroid = compute_centroid(self.ligand)
-    self.ligand = self.subtract_centroid(self.ligand, centroid)
-    if not ligand_only:
-      self.protein = self.subtract_centroid(self.protein, centroid)
+    centroid = compute_centroid(ligand_xyz)
+    ligand_xyz = self.subtract_centroid(ligand_xyz, centroid)
+    if not self.ligand_only:
+      protein_xyz = self.subtract_centroid(protein_xyz, centroid)
     print(time.time()-a)
-    if ligand_only:
-      self.system = self.ligand 
-      self.system_ob = self.ligand_ob
-    else:
-      self.system, self.system_ob = self.merge_molecules(self.protein, self.protein_ob, self.ligand, self.ligand_ob)
 
+    if "splif" in self.feature_types:
+      splif_begin = time.time()
+      splif_array = self.featurize_splif(protein_xyz, protein_ob, ligand_xyz, ligand_ob)
+      splif_end = time.time()
+      print("Took %f seconds to featurize splif" %(splif_end-splif_begin))
+      return({(0,0): splif_array})
+
+    if "combined" in self.feature_types:
+      begin = time.time()
+      combined_array = self.concatenate_features(protein_xyz, protein_ob, ligand_xyz, ligand_ob)
+      end = time.time()
+      print("Took %f seconds to perform combined featurization" %(end-begin))
+      return({(0,0): combined_array})
+
+    if ligand_only:
+      system = ligand 
+      system_xyz = ligand_xyz
+    else:
+      system_xyz, system_ob = self.merge_molecules(protein_xyz, protein, ligand_xyz, ligand)
     print(time.time()-a)
-    original_system = deepcopy(self.system)
+    original_system = deepcopy(system)
     original_system.save_pdb(system_pdb_file)
 
     self.box = self.generate_box(original_system)
@@ -184,11 +213,6 @@ class grid_featurizer:
       for j in range(0,int(nb_reflections)):
         reflected_system = self.reflect_molecule(rotated_system)
         transformed_systems[(i+1,j+1)] = reflected_system
-
-
-
-      #for key, transformed_system in transformed_systems.iteritems():
-      #  ecfp_dict[key] = self.compute_ecfp(transformed_system)
 
     for key, transformed_system in transformed_systems.iteritems(): 
       transformed_box = self.generate_box(transformed_system)
@@ -208,11 +232,26 @@ class grid_featurizer:
 
     return(features)
 
-  def load_molecule(self, molecule_file):
-    if ".pdb" in molecule_file:
-      molecule = md.load(molecule_file)
-    else:
-      molecule = None
+  def get_xyz_from_ob(self, ob_mol):
+    '''
+    returns an m x 3 np array of 3d coords
+    of given openbabel molecule
+    '''
+
+    xyz = np.zeros((ob_mol.NumAtoms(), 3))
+    for i, atom in enumerate(ob.OBMolAtomIter(ob_mol)):
+      xyz[i,0] = atom.x()
+      xyz[i,1] = atom.y()
+      xyz[i,2] = atom.z()
+    return(xyz)
+
+  def load_molecule(self, molecule_file, remove_hydrogens=True):
+    '''
+    given molecule_file, returns a tuple of xyz coords of molecule 
+    and an openbabel object representing that molecule 
+    '''
+
+
     if ".mol2" in molecule_file:
       obConversion = ob.OBConversion()
       obConversion.SetInAndOutFormats("mol2", "pdb")
@@ -223,30 +262,12 @@ class grid_featurizer:
       obConversion.SetInAndOutFormats("pdb", "pdb")
       ob_mol = ob.OBMol()
       obConversion.ReadFile(ob_mol, molecule_file)
-    
-    '''
-    G = nx.Graph()
 
-    for bond in ob.OBMolBondIterator(ob_mol):
-      atom0 = bond.GetBeginAtom()
-      atom1 = bond.GetEndAtom()
+    #ob_mol.DeleteHydrogens()
+    ob_mol.AddHydrogens()
+    xyz = self.get_xyz_from_ob(ob_mol)
 
-      G.add_edge(atom0.GetIndex(), atom1.GetIndex())
-      if bond.IsAromatic():
-        G[atom0.GetIndex()][atom1.GetIndex()]["BondOrder"] = 1.5
-      else:
-        G[atom0.GetIndex()][atom1.GetIndex()]["BondOrder"] = bond.GetBondOrder()
-
-      G.node[atom0.GetIndex()]["AtomicNumber"] = atom0.GetAtomicNum()
-      G.node[atom1.GetIndex()]["AtomicNumber"] = atom1.GetAtomicNum()
-      G.node[atom0.GetIndex()]["SybylType"] = atom0.GetType()
-      G.node[atom1.GetIndex()]["SybylType"] = atom1.GetType()
-    '''
-
-    return molecule, ob_mol
-
-
-
+    return xyz, ob_mol
 
   def generate_box(self, mol):
     '''
@@ -261,26 +282,12 @@ class grid_featurizer:
         atoms_to_keep.append(atom.index)
     return(molecule.atom_slice(atoms_to_keep))
 
-  def remove_atom(self, molecule, atom_index, atom):
-    '''
-    remove_atom works by simply deleting the entry corresponding to that atom from the 
-    molecule.all_atoms dictionary.
-    '''
-
-
-    if molecule.all_atoms[atom_index] != atom:
-      print("Removing atoms from dictionary not safe!!")
-      return
-
-    del molecule.all_atoms[atom_index]
-    return(molecule)
-
-  def subtract_centroid(self, molecule, centroid):
+  def subtract_centroid(self, xyz, centroid):
     '''
     subtracts the centroid, a numpy array of dim 3, from all coordinates of all atoms in the molecule
     '''
-    molecule.xyz -= centroid 
-    return(molecule)
+    xyz -= np.transpose(centroid)
+    return(xyz)
 
   def rotate_molecule(self, mol):
     '''
@@ -316,59 +323,53 @@ class grid_featurizer:
       molecule.all_atoms[index].coordinates.coords = reflected_coords
     return(molecule)
 
-  def merge_molecules(self, protein, protein_ob, ligand, ligand_ob):
+  def merge_molecules(self, protein_xyz, protein, ligand_xyz, ligand):
     '''
     Takes as input protein and ligand objects of class PDB and adds ligand atoms to the protein,
     and returns the new instance of class PDB called system that contains both sets of atoms.
     '''
+    system_xyz = np.array(np.vstack(np.vstack((protein_xyz, ligand_xyz))))
 
-    system = deepcopy(protein)
-    ligand_atoms = [a for a in ligand.topology.atoms]
-    ligand_residue = [r for r in ligand.topology.residues][0]
-    ligand_residue_name = ligand_residue.name 
-    ligand_residue_resSeq = ligand_residue.resSeq 
-    new_chain = system.topology.add_chain()
-    new_residue = system.topology.add_residue(ligand_residue_name, chain = new_chain, resSeq = ligand_residue_resSeq) 
-    max_serial = ligand_atoms[len(ligand_atoms)-1].serial
-    for i, atom in enumerate(ligand_atoms):
-      system.topology.add_atom(atom.name, atom.element, residue = new_residue, serial = max_serial + i + 1)
-
-    system.xyz = np.array(np.vstack(np.vstack((system.xyz[0], ligand.xyz[0]))))
-    '''
-    num_protein_atoms = len([a for a in protein.topology.atoms])
-    mapping = {i: (i+num_protein_atoms) for i in range(0, len(ligand_atoms))}
-    ligand_graph=nx.relabel_nodes(ligand_graph,mapping)
-
-    system_graph = nx.union(protein_graph, ligand_graph)
-    '''
     system_ob = ob.OBMol(protein_ob)
     system_ob += ligand_ob
 
-    return system, system_ob
+    return system_xyz, system_ob
 
   '''
   Adapted from: http://baoilleach.blogspot.com/2008/02/calculate-circular-fingerprints-with.html
   '''
   def bfs(self, mol, startatom, D):
-    visited = [False] * (mol.NumAtoms())
+    '''
+    given openbabel molecule and a starting atom of type OBAtom, 
+    finds all bonds out to degree D via a breath-first search 
+    '''
+
+
+
+    visited_atoms = set()
     atoms_to_add = []
     bonds_to_add = []
     queue = deque([(startatom, 0)])
     while queue:
         atom, depth = queue.popleft()
         index = atom.GetIndex()
-        visited[index] = True
+        visited_atoms.add(index)
         atomtype = atom.GetType()
         if depth < D:
           for bond in ob.OBAtomBondIter(atom):
             if bond not in bonds_to_add: bonds_to_add.append(bond)
         if depth < D:
             for atom in ob.OBAtomAtomIter(atom):
-               if not visited[atom.GetIndex()]:
+               if atom.GetIndex() not in visited_atoms:
                    queue.append((atom, depth+1))
     return(bonds_to_add)
 
   def construct_fragment_from_bonds(self, bonds):
+    '''
+    takes as input a list of bonds of type OBBond and constructs a new 
+    openbabel molecule from those bonds and the atoms that constitute 
+    the start and end of those bonds. 
+    '''
     fragment = ob.OBMol()
     added_atoms = []
     
@@ -394,51 +395,216 @@ class grid_featurizer:
 
     return(fragment)
 
-
-
   def compute_ecfp(self, system_ob, start_atom, max_degree=2):
+    '''
+    Given an openbabel molecule and a starting atom (OBAtom object),
+    compute the ECFP[max_degree]-like representation for that atom. 
+    Returns (for now) a SMILES string representing the resulting fragment.
+
+    TODO(enf): Optimize this! Try InChi key and other approaches
+    to improving this representation. 
+    '''
+
     fragment = ob.OBMol()
     
     bonds_to_add = self.bfs(system_ob, start_atom, max_degree)
     fragment = self.construct_fragment_from_bonds(bonds_to_add)
     obConversion = ob.OBConversion()
-    obConversion.SetOutFormat("smiles")
-    smiles = obConversion.WriteString(fragment)
+    obConversion.SetOutFormat("can")
+    smiles = obConversion.WriteString(fragment).split("\t")[0]
     return(smiles)
 
   def hash_ecfp(self, ecfp, power):
-    #ecfp_hash = abs(hash(ecfp)) % (2 ** power)
+    '''
+    Returns an int of size 2^power representing that 
+    ECFP fragment. Input must be a string. 
+    '''
+
     md5 = hashlib.md5()
     md5.update(ecfp)
     digest = md5.hexdigest()
     ecfp_hash = int(digest, 16) % (2 ** power)
     return(ecfp_hash)
 
-  def compute_all_ecfp(self, system_ob, degree=2):
+  def hash_ecfp_pair(self, ecfp_pair, power):
+    '''
+    Returns an int of size 2^power representing that 
+    ECFP pair. Input must be a tuple of strings. 
+    '''
+    ecfp = "%s,%s" %(ecfp_pair[0],ecfp_pair[1])
+    md5 = hashlib.md5()
+    md5.update(ecfp)
+    digest = md5.hexdigest()
+    ecfp_hash = int(digest, 16) % (2 ** power)
+    return(ecfp_hash)
+
+
+  def compute_all_ecfp(self, system_ob, indices = None, degree=2):
     '''
     For each atom:
-      Obtain bondgraph for all atoms emanating outward to specified degree.
-      Save that bondgraph in a dict w/ key as atom index (is this safe?) and val as bondgr
+      Obtain molecular fragment for all atoms emanating outward to given degree. 
+      For each fragment, compute SMILES string (for now) and hash to an int.
+      Return a dictionary mapping atom index to hashed SMILES.
     '''
+
     ecfp_dict = {}
+
     for atom in ob.OBMolAtomIter(system_ob):
-      ecfp_dict[atom.GetIndex()] = self.compute_ecfp(system_ob, atom, degree)
+      if indices is not None:
+        if atom.GetIndex() not in indices: continue
+      ecfp_dict[atom.GetIndex()] = "%s,%s" %(atom.GetType(), self.compute_ecfp(system_ob, atom, degree))
 
     return(ecfp_dict)
 
-
   def compute_ecfp_features(self, system_ob, ecfp_degree, ecfp_power):
-    ecfp_dict = self.compute_all_ecfp(system_ob, ecfp_degree)
-    #print([fp for idx, fp in ecfp_dict.iteritems()][0:20])
+    '''
+    Takes as input an openbabel molecule, ECFP radius, and number of bits to store 
+    ECFP features (2^ecfp_power will be length of ECFP array);
+    Returns an array of size 2^ecfp_power where array at index i has a 1 if that ECFP fragment
+    is found in the molecule and array at index j has a 0 if ECFP fragment not in molecule. 
+    '''
+
+    ecfp_dict = self.compute_all_ecfp(system_ob, degree=ecfp_degree)
     ecfp_vec = [self.hash_ecfp(ecfp, self.ecfp_power) for index, ecfp in ecfp_dict.iteritems()]
     ecfp_array = np.zeros(2 ** self.ecfp_power)
     ecfp_array[sorted(ecfp_vec)] = 1.0
     return(ecfp_array)
 
-  def featurize_ecfp(self, system, degree=2):
+  def featurize_binding_pocket_ecfp(self, protein_xyz, protein, ligand_xyz, ligand, pairwise_distances = None, cutoff = 4.5):
+    '''
+    Computes array of ECFP for both the ligand and the binding pocket region of the protein.
     '''
 
 
+    if pairwise_distances is None: pairwise_distances = compute_pairwise_distances(protein_xyz, ligand_xyz)
+    contacts = np.nonzero((pairwise_distances < 4.5))
+    protein_atoms = set([int(c) for c in contacts[0].tolist()])
+    protein_ecfp_dict = self.compute_all_ecfp(protein, indices = protein_atoms, degree = self.ecfp_degree)
+    ligand_ecfp_dict = self.compute_all_ecfp(ligand, degree = self.ecfp_degree)
+
+    protein_vec = [self.hash_ecfp(ecfp, self.ecfp_power) for index, ecfp in protein_ecfp_dict.iteritems()]
+    ligand_vec = [self.hash_ecfp(ecfp, self.ecfp_power) for index, ecfp in ligand_ecfp_dict.iteritems()]
+
+    protein_array = np.zeros(2 ** self.ecfp_power)
+    ligand_array = np.zeros(2 ** self.ecfp_power)
+
+    protein_array[sorted(protein_vec)] = 1.0
+    print("Protein binding pocket has %d non-zero bits" %(len([f for f in protein_array if f == 1.])))
+    ligand_array[sorted(ligand_vec)] = 1.0
+    print("Ligand binding pocket has %d non-zero bits" %(len([f for f in ligand_array if f == 1.])))
+
+    return(np.concatenate([ligand_array, protein_array]))
+
+
+
+  def featurize_splif(self, protein_xyz, protein, ligand_xyz, ligand, pairwise_distances = None):
     '''
+    Computes a SPLIF array of size 2^(self.splif_power) by first computing all protein atoms that come into contact
+    with the ligand, then computing all ECFP fragments for all ligand atoms and all contacting protein atoms, 
+    and then hashing to an int all contacting ECFP fragments. 
+    '''
+
+    if pairwise_distances is None: pairwise_distances = compute_pairwise_distances(protein_xyz, ligand_xyz)
+    contact_bins = [(0,2.0), (2.0,3.0), (3.0,4.5)]
+    splif_arrays = []
+    protein_contacts = set()
+    for contact_bin in contact_bins:
+      contacts = np.nonzero((pairwise_distances > contact_bin[0]) & (pairwise_distances < contact_bin[1]))
+      protein_atoms = set([int(c) for c in contacts[0].tolist()])
+      protein_contacts = protein_contacts.union(protein_atoms)
+      protein_ecfp_dict = self.compute_all_ecfp(protein, indices = protein_atoms, degree = self.ecfp_degree)
+      ligand_ecfp_dict = self.compute_all_ecfp(ligand, degree = self.ecfp_degree)
+      contacts = zip(contacts[0], contacts[1])
+      ecfp_pairs = [(protein_ecfp_dict[contact[0]], ligand_ecfp_dict[contact[1]]) for contact in contacts]
+      splif_vec = [self.hash_ecfp_pair(ecfp_pair, self.splif_power) for ecfp_pair in ecfp_pairs]
+      splif_array = np.zeros(2 ** self.splif_power)
+      splif_array[sorted(splif_vec)] = 1
+      splif_arrays.append(splif_array)
+      print("Splif array bin has %d non-zero entries" %(len([f for f in splif_array if f == 1.])))
+    print("there are %d protein_atoms to ecfp" %(len(protein_contacts)))
+
+    splif = np.concatenate(splif_arrays)
+    return(splif)
+
+  def is_hydrogen_bond(self, protein_xyz, protein, ligand_xyz, ligand, contact):
+    '''
+    Determine if a pair of atoms (contact = tuple of protein_atom_index, ligand_atom_index)
+    between protein and ligand represents a hydrogen bond. Returns a boolean result. 
+    '''
+    protein_atom_index = contact[0]
+    ligand_atom_index = contact[1]
+    protein_atom = protein.GetAtomById(protein_atom_index)
+    ligand_atom = ligand.GetAtomById(ligand_atom_index)
+    if protein_atom.IsHbondAcceptor() and ligand_atom.IsHbondDonor():
+      for atom in ob.OBAtomAtomIter(ligand_atom):
+        if atom.GetAtomicNum() == 1:
+          hydrogen_xyz = ligand_xyz[atom.GetIndex(),:]
+          v1 = protein_xyz[protein_atom_index,:] - hydrogen_xyz
+          v2 = ligand_xyz[ligand_atom_index,:] - hydrogen_xyz
+          angle = angle_between(v1,v2) * 180. / np.pi
+          if(angle > (180 - self.hbond_angle_cutoff) and angle < (180. + self.hbond_angle_cutoff)):
+            return True
+    elif ligand_atom.IsHbondAcceptor() and protein_atom.IsHbondDonor():
+      for atom in ob.OBAtomAtomIter(protein_atom):
+        if atom.GetAtomicNum() == 1:
+          hydrogen_xyz = protein_xyz[atom.GetIndex(),:]
+          v1 = protein_xyz[protein_atom_index,:] - hydrogen_xyz
+          v2 = ligand_xyz[ligand_atom_index,:] - hydrogen_xyz
+          angle = angle_between(v1,v2) * 180. / np.pi
+          if(angle > (180 - self.hbond_angle_cutoff) and angle < (180. + self.hbond_angle_cutoff)):
+            return True
+    return False     
+
+  def featurize_hydrogen_bond_array(self, protein_xyz, protein, ligand_xyz, ligand, pairwise_distances = None):
+    '''
+    Given protein and ligand, determine all hydrogen bonds between them. For each ligand_ecfp_i, protein_ecfp_j pair,
+    determine if there is a hydrogen bond between them, and, if so, set to 1 the entry in an array corresponding 
+    to the integer index of the hash of that ecfp pair. Return resulting array of size 2^self.splif_power.
+
+    TODO(enf): Change this to a 3-bit vector, where each bit is number of hydrogen bonds for each bin. These
+    bins will be defined as in: 
+    http://evans.rc.fas.harvard.edu/pdf/smnr_2009_Kwan_Eugene.pdf
+    '''
+    if pairwise_distances is None: pairwise_distances = compute_pairwise_distances(protein_xyz, ligand_xyz)
+    contacts = np.nonzero(pairwise_distances < self.hbond_dist_cutoff)
+    protein_atoms = set([int(c) for c in contacts[0].tolist()])
+    protein_ecfp_dict = self.compute_all_ecfp(protein, indices = protein_atoms, degree = self.ecfp_degree)
+    ligand_ecfp_dict = self.compute_all_ecfp(ligand, degree = self.ecfp_degree)
+    contacts = zip(contacts[0], contacts[1])
+    hydrogen_bond_contacts = []
+    for contact in contacts:
+      if self.is_hydrogen_bond(protein_xyz, protein, ligand_xyz, ligand, contact):
+        hydrogen_bond_contacts.append(contact)
+
+    ecfp_pairs = [(protein_ecfp_dict[contact[0]], ligand_ecfp_dict[contact[1]]) for contact in hydrogen_bond_contacts]
+    splif_vec = [self.hash_ecfp_pair(ecfp_pair, self.splif_power) for ecfp_pair in ecfp_pairs]
+    splif_array = np.zeros(2 ** self.splif_power)
+    splif_array[sorted(splif_vec)] = 1.
+    print("There are %d h-bonds" %(len([f for f in splif_array if f == 1.])))
+    return(splif_array)
+
+  def concatenate_features(self, protein_xyz, protein, ligand_xyz, ligand):
+    '''
+    Compute all feature types and concatenate them into one vector. 
+    '''
+    a = time.time()
+    pairwise_distances = compute_pairwise_distances(protein_xyz, ligand_xyz)
+    print("Computing pairwise_distances took %f seconds" %(time.time()-a))
+    a = time.time()
+    binding_pocket_ecfp_features = self.featurize_binding_pocket_ecfp(protein_xyz, protein, ligand_xyz, ligand, pairwise_distances = pairwise_distances)
+    print("Computing binding_pocket_ecfp_features took %f seconds" %(time.time()-a))
+    a = time.time()
+    splif_features = self.featurize_splif(protein_xyz, protein, ligand_xyz, ligand, pairwise_distances)
+    print("computing splif_features took %f seconds" %(time.time()-a))
+    a = time.time()
+    #hydrogen_bond_features = self.featurize_hydrogen_bond_array(protein_xyz, protein, ligand_xyz, ligand, pairwise_distances = pairwise_distances)
+    #print("Computing hydrogen bonds took %f seconds" %(time.time()-a))
+
+    features = np.concatenate([binding_pocket_ecfp_features, splif_features])
+    return(features)
+
+
+
+
 
 
