@@ -65,7 +65,7 @@ class ComplexFeaturizer(object):
   """
   name = None
 
-  def featurize_complex(self, mol_pdbs, protein_pdbs):
+  def featurize_complexes(self, mol_pdbs, protein_pdbs):
     """
     Calculate features for mol/protein complexes.
 

@@ -21,6 +21,7 @@ import ast
 import math
 import textwrap
 import numpy as np
+import warnings
 from vs_utils.utils.nnscore_utils import AromaticRing
 from vs_utils.utils.nnscore_utils import Atom
 from vs_utils.utils.nnscore_utils import average_point
@@ -394,20 +395,27 @@ class PDB:
         if len(line) < 31:
           raise ValueError("Bad PDB! "
               "Improperly formatted CONECT line (too short)")
+          continue
         atom_index = int(line[6:11].strip())
         if atom_index not in self.all_atoms:
-          raise ValueError("Bad PDB! "
+          warnings.warn("Bad PDB! "
               "Improper CONECT line: (atom index not loaded)")
+          continue
         bonded_atoms = []
         ranges = [(11, 16), (16, 21), (21, 26), (26, 31)]
+        misformatted = False
         for (lower, upper) in ranges:
           # Check that the range is nonempty.
           if line[lower:upper].strip():
             index = int(line[lower:upper])
             if index not in self.all_atoms:
-              raise ValueError("Bad PDB! "
+              warnings.warn("Bad PDB! "
                   "Improper CONECT line: (bonded atom not loaded)")
+              misformatted = True
+              break
             bonded_atoms.append(index)
+        if misformatted:
+          continue
         atom = self.all_atoms[atom_index]
         atom.add_neighbor_atom_indices(bonded_atoms)
 
