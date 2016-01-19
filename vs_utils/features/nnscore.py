@@ -15,15 +15,20 @@ The following code implements a featurizer based on NNScore 2.0.1
 __author__ = "Bharath Ramsundar"
 __license__ = "GNU General Public License"
 
+import os
 import math
 import numpy as np
 import re
 import itertools
+import tempfile
+import shutil
+from vs_utils.features import ComplexFeaturizer
 from vs_utils.utils.nnscore_pdb import PDB
 from vs_utils.utils.nnscore_utils import Point
 from vs_utils.utils.nnscore_utils import angle_between_points
 from vs_utils.utils.nnscore_utils import angle_between_three_points
 from vs_utils.utils.nnscore_utils import project_point_onto_plane
+from vs_utils.utils.nnscore_utils import hydrogenate_and_compute_partial_charges
 
 #ELECTROSTATIC_JOULE_PER_MOL = 138.94238460104697e4 # units?
 # This is just a scaling factor, so it's set so as to keep the network
@@ -696,5 +701,50 @@ class Binana:
       for key in sorted(features.keys()):
         input_vector.append(features[key])
     if len(input_vector) != self.num_features():
-      raise ValueError("Feature length incorrect!")
+      raise ValueError("Feature length incorrect.")
     return input_vector
+
+class NNScoreComplexFeaturizer(ComplexFeaturizer):
+  """
+  Compute NNScore fingerprints for complexes.
+  """
+
+  def __init__(self):
+    self.binana = Binana()
+
+  def _featurize_complex(self, mol_pdb, protein_pdb):
+    """
+    Compute Binana fingerprint for complex.
+    """
+    ### OPEN TEMPDIR
+    tempdir = tempfile.mkdtemp()
+
+    mol_pdb_file = os.path.join(tempdir, "mol.pdb")
+    with open(mol_pdb_file, "w") as mol_f:
+      mol_f.writelines(mol_pdb)
+    protein_pdb_file = os.path.join(tempdir, "protein.pdb")
+    with open(protein_pdb_file, "w") as protein_f:
+      protein_f.writelines(protein_pdb)
+
+    mol_hyd_file = os.path.join(tempdir, "mol_hyd.pdb")
+    mol_pdbqt_file = os.path.join(tempdir, "mol_hyd.pdbqt")
+    hydrogenate_and_compute_partial_charges(
+        mol_pdb_file, "pdb", tempdir, mol_hyd_file, mol_pdbqt_file)
+
+    protein_hyd_file = os.path.join(tempdir, "protein_hyd.pdb")
+    protein_pdbqt_file = os.path.join(tempdir, "protein_hyd.pdbqt")
+    hydrogenate_and_compute_partial_charges(
+        protein_pdb_file, "pdb", tempdir, protein_hyd_file, protein_pdbqt_file)
+
+    mol_pdb_obj = PDB()
+    mol_pdb_obj.load_from_files(mol_pdb_file, mol_pdbqt_file)
+
+    protein_pdb_obj = PDB()
+    protein_pdb_obj.load_from_files(protein_pdb_file, protein_pdbqt_file)
+
+    features = self.binana.compute_input_vector(mol_pdb_obj, protein_pdb_obj)
+
+    ### CLOSE TEMPDIR
+    shutil.rmtree(tempdir)
+
+    return features

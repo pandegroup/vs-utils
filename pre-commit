@@ -3,4 +3,4 @@
 # http://git-pylint-commit-hook.readthedocs.org/en/latest/. Then make this
 # file executable and copy to .git/hooks/ to add pylint pre-commit hooks to
 # your vs-utils repo.
-#git-pylint-commit-hook
+git-pylint-commit-hook
