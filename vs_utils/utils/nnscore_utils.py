@@ -11,17 +11,14 @@ file:
 # edu. If you use NNScore 2.01 in your work, please cite [REFERENCE
 # HERE].
 """
-# pylint mistakenly reports numpy errors:
-#     pylint: disable=E1101
+import math
+import os
+import subprocess
+import openbabel
+import numpy as np
 
 __author__ = "Bharath Ramsundar and Jacob Durrant"
 __license__ = "GNU General Public License"
-
-import math
-import openbabel
-import subprocess
-import os
-import numpy as np
 
 def force_partial_charge_computation(mol):
   """Force computation of partial charges for molecule.
@@ -41,7 +38,7 @@ def force_partial_charge_computation(mol):
 
 def pdbqt_to_pdb(input_file, output_directory):
   """Convert pdbqt file to pdb file.
-  
+
   Parameters
   ----------
   input_file: String
@@ -58,9 +55,10 @@ def pdbqt_to_pdb(input_file, output_directory):
     subprocess.Popen(obabel_command, stdout=outfile).wait()
 
 def hydrogenate_and_compute_partial_charges(input_file, input_format,
-                                            output_directory, rigid=True,
+                                            output_directory,
                                             hyd_output=None,
-                                            pdbqt_output=None):
+                                            pdbqt_output=None,
+                                            verbose=False):
   """Outputs a hydrogenated pdb and a pdbqt with partial charges.
 
   Takes an input file in specified format. Generates two outputs:
@@ -89,42 +87,43 @@ def hydrogenate_and_compute_partial_charges(input_file, input_format,
   if pdbqt_output is None:
     pdbqt_output = os.path.join(output_directory, basename + "_hyd.pdbqt")
 
-  # Create pdb with hydrogens added
-  print "Create pdb with hydrogens added"
+  if verbose:
+    print "Create pdb with hydrogens added"
   hyd_conversion = openbabel.OBConversion()
   hyd_conversion.SetInAndOutFormats(input_format, "pdb")
   mol = openbabel.OBMol()
-  hyd_conversion.ReadFile(mol, input_file)  
+  hyd_conversion.ReadFile(mol, input_file)
   # AddHydrogens(polaronly, correctForPH, pH)
   mol.AddHydrogens(True, True, 7.4)
   hyd_conversion.WriteFile(mol, hyd_output)
 
-  # Create a pdbqt file from the hydrogenated pdb above.
-  print "Create a pdbqt file from the hydrogenated pdb above."
+  if verbose:
+    print "Create a pdbqt file from the hydrogenated pdb above."
   charge_conversion = openbabel.OBConversion()
   charge_conversion.SetInAndOutFormats("pdb", "pdbqt")
 
-  # Make protein rigid
-  print "Make protein rigid."
+  if verbose:
+    print "Make protein rigid."
   charge_conversion.AddOption("c", charge_conversion.OUTOPTIONS)
   charge_conversion.AddOption("r", charge_conversion.OUTOPTIONS)
-  # Preserve hydrogens
-  print "Preserve hydrogens"
+  if verbose:
+    print "Preserve hydrogens"
   charge_conversion.AddOption("h", charge_conversion.OUTOPTIONS)
-  # Preserve atom indices
-  print "Preserve atom indices"
+  if verbose:
+    print "Preserve atom indices"
   charge_conversion.AddOption("p", charge_conversion.OUTOPTIONS)
-  # Preserve atom indices
-  print "preserve atom indices."
+  if verbose:
+    print "preserve atom indices."
   charge_conversion.AddOption("n", charge_conversion.OUTOPTIONS)
 
-  print "About to run obabel conversion."
+  if verbose:
+    print "About to run obabel conversion."
   mol = openbabel.OBMol()
   charge_conversion.ReadFile(mol, hyd_output)
   force_partial_charge_computation(mol)
   charge_conversion.WriteFile(mol, pdbqt_output)
 
-class AromaticRing():
+class AromaticRing(object):
   """Holds information about an aromatic ring."""
   def __init__(self, center, indices, plane_coeff, radius):
     """
@@ -170,7 +169,7 @@ def average_point(points):
     return Point(coords=coords)
 
 
-class Point:
+class Point(object):
   """
   Simple implementation for a point in 3-space.
   """
@@ -222,17 +221,17 @@ class Point:
     return self.coords
 
 
-class Atom:
+class Atom(object):
   """
   Implements a container class for atoms. This class contains useful
   annotations about the atom.
   """
 
-  def __init__ (self, atomname="", residue="",
-                coordinates=Point(coords=np.array([99999, 99999, 99999])),
-                element="", pdb_index="", line="", atomtype="",
-                indices_of_atoms_connecting=None, charge=0, resid=0,
-                chain="", structure="", comment=""):
+  def __init__(self, atomname="", residue="",
+               coordinates=Point(coords=np.array([99999, 99999, 99999])),
+               element="", pdb_index="", line="", atomtype="",
+               indices_of_atoms_connecting=None, charge=0, resid=0,
+               chain="", structure="", comment=""):
     """
     Initializes an atom.
 
@@ -319,7 +318,8 @@ class Atom:
     """
     output = "ATOM "
     output = (output + str(index).rjust(6) + self.atomname.rjust(5) +
-        self.residue.rjust(4) + self.chain.rjust(2) + str(self.resid).rjust(4))
+              self.residue.rjust(4) + self.chain.rjust(2) +
+              str(self.resid).rjust(4))
     coords = self.coordinates.as_array()  # [x, y, z]
     output = output + ("%.3f" % coords[0]).rjust(12)
     output = output + ("%.3f" % coords[1]).rjust(8)
@@ -341,7 +341,7 @@ class Atom:
       List of indices of neighbors in PDB object.
     """
     for index in indices:
-      if not (index in self.indices_of_atoms_connecting):
+      if index not in self.indices_of_atoms_connecting:
         self.indices_of_atoms_connecting.append(index)
 
   def side_chain_or_backbone(self):
@@ -349,7 +349,7 @@ class Atom:
     """
     # TODO(rbharath): Should this be an atom function?
     if (self.atomname.strip() == "CA" or self.atomname.strip() == "C"
-      or self.atomname.strip() == "O" or self.atomname.strip() == "N"):
+        or self.atomname.strip() == "O" or self.atomname.strip() == "N"):
       return "BACKBONE"
     else:
       return "SIDECHAIN"
@@ -387,17 +387,18 @@ class Atom:
     self.line = line
     self.atomname = line[11:16].strip()
 
-    if len(self.atomname)==1:
+    if len(self.atomname) == 1:
       self.atomname = self.atomname + "  "
-    elif len(self.atomname)==2:
+    elif len(self.atomname) == 2:
       self.atomname = self.atomname + " "
-    elif len(self.atomname)==3:
+    elif len(self.atomname) == 3:
       # This line is necessary for babel to work, though many PDBs in
       # the PDB would have this line commented out
       self.atomname = self.atomname + " "
 
-    self.coordinates = Point(coords=np.array([float(line[30:38]),
-        float(line[38:46]), float(line[46:54])]))
+    self.coordinates = Point(
+        coords=np.array(
+            [float(line[30:38]), float(line[38:46]), float(line[46:54])]))
 
     # now atom type (for pdbqt)
     if line[77:79].strip():
@@ -418,23 +419,23 @@ class Atom:
     if self.element == "": # try to guess at element from name
       two_letters = self.atomname[0:2].strip().upper()
       valid_two_letters = ["BR", "CL", "BI", "AS", "AG", "LI",
-          "HG", "MG", "MN", "RH", "ZN", "FE"]
+                           "HG", "MG", "MN", "RH", "ZN", "FE"]
       if two_letters in valid_two_letters:
         self.element = two_letters
       else: #So, just assume it's the first letter.
         # Any number needs to be removed from the element name
         self.element = self.atomname
-        self.element = self.element.replace('0','')
-        self.element = self.element.replace('1','')
-        self.element = self.element.replace('2','')
-        self.element = self.element.replace('3','')
-        self.element = self.element.replace('4','')
-        self.element = self.element.replace('5','')
-        self.element = self.element.replace('6','')
-        self.element = self.element.replace('7','')
-        self.element = self.element.replace('8','')
-        self.element = self.element.replace('9','')
-        self.element = self.element.replace('@','')
+        self.element = self.element.replace('0', '')
+        self.element = self.element.replace('1', '')
+        self.element = self.element.replace('2', '')
+        self.element = self.element.replace('3', '')
+        self.element = self.element.replace('4', '')
+        self.element = self.element.replace('5', '')
+        self.element = self.element.replace('6', '')
+        self.element = self.element.replace('7', '')
+        self.element = self.element.replace('8', '')
+        self.element = self.element.replace('9', '')
+        self.element = self.element.replace('@', '')
 
         self.element = self.element[0:1].strip().upper()
 
@@ -453,7 +454,7 @@ class Atom:
       self.residue = " MOL"
 
 
-class Charged():
+class Charged(object):
   """
   A class that represeents a charged atom.
   """
@@ -492,8 +493,8 @@ def dot_product(point1, point2):
 
 def dihedral(point1, point2, point3, point4): # never tested
   """Compute dihedral angle between 4 points.
-  
-    TODO(rbharath): Write a nontrivial test for this. 
+
+    TODO(rbharath): Write a nontrivial test for this.
   """
 
   b1 = vector_subtraction(point2, point1)
@@ -504,8 +505,7 @@ def dihedral(point1, point2, point3, point4): # never tested
   b1Xb2 = cross_product(b1, b2)
 
   b1XMagb2 = vector_scalar_multiply(b1, b2.magnitude())
-  radians = math.atan2(dot_product(b1XMagb2, b2Xb3),
-      dot_product(b1Xb2, b2Xb3))
+  radians = math.atan2(dot_product(b1XMagb2, b2Xb3), dot_product(b1Xb2, b2Xb3))
   return radians
 
 def angle_between_three_points(point1, point2, point3):

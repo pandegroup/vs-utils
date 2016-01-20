@@ -31,12 +31,12 @@ class TestNNScoreComplexFeaturizer(unittest.TestCase):
       _3zso_ligand_pdb = f.readlines()
 
     self.test_cases = [("3zso", _3zso_ligand_pdb, _3zso_protein_pdb)]
-    
+
   def testNNScore(self):
     """
     Run simple tests with NNScore.
     """
     # Currently, just verifies that nothing crashes.
-    for test, ligand_pdb, protein_pdb in self.test_cases:
-      features = self.nnscore_featurizer.featurize_complexes(
+    for _, ligand_pdb, protein_pdb in self.test_cases:
+      _ = self.nnscore_featurizer.featurize_complexes(
           [ligand_pdb], [protein_pdb])

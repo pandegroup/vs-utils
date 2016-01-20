@@ -4,17 +4,12 @@ Test NNScore Binana featurizer.
 TODO(rbharath): There still isn't an example structure that exhibits
 salt-bridge interactions. There might be a bug in the pi-T interaction
 finger, and the H-bonds are known to miss some potential bonds with an
-overly-conservative bond-angle cutoff. 
+overly-conservative bond-angle cutoff.
 """
-# pylint mistakenly reports numpy errors:
-#     pylint: disable=E1101
 import os
-import numpy as np
 import unittest
-
 from vs_utils.features.nnscore import Binana
-from vs_utils.features.nnscore import NNScoreComplexFeaturizer
-from vs_utils.features.nnscore import compute_hydrophobic_contacts 
+from vs_utils.features.nnscore import compute_hydrophobic_contacts
 from vs_utils.features.nnscore import compute_electrostatic_energy
 from vs_utils.features.nnscore import compute_ligand_atom_counts
 from vs_utils.features.nnscore import compute_active_site_flexibility
@@ -30,49 +25,6 @@ from vs_utils.utils.tests import __file__ as test_directory
 def data_dir():
   """Get location of data directory."""
   return os.path.join(os.path.dirname(test_directory), "data")
-
-class TestNNScoreComplexFeaturizer(unittest.TestCase):
-  """
-  Test NNScoreComplexFeaturizer.
-  """
-
-  def setUp(self):
-    """
-    Create internal featurizer.
-    """
-    self.nnscore_featurizer = NNScoreComplexFeaturizer()
-    ### 3zp9 comes from PDBBind-CN
-    _3zp9_protein_pdb_file = os.path.join(data_dir(), "3zp9_protein.pdb")
-    with open(_3zp9_protein_pdb_file) as f:
-      _3zp9_protein_pdb = f.readlines()
-
-    # The ligand is also specified by pdbbind
-    _3zp9_ligand_pdb_file = os.path.join(data_dir(), "3zp9_ligand.pdb")
-    with open(_3zp9_ligand_pdb_file) as f:
-      _3zp9_ligand_pdb = f.readlines()
-
-    ### 3bwf comes from PDBBind-CN
-    _3bwf_protein_pdb = os.path.join(data_dir(), "3bwf_protein.pdb")
-    with open(_3bwf_protein_pdb_file) as f:
-      _3bwf_protein_pdb = f.readlines()
-
-    # The ligand is also specified by pdbbind
-    _3bwf_ligand_pdb = os.path.join(data_dir(), "3bwf_ligand.pdb")
-    with open(_3bwf_ligand_pdb_file) as f:
-      _3bwf_ligand_pdb = f.readlines()
-
-    self.test_cases = [("3bwf", _3bwf_ligand_ligand_pdb, _3bwf_protein_pdb),
-                       ("3zp9", _3zp9_ligand_ligand_pdb, _3zp9_protein_pdb)]
-    
-  def testNNScore(self):
-    """
-    Run simple tests with NNScore.
-    """
-    # Currently, just verifies that nothing crashes.
-    for test, ligand_pdb, protein_pdb in self.test_cases():
-      features = self.nnscore_featurizer.featurize_complex(
-          ligand_pdb, protein_pdb)
-
 
 class TestBinana(unittest.TestCase):
   """
@@ -353,8 +305,8 @@ class TestBinana(unittest.TestCase):
     # active_site_flexibility: 6
     # salt_bridges: 3
     # rotatable_boonds_count: 1
-    total_len = (3*num_atoms*(num_atoms+1)/2 + num_atoms + 12 + 6 + 3 + 6 +
-        3 + 6 + 3 + 1)
+    total_len = (3*num_atoms*(num_atoms+1)/2 + num_atoms
+                 + 12 + 6 + 3 + 6 + 3 + 6 + 3 + 1)
     for name, input_vector in features_dict.iteritems():
       print "Processing input-vector for %s" % name
       assert len(input_vector) == total_len

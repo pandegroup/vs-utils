@@ -1,18 +1,16 @@
 """
 Feature calculations.
 """
+import types
+import numpy as np
+from rdkit import Chem
+from rdkit.Chem import rdGeometry, rdMolTransforms
+from ..utils.ob_utils import Ionizer
 
 __author__ = "Steven Kearnes"
 __copyright__ = "Copyright 2014, Stanford University"
 __license__ = "BSD 3-clause"
 
-import numpy as np
-import types
-
-from rdkit import Chem
-from rdkit.Chem import rdGeometry, rdMolTransforms
-
-from ..utils.ob_utils import Ionizer
 
 
 def get_featurizers():
@@ -71,10 +69,10 @@ class ComplexFeaturizer(object):
 
     Parameters
     ----------
-    mol_pdbs: list 
+    mol_pdbs: list
       List of PDBs for molecules. Each PDB should be a list of lines of the
       PDB file.
-    protein_pdbs: list 
+    protein_pdbs: list
       List of PDBs for proteins. Each PDB should be a list of lines of the
       PDB file.
     """
@@ -89,9 +87,9 @@ class ComplexFeaturizer(object):
 
     Parameters
     ----------
-    mol_pdb: list 
+    mol_pdb: list
       Should be a list of lines of the PDB file.
-    complex_pdb: list 
+    complex_pdb: list
       Should be a list of lines of the PDB file.
     """
     raise NotImplementedError('Featurizer is not defined.')
@@ -127,7 +125,7 @@ class Featurizer(object):
   topo_view = False
 
   def featurize(self, mols, parallel=False, client_kwargs=None,
-              view_flags=None):
+                view_flags=None):
     """
     Calculate features for molecules.
 
