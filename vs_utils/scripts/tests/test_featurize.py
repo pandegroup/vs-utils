@@ -1,17 +1,16 @@
 """
 Test featurize.py.
 """
-import joblib
-import numpy as np
 import shutil
 import tempfile
 import unittest
-
+import joblib
+import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from vs_utils.scripts.featurize import main, parse_args
-from vs_utils.utils import read_csv_features, read_pickle, write_pickle
+from vs_utils.utils import read_pickle, write_pickle
 from vs_utils.utils.rdkit_utils import conformers, serial
 
 
@@ -26,13 +25,13 @@ class TestFeaturize(unittest.TestCase):
     self.temp_dir = tempfile.mkdtemp()
     smiles = ['CC(=O)OC1=CC=CC=C1C(=O)O',
               'C[C@@H](C1=CC=C(C=C1)CC(C)C)C(=O)O']
-    self.names = ['aspirin', 'ibuprofen']
+    self.mol_ids = ['aspirin', 'ibuprofen']
     engine = conformers.ConformerGenerator(max_conformers=1)
     self.mols = []
     self.smiles = []  # use RDKit-generated SMILES
     for i in xrange(len(smiles)):
         mol = Chem.MolFromSmiles(smiles[i])
-        mol.SetProp('_Name', self.names[i])
+        mol.SetProp('_Name', self.mol_ids[i])
         self.mols.append(engine.generate_conformers(mol))
         self.smiles.append(Chem.MolToSmiles(mol, isomericSmiles=True,
                                             canonical=True))
@@ -57,10 +56,10 @@ class TestFeaturize(unittest.TestCase):
     """
     shutil.rmtree(self.temp_dir)
 
-  def check_output(self, featurize_args, shape, targets=None, names=None,
+  def check_output(self, featurize_args, shape, targets=None, mol_ids=None,
                    smiles=None, output_suffix='.pkl'):
     """
-    Check features shape, targets, and names.
+    Check features shape, targets, and mol_ids.
 
     Parameters
     ----------
@@ -72,8 +71,8 @@ class TestFeaturize(unittest.TestCase):
         Expected shape of features.
     targets : list, optional
         Expected targets. Defaults to self.targets.
-    names : list, optional
-        Expected names. Defaults to self.names.
+    mol_ids: list, optional
+        Expected mol_ids. Defaults to self.mol_ids.
     smiles : list, optional
         Expected SMILES. Defaults to self.smiles.
     output_suffix : str, optional (default '.pkl')
@@ -84,13 +83,14 @@ class TestFeaturize(unittest.TestCase):
     _, output_filename = tempfile.mkstemp(suffix=output_suffix,
                                           dir=self.temp_dir)
     input_args = [self.input_filename, '-t', self.targets_filename,
-                  output_filename, '--names'] + featurize_args
+                  output_filename] + featurize_args
 
     # run script
     args = parse_args(input_args)
     main(args.klass, args.input, args.output, target_filename=args.targets,
-         featurizer_kwargs=vars(args.featurizer_kwargs), names=args.names,
-         scaffolds=args.scaffolds, chiral_scaffolds=args.chiral_scaffolds)
+         featurizer_kwargs=vars(args.featurizer_kwargs),
+         include_smiles=True, scaffolds=args.scaffolds,
+         chiral_scaffolds=args.chiral_scaffolds)
 
     # read output file
     if output_filename.endswith('.joblib'):
@@ -101,15 +101,15 @@ class TestFeaturize(unittest.TestCase):
     # check values
     if targets is None:
         targets = self.targets
-    if names is None:
-        names = self.names
+    if mol_ids is None:
+        mol_ids = self.mol_ids
     if smiles is None:
         smiles = self.smiles
     assert len(data) == shape[0]
     if len(shape) > 1:
         assert data.ix[0, 'features'].shape == shape[1:]
     assert np.array_equal(data['y'], targets), data['y']
-    assert np.array_equal(data['names'], names), data['names']
+    assert np.array_equal(data['mol_id'], mol_ids), data['mol_id']
     assert np.array_equal(data['smiles'], smiles), data['smiles']
 
     # return output in case anything else needs to be checked
@@ -155,15 +155,17 @@ class TestFeaturize(unittest.TestCase):
     self.check_output(['coulomb_matrix', '--max_atoms', '50'],
                       (2, 1, 1275))
 
+  # TODO(rbharath): This is broken. Might be a quick fix by using obabel
+  # API instead of commandline.
   def test_image_features(self):
     """
-    Test image features.
+    Test image features. Currently fails.
     """
     self.check_output(['image', '--size', '16'], (2, 16, 16, 3))
 
   def test_esp(self):
     """
-    Test ESP.
+    Test ESP. Fails if antechamber is not installed.
     """
     self.check_output(['esp', '--size', '20'], (2, 1, 61, 61, 61))
 
@@ -210,7 +212,7 @@ class TestFeaturize(unittest.TestCase):
     mol.SetProp('_Name', 'romosetron')
     AllChem.Compute2DCoords(mol)
     self.mols[1] = mol
-    self.names[1] = 'romosetron'
+    self.mol_ids[1] = 'romosetron'
     self.smiles[1] = Chem.MolToSmiles(mol, isomericSmiles=True)
 
     # write mols
@@ -238,12 +240,12 @@ class TestFeaturize(unittest.TestCase):
     """
 
     # write targets
-    targets = {'names': ['ibuprofen'], 'y': [0]}
+    targets = {'mol_id': ['ibuprofen'], 'y': [0]}
     write_pickle(targets, self.targets_filename)
 
     # run script
     self.check_output(['circular'], (1, 2048), targets=targets['y'],
-                      names=targets['names'], smiles=[self.smiles[1]])
+                      mol_ids=targets['mol_id'], smiles=[self.smiles[1]])
 
   def test_collate_mols2(self):
     """
@@ -251,7 +253,7 @@ class TestFeaturize(unittest.TestCase):
     """
 
     # write targets
-    targets = {'names': ['aspirin', 'ibuprofen'], 'y': [0, 1]}
+    targets = {'mol_id': ['aspirin', 'ibuprofen'], 'y': [0, 1]}
     write_pickle(targets, self.targets_filename)
 
     # write mols
@@ -262,7 +264,7 @@ class TestFeaturize(unittest.TestCase):
 
     # run script
     self.check_output(['circular'], (1, 2048), targets=[0],
-                      names=['aspirin'], smiles=[self.smiles[0]])
+                      mol_ids=['aspirin'], smiles=[self.smiles[0]])
 
   def test_collate_mols3(self):
     """
@@ -271,7 +273,7 @@ class TestFeaturize(unittest.TestCase):
     """
 
     # write targets
-    targets = {'names': ['ibuprofen', 'aspirin'], 'y': [1, 0]}
+    targets = {'mol_id': ['ibuprofen', 'aspirin'], 'y': [1, 0]}
     write_pickle(targets, self.targets_filename)
 
     # run script

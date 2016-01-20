@@ -11,15 +11,10 @@ file:
 # edu. If you use NNScore 2.01 in your work, please cite [REFERENCE
 # HERE].
 """
-# pylint mistakenly reports numpy errors:
-#     pylint: disable=E1101
-
-__author__ = "Bharath Ramsundar and Jacob Durrant"
-__license__ = "GNU General Public License"
-
 import ast
 import math
 import textwrap
+import warnings
 import numpy as np
 from vs_utils.utils.nnscore_utils import AromaticRing
 from vs_utils.utils.nnscore_utils import Atom
@@ -31,6 +26,9 @@ from vs_utils.utils.nnscore_utils import cross_product
 from vs_utils.utils.nnscore_utils import dihedral
 from vs_utils.utils.nnscore_utils import dot_product
 from vs_utils.utils.nnscore_utils import vector_subtraction
+
+__author__ = "Bharath Ramsundar and Jacob Durrant"
+__license__ = "GNU General Public License"
 
 def remove_redundant_rings(rings):
   """Filters out those rings which are supersets of other rings.
@@ -57,7 +55,7 @@ def remove_redundant_rings(rings):
   # [2, 1] maps to '[1, 2]'. These strings are hashable. To recover the
   # original lists, we use ast.literal_eval.
   rings = [ast.literal_eval(ring_str) for ring_str in
-      list(set([str(sorted(ring)) for ring in rings]))]
+           list(set([str(sorted(ring)) for ring in rings]))]
   # Use dictionary to maintain state about which rings are supersets.
   ring_dict = dict(zip(range(len(rings)), rings))
 
@@ -83,12 +81,12 @@ def print_warning(atom, residue, need):
   need: string
     Description of need for this atom in residue.
   """
-  text = ('WARNING: There is no atom named "%s"' % atom
-      + 'in the protein residue ' + residue + '.'
-      + ' Please use standard naming conventions for all'
-      + ' protein residues. This atom is needed to determine'
-      + ' %s. If this residue is far from the' % need
-      + ' active site, this warning may not affect the NNScore.')
+  text = ('WARNING: There is no atom named "%s"' % atom +
+          'in the protein residue ' + residue + '.' + ' '
+          'Please use standard naming conventions for all ' +
+          'protein residues. This atom is needed to determine ' +
+          '%s. If this residue is far from the ' % need +
+          'active site, this warning may not affect the NNScore.')
   lines = textwrap.wrap(text, 80)
   for line in lines:
     print line
@@ -115,58 +113,58 @@ def bond_length(element1, element2):
   # All distances are in Angstroms. Duplicate pairs not specified. For
   # example, to find distance ("H", "C"), the lookup key is ("C", "H")
   distances = {
-    ("C", "C"): 1.53,
-    ("N", "N"): 1.425,
-    ("O", "O"): 1.469,
-    ("S", "S"): 2.048,
-    ("SI", "SI"): 2.359,
+      ("C", "C"): 1.53,
+      ("N", "N"): 1.425,
+      ("O", "O"): 1.469,
+      ("S", "S"): 2.048,
+      ("SI", "SI"): 2.359,
 
-    ("C", "H"): 1.059,
-    ("C", "N"): 1.469,
-    ("C", "O"): 1.413,
-    ("C", "S"): 1.819,
-    ("C", "F"): 1.399,
-    ("C", "CL"): 1.790,
-    ("C", "BR"): 1.910,
-    ("C", "I"): 2.162,
+      ("C", "H"): 1.059,
+      ("C", "N"): 1.469,
+      ("C", "O"): 1.413,
+      ("C", "S"): 1.819,
+      ("C", "F"): 1.399,
+      ("C", "CL"): 1.790,
+      ("C", "BR"): 1.910,
+      ("C", "I"): 2.162,
 
-    ("N", "H"): 1.009,
-    ("N", "O"): 1.463,
-    ("N", "BR"): 1.843,
-    ("N", "CL"): 1.743,
-    ("N", "F"): 1.406,
-    ("N", "I"): 2.2,
+      ("N", "H"): 1.009,
+      ("N", "O"): 1.463,
+      ("N", "BR"): 1.843,
+      ("N", "CL"): 1.743,
+      ("N", "F"): 1.406,
+      ("N", "I"): 2.2,
 
-    ("O", "S"): 1.577,
-    ("O", "H"): 0.967,
+      ("O", "S"): 1.577,
+      ("O", "H"): 0.967,
 
-    # This one not from source sited above. Not sure where it's from, but
-    # it wouldn't ever be used in the current context ("AutoGrow")
-    ("S", "H"): 2.025/1.5,
-    ("S", "N"): 1.633,
-    ("S", "BR"): 2.321,
-    ("S", "CL"): 2.283,
-    ("S", "F"): 1.640,
-    ("S", "I"): 2.687,
+      # This one not from source sited above. Not sure where it's from, but
+      # it wouldn't ever be used in the current context ("AutoGrow")
+      ("S", "H"): 2.025/1.5,
+      ("S", "N"): 1.633,
+      ("S", "BR"): 2.321,
+      ("S", "CL"): 2.283,
+      ("S", "F"): 1.640,
+      ("S", "I"): 2.687,
 
-    ("P", "BR"): 2.366,
-    ("P", "CL"): 2.008,
-    ("P", "F"): 1.495,
-    ("P", "I"): 2.490,
-    # estimate based on eye balling Handbook of Chemistry and Physics
-    ("P", "O"): 1.6,
+      ("P", "BR"): 2.366,
+      ("P", "CL"): 2.008,
+      ("P", "F"): 1.495,
+      ("P", "I"): 2.490,
+      # estimate based on eye balling Handbook of Chemistry and Physics
+      ("P", "O"): 1.6,
 
 
-    ("SI", "BR"): 2.284,
-    ("SI", "CL"): 2.072,
-    ("SI", "F"): 1.636,
-    ("SI", "P"): 2.264,
-    ("SI", "S"): 2.145,
-    ("SI", "C"): 1.888,
-    ("SI", "N"): 1.743,
-    ("SI", "O"): 1.631,
+      ("SI", "BR"): 2.284,
+      ("SI", "CL"): 2.072,
+      ("SI", "F"): 1.636,
+      ("SI", "P"): 2.264,
+      ("SI", "S"): 2.145,
+      ("SI", "C"): 1.888,
+      ("SI", "N"): 1.743,
+      ("SI", "O"): 1.631,
 
-    ("H", "H"): .7414,
+      ("H", "H"): .7414,
   }
   if (element1, element2) in distances:
     return distances[(element1, element2)]
@@ -174,9 +172,9 @@ def bond_length(element1, element2):
     return distances[(element2, element1)]
   else:
     raise ValueError("Distance between %s and %s is unknown" %
-        (element1, element2))
+                     (element1, element2))
 
-class MultiStructure:
+class MultiStructure(object):
   """
   Handler for PDB files with multiple models.
 
@@ -185,7 +183,7 @@ class MultiStructure:
   """
 
   def __init__(self):
-    self.molecules = {} 
+    self.molecules = {}
 
   def _separate_into_models(self, lines, noisy):
     """Separate lines into a list of models."""
@@ -212,26 +210,19 @@ class MultiStructure:
 
   def load_from_files(self, pdb_filename, pdbqt_filename):
     """Loads a collection of molecular structures from input files."""
-    with open(pdbqt_filename,"r") as f:
+    with open(pdbqt_filename, "r") as f:
       pdbqt_lines = f.readlines()
-    with open(pdb_filename,"r") as g:
+    with open(pdb_filename, "r") as g:
       pdb_lines = g.readlines()
-    print "pdb_filename"
-    print pdb_filename
     pdb_models = self._separate_into_models(pdb_lines, True)
-    print "len(pdb_models)"
-    print len(pdb_models)
     pdbqt_models = self._separate_into_models(pdbqt_lines, False)
-    print "len(pdbqt_models)"
-    print len(pdbqt_models)
     assert len(pdb_models) == len(pdbqt_models)
     for index, (pdb_lines, pdbqt_lines) in enumerate(
-      zip(pdb_models, pdbqt_models)):
+        zip(pdb_models, pdbqt_models)):
       self.molecules[index] = PDB()
       self.molecules[index].load_from_lines(pdb_lines, pdbqt_lines)
 
-
-class PDB:
+class PDB(object):
   """
   PDB file handler class.
 
@@ -254,10 +245,11 @@ class PDB:
     self.max_z = -9998.99
     self.min_z = 9999.99
     self.rotatable_bonds_count = 0
-    self.protein_resnames = ["ALA", "ARG", "ASN", "ASP", "ASH", "ASX",
-      "CYS", "CYM", "CYX", "GLN", "GLU", "GLH", "GLX", "GLY", "HIS",
-      "HID", "HIE", "HIP", "HSE", "HSD", "ILE", "LEU", "LYS", "LYN", "MET", "PHE",
-      "PRO", "SER", "THR", "TRP", "TYR", "VAL"]
+    self.protein_resnames = [
+        "ALA", "ARG", "ASN", "ASP", "ASH", "ASX",
+        "CYS", "CYM", "CYX", "GLN", "GLU", "GLH", "GLX", "GLY", "HIS",
+        "HID", "HIE", "HIP", "HSE", "HSD", "ILE", "LEU", "LYS", "LYN", "MET", "PHE",
+        "PRO", "SER", "THR", "TRP", "TYR", "VAL"]
     self.aromatic_rings = []
     self.charges = [] # a list of objects of type charge (defined below)
 
@@ -277,9 +269,9 @@ class PDB:
     pdbqt_filename: string
       Name of pdbqt file.
     """
-    with open(pdbqt_filename,"r") as f:
+    with open(pdbqt_filename, "r") as f:
       pdbqt_lines = f.readlines()
-    with open(pdb_filename,"r") as f:
+    with open(pdb_filename, "r") as f:
       pdb_lines = f.readlines()
     self.load_from_lines(pdb_lines, pdbqt_lines)
 
@@ -305,9 +297,9 @@ class PDB:
     pdbqt_filename: string
       Name of pdbqt file.
     """
-    with open(pdbqt_filename,"r") as f:
+    with open(pdbqt_filename, "r") as f:
       pdbqt_lines = f.readlines()
-    self.load_atoms_from_pdbqt_lines(lines)
+    self.load_atoms_from_pdbqt_lines(pdbqt_lines)
 
   def load_atoms_from_pdbqt_lines(self, lines):
     """Loads atoms and charges from provided PDBQT lines.
@@ -317,8 +309,8 @@ class PDB:
 
     Parameters
     ----------
-    lines: list 
-      List of lines in pdbqt file  
+    lines: list
+      List of lines in pdbqt file
     """
     autoindex = 1
     atom_already_loaded = []
@@ -335,15 +327,15 @@ class PDB:
 
           # this string unique identifies each atom
           key = (cur_atom.atomname.strip() + "_" +
-            str(cur_atom.resid) + "_" + cur_atom.residue.strip() +
-            "_" + cur_atom.chain.strip())
+                 str(cur_atom.resid) + "_" + cur_atom.residue.strip() +
+                 "_" + cur_atom.chain.strip())
 
           # so each atom can only be loaded once. No rotamers.
           atom_already_loaded.append(key)
           # So you're actually reindexing everything here.
           self.all_atoms[autoindex] = cur_atom
           #### TODO(rbharath): Disabling loading of non
-          if (not cur_atom.residue[-3:] in self.protein_resnames):
+          if cur_atom.residue[-3:] not in self.protein_resnames:
             self.non_protein_atoms[autoindex] = cur_atom
 
           autoindex = autoindex + 1
@@ -392,22 +384,29 @@ class PDB:
     for line in pdb_lines:
       if "CONECT" in line:
         if len(line) < 31:
-          raise ValueError("Bad PDB! "
-              "Improperly formatted CONECT line (too short)")
+          warnings.warn(
+              "Bad PDB! Improperly formatted CONECT line (too short)")
+          continue
         atom_index = int(line[6:11].strip())
         if atom_index not in self.all_atoms:
-          raise ValueError("Bad PDB! "
-              "Improper CONECT line: (atom index not loaded)")
+          warnings.warn(
+              "Bad PDB! Improper CONECT line: (atom index not loaded)")
+          continue
         bonded_atoms = []
         ranges = [(11, 16), (16, 21), (21, 26), (26, 31)]
+        misformatted = False
         for (lower, upper) in ranges:
           # Check that the range is nonempty.
           if line[lower:upper].strip():
             index = int(line[lower:upper])
             if index not in self.all_atoms:
-              raise ValueError("Bad PDB! "
-                  "Improper CONECT line: (bonded atom not loaded)")
+              warnings.warn(
+                  "Bad PDB! Improper CONECT line: (bonded atom not loaded)")
+              misformatted = True
+              break
             bonded_atoms.append(index)
+        if misformatted:
+          continue
         atom = self.all_atoms[atom_index]
         atom.add_neighbor_atom_indices(bonded_atoms)
 
@@ -435,8 +434,9 @@ class PDB:
     to_output = ""
     # write coordinates
     for atomindex in self.all_atoms:
-      to_output = (to_output +
-          self.all_atoms[atomindex].create_pdb_line(atomindex) + "\n")
+      to_output = (
+          to_output + self.all_atoms[atomindex].create_pdb_line(atomindex)
+          + "\n")
     return to_output
 
   def add_new_atom(self, atom):
@@ -542,108 +542,108 @@ class PDB:
     real_resname = resname[-3:]
 
     if real_resname in self.protein_resnames:
-      if not "N" in residue_atoms:
+      if "N" not in residue_atoms:
         print_warning("N", key, "secondary structure")
-      if not "C" in residue_atoms:
+      if "C" not in residue_atoms:
         print_warning("C", key, "secondary structure")
-      if not "CA" in residue_atoms:
+      if "CA" not in residue_atoms:
         print_warning("CA", key, "secondary structure")
 
       if (real_resname == "GLU" or real_resname == "GLH"
           or real_resname == "GLX"):
-        if not "OE1" in residue_atoms:
+        if "OE1" not in residue_atoms:
           print_warning("OE1", key, "salt-bridge interactions")
-        if not "OE2" in residue_atoms:
+        if "OE2" not in residue_atoms:
           print_warning("OE2", key, "salt-bridge interactions")
 
       if (real_resname == "ASP" or real_resname == "ASH"
           or real_resname == "ASX"):
-        if not "OD1" in residue_atoms:
+        if "OD1" not in residue_atoms:
           print_warning("OD1", key, "salt-bridge interactions")
-        if not "OD2" in residue_atoms:
+        if "OD2" not in residue_atoms:
           print_warning("OD2", key, "salt-bridge interactions")
 
       if real_resname == "LYS" or real_resname == "LYN":
-        if not "NZ" in residue_atoms:
-          print_warning("NZ", key,
-              "pi-cation and salt-bridge interactions")
+        if "NZ" not in residue_atoms:
+          print_warning(
+              "NZ", key, "pi-cation and salt-bridge interactions")
 
       if real_resname == "ARG":
-        if not "NH1" in residue_atoms:
-          print_warning("NH1", key,
-              "pi-cation and salt-bridge interactions")
-        if not "NH2" in residue_atoms:
-          print_warning("NH2", key,
-              "pi-cation and salt-bridge interactions")
+        if "NH1" not in residue_atoms:
+          print_warning(
+              "NH1", key, "pi-cation and salt-bridge interactions")
+        if "NH2" not in residue_atoms:
+          print_warning(
+              "NH2", key, "pi-cation and salt-bridge interactions")
 
       if (real_resname == "HIS" or real_resname == "HID"
           or real_resname == "HIE" or real_resname == "HIP"):
-        if not "NE2" in residue_atoms:
-          print_warning("NE2", key,
-              "pi-cation and salt-bridge interactions")
-        if not "ND1" in residue_atoms:
-          print_warning("ND1", key,
-              "pi-cation and salt-bridge interactions")
+        if "NE2" not in residue_atoms:
+          print_warning(
+              "NE2", key, "pi-cation and salt-bridge interactions")
+        if "ND1" not in residue_atoms:
+          print_warning(
+              "ND1", key, "pi-cation and salt-bridge interactions")
 
       if real_resname == "PHE":
-        if not "CG" in residue_atoms:
+        if "CG" not in residue_atoms:
           print_warning("CG", key, "pi-pi and pi-cation interactions")
-        if not "CD1" in residue_atoms:
+        if "CD1" not in residue_atoms:
           print_warning("CD1", key, "pi-pi and pi-cation interactions")
-        if not "CD2" in residue_atoms:
+        if "CD2" not in residue_atoms:
           print_warning("CD2", key, "pi-pi and pi-cation interactions")
-        if not "CE1" in residue_atoms:
+        if "CE1" not in residue_atoms:
           print_warning("CE1", key, "pi-pi and pi-cation interactions")
-        if not "CE2" in residue_atoms:
+        if "CE2" not in residue_atoms:
           print_warning("CE2", key, "pi-pi and pi-cation interactions")
-        if not "CZ" in residue_atoms:
+        if "CZ" not in residue_atoms:
           print_warning("CZ", key, "pi-pi and pi-cation interactions")
 
       if real_resname == "TYR":
-        if not "CG" in residue_atoms:
+        if "CG" not in residue_atoms:
           print_warning("CG", key, "pi-pi and pi-cation interactions")
-        if not "CD1" in residue_atoms:
+        if "CD1" not in residue_atoms:
           print_warning("CD1", key, "pi-pi and pi-cation interactions")
-        if not "CD2" in residue_atoms:
+        if "CD2" not in residue_atoms:
           print_warning("CD2", key, "pi-pi and pi-cation interactions")
-        if not "CE1" in residue_atoms:
+        if "CE1" not in residue_atoms:
           print_warning("CE1", key, "pi-pi and pi-cation interactions")
-        if not "CE2" in residue_atoms:
+        if "CE2" not in residue_atoms:
           print_warning("CE2", key, "pi-pi and pi-cation interactions")
-        if not "CZ" in residue_atoms:
+        if "CZ" not in residue_atoms:
           print_warning("CZ", key, "pi-pi and pi-cation interactions")
 
       if real_resname == "TRP":
-        if not "CG" in residue_atoms:
+        if "CG" not in residue_atoms:
           print_warning("CG", key, "pi-pi and pi-cation interactions")
-        if not "CD1" in residue_atoms:
+        if "CD1" not in residue_atoms:
           print_warning("CD1", key, "pi-pi and pi-cation interactions")
-        if not "CD2" in residue_atoms:
+        if "CD2" not in residue_atoms:
           print_warning("CD2", key, "pi-pi and pi-cation interactions")
-        if not "NE1" in residue_atoms:
+        if "NE1" not in residue_atoms:
           print_warning("NE1", key, "pi-pi and pi-cation interactions")
-        if not "CE2" in residue_atoms:
+        if "CE2" not in residue_atoms:
           print_warning("CE2", key, "pi-pi and pi-cation interactions")
-        if not "CE3" in residue_atoms:
+        if "CE3" not in residue_atoms:
           print_warning("CE3", key, "pi-pi and pi-cation interactions")
-        if not "CZ2" in residue_atoms:
+        if "CZ2" not in residue_atoms:
           print_warning("CZ2", key, "pi-pi and pi-cation interactions")
-        if not "CZ3" in residue_atoms:
+        if "CZ3" not in residue_atoms:
           print_warning("CZ3", key, "pi-pi and pi-cation interactions")
-        if not "CH2" in residue_atoms:
+        if "CH2" not in residue_atoms:
           print_warning("CH2", key, "pi-pi and pi-cation interactions")
 
       if (real_resname == "HIS" or real_resname == "HID" or
-        real_resname == "HIE" or real_resname == "HIP"):
-        if not "CG" in residue_atoms:
+          real_resname == "HIE" or real_resname == "HIP"):
+        if "CG" not in residue_atoms:
           print_warning("CG", key, "pi-pi and pi-cation interactions")
-        if not "ND1" in residue_atoms:
+        if "ND1" not in residue_atoms:
           print_warning("ND1", key, "pi-pi and pi-cation interactions")
-        if not "CD2" in residue_atoms:
+        if "CD2" not in residue_atoms:
           print_warning("CD2", key, "pi-pi and pi-cation interactions")
-        if not "CE1" in residue_atoms:
+        if "CE1" not in residue_atoms:
           print_warning("CE2", key, "pi-pi and pi-cation interactions")
-        if not "NE2" in residue_atoms:
+        if "NE2" not in residue_atoms:
           print_warning("NE2", key, "pi-pi and pi-cation interactions")
 
 
@@ -708,12 +708,15 @@ class PDB:
           atom1 = self.all_atoms[atom.indices_of_atoms_connecting[0]]
           atom2 = self.all_atoms[atom.indices_of_atoms_connecting[1]]
           atom3 = self.all_atoms[atom.indices_of_atoms_connecting[2]]
-          angle1 = (angle_between_three_points(atom1.coordinates,
-            nitrogen.coordinates, atom2.coordinates) * 180.0 / math.pi)
-          angle2 = (angle_between_three_points(atom1.coordinates,
-            nitrogen.coordinates, atom3.coordinates) * 180.0 / math.pi)
-          angle3 = (angle_between_three_points(atom2.coordinates,
-            nitrogen.coordinates, atom3.coordinates) * 180.0 / math.pi)
+          angle1 = (angle_between_three_points(
+              atom1.coordinates, nitrogen.coordinates, atom2.coordinates)
+                    * 180.0 / math.pi)
+          angle2 = (angle_between_three_points(
+              atom1.coordinates, nitrogen.coordinates, atom3.coordinates)
+                    * 180.0 / math.pi)
+          angle3 = (angle_between_three_points(
+              atom2.coordinates, nitrogen.coordinates, atom3.coordinates)
+                    * 180.0 / math.pi)
           average_angle = (angle1 + angle2 + angle3) / 3
           # Test that the angles approximately match the tetrahedral 109
           # degrees
@@ -743,7 +746,7 @@ class PDB:
       # (the phosphorus). I think this will get several phosphorus
       # substances.
       if atom.element == "P":
-        oxygens = self.connected_atoms(atom_index,"O")
+        oxygens = self.connected_atoms(atom_index, "O")
         if len(oxygens) >= 2: # the phosphorus is bound to at least two oxygens
           # now count the number of oxygens bound only to the phosphorus
           count = 0
@@ -804,7 +807,7 @@ class PDB:
             # Handle case of guanidinium cation
             if len(nitrogens_to_use) == 3 and connector_ind == -1:
               charges.append(Charged(atom.coordinates.copy_of(),
-                  [atom_index], True))
+                                     [atom_index], True))
             elif len(nitrogens_to_use) == 2 and connector_ind != -1:
               # so there are at two nitrogens that are only
               # connected to the carbon (and probably some
@@ -813,12 +816,12 @@ class PDB:
               # now you need to make sure connector_ind atom is sp3 hybridized
               connector_atom = self.all_atoms[connector_ind]
               if ((connector_atom.element == "C" and
-                  connector_atom.number_of_neighbors() == 4)
-                or (connector_atom.element == "O"
-                  and connector_atom.number_of_neighbors() == 2)
-                or connector_atom.element == "N"
-                or connector_atom.element == "S"
-                or connector_atom.element == "P"):
+                   connector_atom.number_of_neighbors() == 4)
+                  or (connector_atom.element == "O"
+                      and connector_atom.number_of_neighbors() == 2)
+                  or connector_atom.element == "N"
+                  or connector_atom.element == "S"
+                  or connector_atom.element == "P"):
 
                 # There are only two "guanidino" nitrogens. Assume the
                 # negative charge is spread equally between the two.
@@ -829,9 +832,9 @@ class PDB:
                 indexes = [atom_index]
                 indexes.extend(nitrogens_to_use)
                 indexes.extend(self.connected_atoms(
-                    nitrogens_to_use[0],"H"))
+                    nitrogens_to_use[0], "H"))
                 indexes.extend(self.connected_atoms(
-                    nitrogens_to_use[1],"H"))
+                    nitrogens_to_use[1], "H"))
                 charges.append(Charged(avg_pt, indexes, True))
 
       if atom.element == "C": # let's check for a carboxylate
@@ -844,16 +847,15 @@ class PDB:
             # hydrogen, that's okay)
             if len(oxygens) == 2:
               if (len(self.connected_heavy_atoms(oxygens[0])) == 1
-                and len(self.connected_heavy_atoms(oxygens[1])) == 1):
+                  and len(self.connected_heavy_atoms(oxygens[1])) == 1):
                 # so it's a carboxylate! Add a negative charge.
 
                 # Assume negative charge is centered between the two
                 # oxygens.
                 avg_pt = average_point(
-                    [self.all_atoms[oxygen].coordinates for oxygen in
-                    oxygens])
-                chrg = Charged(avg_pt,
-                    [oxygens[0], atom_index, oxygens[1]], False)
+                    [self.all_atoms[oxygen].coordinates for oxygen in oxygens])
+                chrg = Charged(
+                    avg_pt, [oxygens[0], atom_index, oxygens[1]], False)
                 charges.append(chrg)
     return charges
 
@@ -874,11 +876,11 @@ class PDB:
       # bound to at least three oxygens and at least three are
       # bound to only the sulfur (or the sulfur and a hydrogen).
       if atom.element == "S":
-        oxygens = self.connected_atoms(atom_index,"O")
+        oxygens = self.connected_atoms(atom_index, "O")
         # the sulfur is bound to at least three oxygens now
         # count the number of oxygens that are only bound to the
         # sulfur
-        if len(oxygens) >=3:
+        if len(oxygens) >= 3:
           count = 0
           for oxygen_index in oxygens:
             if len(self.connected_heavy_atoms(oxygen_index)) == 1:
@@ -949,7 +951,7 @@ class PDB:
     self.charges += self.get_aspartic_acid_charges(residues)
 
   def get_residue_charges(self, residues, resnames, atomnames,
-      charged_atomnames, positive=True):
+                          charged_atomnames, positive=True):
     """Helper function that assigns charges to specified residue.
 
     Regardless of protonation state, we assume below that residues are
@@ -991,8 +993,7 @@ class PDB:
           if atomname in charged_atomnames:
             charged_atoms.append(atom)
         if len(charged_atoms) == len(charged_atomnames):
-          avg_pt = average_point([n.coordinates for n in
-              charged_atoms])
+          avg_pt = average_point([n.coordinates for n in charged_atoms])
           if avg_pt.magnitude() != 0:
             charges.append(Charged(avg_pt, indices, positive))
     return charges
@@ -1009,7 +1010,8 @@ class PDB:
     residues: dictionary
       Dict output by get_residue_list
     """
-    return self.get_residue_charges(residues, ["LYS", "LYN"],
+    return self.get_residue_charges(
+        residues, ["LYS", "LYN"],
         ["NZ", "HZ1", "HNZ1", "HZ2", "HNZ2", "HZ3", "HNZ3"],
         ["NZ"])
 
@@ -1021,9 +1023,10 @@ class PDB:
     residues: dictionary
       Dict output by get_residue_list
     """
-    return self.get_residue_charges(residues, ["ARG"],
+    return self.get_residue_charges(
+        residues, ["ARG"],
         ["NH1", "NH2", "2HH2", "HN22", "1HH2", "HN12", "CZ", "2HH1", "HN21",
-        "1HH1", "HN11"], ["NH1", "NH2"])
+         "1HH1", "HN11"], ["NH1", "NH2"])
 
   def get_histidine_charges(self, residues):
     """Assign charges to histidine residues.
@@ -1043,7 +1046,8 @@ class PDB:
     residues: dictionary
       Dict output by get_residue_list
     """
-    return self.get_residue_charges(residues, ["HIS", "HID", "HIE", "HIP"],
+    return self.get_residue_charges(
+        residues, ["HIS", "HID", "HIE", "HIP"],
         ["NE2", "ND1", "HE2", "HD1", "CE1", "CD2", "CG"],
         ["NE2", "ND1"])
 
@@ -1070,7 +1074,8 @@ class PDB:
     residues: dictionary
       Dict output by get_residue_list
     """
-    return self.get_residue_charges(residues, ["GLU", "GLH", "GLX"],
+    return self.get_residue_charges(
+        residues, ["GLU", "GLH", "GLX"],
         ["OE1", "OE2", "CD"], ["OE1", "OE2"], positive=False)
 
   def get_aspartic_acid_charges(self, residues):
@@ -1090,7 +1095,8 @@ class PDB:
     residues: dictionary
       Dict output by get_residue_list
     """
-    return self.get_residue_charges(residues, ["ASP", "ASH", "ASX"],
+    return self.get_residue_charges(
+        residues, ["ASP", "ASH", "ASX"],
         ["OD1", "OD2", "CG"], ["OD1", "OD2"], positive=False)
 
   # Functions to identify aromatic rings
@@ -1151,10 +1157,9 @@ class PDB:
     abxac = cross_product(ab, ac)
 
     ## formula for plane will be ax + by + cz = d
-    offset = dot_product(abxac,
-        self.all_atoms[indices_of_ring[0]].coordinates)
+    offset = dot_product(abxac, self.all_atoms[indices_of_ring[0]].coordinates)
     return AromaticRing(center, indices_of_ring,
-        list(abxac.as_array()) + [offset], radius)
+                        list(abxac.as_array()) + [offset], radius)
 
   def ring_is_flat(self, ring):
     """Checks whether specified ring is flat.
@@ -1212,7 +1217,7 @@ class PDB:
     # cases, by testing that ring atom indices are a subset of non-protein
     # ring indices.
     rings = [ring for ring in rings if
-        set(ring).issubset(self.non_protein_atoms.keys())]
+             set(ring).issubset(self.non_protein_atoms.keys())]
     # Aromatic rings are flat
     rings = [ring for ring in rings if self.ring_is_flat(ring)]
 
@@ -1259,9 +1264,9 @@ class PDB:
     updated_crossings.append(index)
 
     for connected_atom in atom.indices_of_atoms_connecting:
-      if not connected_atom in already_crossed:
-        self.ring_recursive(connected_atom, updated_crossings,
-            orig_atom, all_rings)
+      if connected_atom not in already_crossed:
+        self.ring_recursive(
+            connected_atom, updated_crossings, orig_atom, all_rings)
       if connected_atom == orig_atom and orig_atom != already_crossed[-1]:
         all_rings.append(updated_crossings)
 
@@ -1324,7 +1329,8 @@ class PDB:
     aromatics: list
       List of Aromatic objects for aromatics in phenylalanines.
     """
-    return self.get_residue_aromatics(residues, "PHE",
+    return self.get_residue_aromatics(
+        residues, "PHE",
         ["CG", "CD1", "CE1", "CZ", "CE2", "CD2"])
 
   def get_tyrosine_aromatics(self, residues):
@@ -1339,8 +1345,8 @@ class PDB:
     aromatics: list
       List of Aromatic objects for aromatics in tyrosines.
     """
-    return self.get_residue_aromatics(residues, "TYR",
-        ["CG", "CD1", "CE1", "CZ", "CE2", "CD2"])
+    return self.get_residue_aromatics(
+        residues, "TYR", ["CG", "CD1", "CE1", "CZ", "CE2", "CD2"])
 
   def get_histidine_aromatics(self, residues):
     """Assign aromatics in histidines.
@@ -1354,8 +1360,8 @@ class PDB:
     aromatics: list
       List of Aromatic objects for aromatics in histidines.
     """
-    return self.get_residue_aromatics(residues,
-        ["HIS", "HID", "HIE", "HIP"],
+    return self.get_residue_aromatics(
+        residues, ["HIS", "HID", "HIE", "HIP"],
         ["CG", "ND1", "CE1", "NE2", "CD2"])
 
   def get_tryptophan_aromatics(self, residues):
@@ -1371,11 +1377,11 @@ class PDB:
       List of Aromatic objects for aromatics in tryptophans.
     """
     # Tryptophan has two aromatic rings.
-    small_ring = self.get_residue_aromatics(residues,
-        ["TRP"],
+    small_ring = self.get_residue_aromatics(
+        residues, ["TRP"],
         ["CG", "CD1", "NE1", "CE2", "CD2"])
-    large_ring = self.get_residue_aromatics(residues,
-        ["TRP"],
+    large_ring = self.get_residue_aromatics(
+        residues, ["TRP"],
         ["CE2", "CD2", "CE3", "CZ3", "CH2", "CZ2"])
     return small_ring + large_ring
 
@@ -1421,14 +1427,14 @@ class PDB:
           # the last four all have the same resid
           # TODO(rbharath): Ugly code right here...
           if (atoms[0].resid == atoms[1].resid
-            and atoms[0].resid == atoms[2].resid
-            and atoms[0].resid == atoms[3].resid
-            and atoms[0] != atoms[4].resid
-            and atoms[4].resid == atoms[5].resid
-            and atoms[4].resid == atoms[6].resid
-            and atoms[4].resid == atoms[7].resid
-            and atoms[0].resid + 1 == atoms[7].resid
-            and atoms[0].chain == atoms[7].chain):
+              and atoms[0].resid == atoms[2].resid
+              and atoms[0].resid == atoms[3].resid
+              and atoms[0] != atoms[4].resid
+              and atoms[4].resid == atoms[5].resid
+              and atoms[4].resid == atoms[6].resid
+              and atoms[4].resid == atoms[7].resid
+              and atoms[0].resid + 1 == atoms[7].resid
+              and atoms[0].chain == atoms[7].chain):
 
             resid1 = atoms[0].resid
             resid2 = atoms[7].resid
@@ -1452,9 +1458,11 @@ class PDB:
 
             # Now compute the phi and psi dihedral angles
             phi = (dihedral(first_c.coordinates, second_n.coordinates,
-                second_ca.coordinates, second_c.coordinates) * 180.0 / math.pi)
+                            second_ca.coordinates, second_c.coordinates)
+                   * 180.0 / math.pi)
             psi = (dihedral(first_n.coordinates, first_ca.coordinates,
-                first_c.coordinates, second_n.coordinates) * 180.0 / math.pi)
+                            first_c.coordinates, second_n.coordinates)
+                   * 180.0 / math.pi)
 
             # Now use those angles to determine if it's alpha or beta
             if phi > -145 and phi < -35 and psi > -70 and psi < 50:
@@ -1463,7 +1471,7 @@ class PDB:
               structure[key1] = "ALPHA"
               structure[key2] = "ALPHA"
             if ((phi >= -180 and phi < -40 and psi <= 180 and psi > 90)
-              or (phi >= -180 and phi < -70 and psi <= -165)):
+                or (phi >= -180 and phi < -70 and psi <= -165)):
               key1 = str(first_c.resid) + "_" + first_c.chain
               key2 = str(second_c.resid) + "_" + second_c.chain
               structure[key1] = "BETA"
@@ -1482,7 +1490,7 @@ class PDB:
       List of all alpha carbons in protein.
     """
     change = True
-    while change == True:
+    while change:
       change = False
 
       # A residue of index i is only going to be in an alpha helix
@@ -1506,7 +1514,7 @@ class PDB:
                   # that their residues are probably hydrogen bonded
                   another_alpha_is_close = True
                   break
-          if another_alpha_is_close == False:
+          if not another_alpha_is_close:
             self.set_structure_of_residue(ca_atom.chain, ca_atom.resid, "OTHER")
             change = True
 
@@ -1531,78 +1539,78 @@ class PDB:
         atom6 = self.all_atoms[index_in_pdb6]
 
         if (atom1.resid + 1 == atom2.resid
-          and atom2.resid + 1 == atom3.resid
-          and atom3.resid + 1 == atom4.resid
-          and atom4.resid + 1 == atom5.resid
-          and atom5.resid + 1 == atom6.resid): # so they are sequential
+            and atom2.resid + 1 == atom3.resid
+            and atom3.resid + 1 == atom4.resid
+            and atom4.resid + 1 == atom5.resid
+            and atom5.resid + 1 == atom6.resid): # so they are sequential
           if (atom1.structure != "ALPHA"
-            and atom2.structure == "ALPHA"
-            and atom3.structure != "ALPHA"):
+              and atom2.structure == "ALPHA"
+              and atom3.structure != "ALPHA"):
             self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
             change = True
           if (atom2.structure != "ALPHA"
-            and atom3.structure == "ALPHA"
-            and atom4.structure != "ALPHA"):
+              and atom3.structure == "ALPHA"
+              and atom4.structure != "ALPHA"):
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             change = True
           if (atom3.structure != "ALPHA"
-            and atom4.structure == "ALPHA"
-            and atom5.structure != "ALPHA"):
+              and atom4.structure == "ALPHA"
+              and atom5.structure != "ALPHA"):
             self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
             change = True
           if (atom4.structure != "ALPHA"
-            and atom5.structure == "ALPHA"
-            and atom6.structure != "ALPHA"):
+              and atom5.structure == "ALPHA"
+              and atom6.structure != "ALPHA"):
             self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
             change = True
 
           if (atom1.structure != "ALPHA"
-            and atom2.structure == "ALPHA"
-            and atom3.structure == "ALPHA"
-            and atom4.structure != "ALPHA"):
+              and atom2.structure == "ALPHA"
+              and atom3.structure == "ALPHA"
+              and atom4.structure != "ALPHA"):
             self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             change = True
           if (atom2.structure != "ALPHA"
-            and atom3.structure == "ALPHA"
-            and atom4.structure == "ALPHA"
-            and atom5.structure != "ALPHA"):
+              and atom3.structure == "ALPHA"
+              and atom4.structure == "ALPHA"
+              and atom5.structure != "ALPHA"):
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
             change = True
           if (atom3.structure != "ALPHA"
-            and atom4.structure == "ALPHA"
-            and atom5.structure == "ALPHA"
-            and atom6.structure != "ALPHA"):
+              and atom4.structure == "ALPHA"
+              and atom5.structure == "ALPHA"
+              and atom6.structure != "ALPHA"):
             self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
             self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
             change = True
 
           if (atom1.structure != "ALPHA"
-            and atom2.structure == "ALPHA"
-            and atom3.structure == "ALPHA"
-            and atom4.structure == "ALPHA"
-            and atom5.structure != "ALPHA"):
+              and atom2.structure == "ALPHA"
+              and atom3.structure == "ALPHA"
+              and atom4.structure == "ALPHA"
+              and atom5.structure != "ALPHA"):
             self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
             change = True
           if (atom2.structure != "ALPHA"
-            and atom3.structure == "ALPHA"
-            and atom4.structure == "ALPHA"
-            and atom5.structure == "ALPHA"
-            and atom6.structure != "ALPHA"):
+              and atom3.structure == "ALPHA"
+              and atom4.structure == "ALPHA"
+              and atom5.structure == "ALPHA"
+              and atom6.structure != "ALPHA"):
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
             self.set_structure_of_residue(atom5.chain, atom5.resid, "OTHER")
             change = True
 
           if (atom1.structure != "ALPHA"
-            and atom2.structure == "ALPHA"
-            and atom3.structure == "ALPHA"
-            and atom4.structure == "ALPHA"
-            and atom5.structure == "ALPHA"
-            and atom6.structure != "ALPHA"):
+              and atom2.structure == "ALPHA"
+              and atom3.structure == "ALPHA"
+              and atom4.structure == "ALPHA"
+              and atom5.structure == "ALPHA"
+              and atom6.structure != "ALPHA"):
             self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             self.set_structure_of_residue(atom4.chain, atom4.resid, "OTHER")
@@ -1621,7 +1629,7 @@ class PDB:
       List of all alpha carbons in protein.
     """
     change = True
-    while change == True:
+    while change:
       change = False
 
       # now go through each of the BETA CA atoms. A residue is only
@@ -1649,7 +1657,7 @@ class PDB:
                       # so these to atoms are close to each other
                       another_beta_is_close = True
                       break
-          if another_beta_is_close == False:
+          if not another_beta_is_close:
             self.set_structure_of_residue(ca_atom.chain, ca_atom.resid, "OTHER")
             change = True
 
@@ -1671,23 +1679,23 @@ class PDB:
         atom4 = self.all_atoms[index_in_pdb4]
 
         if (atom1.resid + 1 == atom2.resid and atom2.resid + 1 ==
-          atom3.resid and atom3.resid + 1 == atom4.resid):
+            atom3.resid and atom3.resid + 1 == atom4.resid):
           # so they are sequential
 
           if (atom1.structure != "BETA"
-            and atom2.structure == "BETA"
-            and atom3.structure != "BETA"):
+              and atom2.structure == "BETA"
+              and atom3.structure != "BETA"):
             self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
             change = True
           if (atom2.structure != "BETA"
-            and atom3.structure == "BETA"
-            and atom4.structure != "BETA"):
+              and atom3.structure == "BETA"
+              and atom4.structure != "BETA"):
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             change = True
           if (atom1.structure != "BETA"
-            and atom2.structure == "BETA"
-            and atom3.structure == "BETA"
-            and atom4.structure != "BETA"):
+              and atom2.structure == "BETA"
+              and atom3.structure == "BETA"
+              and atom4.structure != "BETA"):
             self.set_structure_of_residue(atom2.chain, atom2.resid, "OTHER")
             self.set_structure_of_residue(atom3.chain, atom3.resid, "OTHER")
             change = True
@@ -1710,7 +1718,7 @@ class PDB:
     for atom_index in self.all_atoms:
       atom = self.all_atoms[atom_index]
       if (atom.residue.strip() in self.protein_resnames
-        and atom.atomname.strip() == "CA"):
+          and atom.atomname.strip() == "CA"):
         ca_list.append(atom_index)
 
     # Use this list to perform sanity checks on alpha-helix and beta-sheet

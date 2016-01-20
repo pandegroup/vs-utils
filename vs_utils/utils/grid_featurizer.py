@@ -20,7 +20,6 @@ def merge_two_dicts(x, y):
   z.update(y)
   return z
 
-
 def compute_centroid(coordinates):
   '''given molecule, an instance of class PDB, compute the x,y,z centroid of that molecule'''
 
