@@ -9,25 +9,27 @@ The following code implements a featurizer based on NNScore 2.0.1
 # edu. If you use NNScore 2.01 in your work, please cite [REFERENCE
 # HERE].
 """
-# pylint mistakenly reports numpy errors:
-#     pylint: disable=E1101
-
-__author__ = "Bharath Ramsundar"
-__license__ = "GNU General Public License"
-
+import os
 import math
-import numpy as np
 import re
 import itertools
+import tempfile
+import shutil
+import numpy as np
+from vs_utils.features import ComplexFeaturizer
 from vs_utils.utils.nnscore_pdb import PDB
 from vs_utils.utils.nnscore_utils import Point
 from vs_utils.utils.nnscore_utils import angle_between_points
 from vs_utils.utils.nnscore_utils import angle_between_three_points
 from vs_utils.utils.nnscore_utils import project_point_onto_plane
+from vs_utils.utils.nnscore_utils import hydrogenate_and_compute_partial_charges
+
+__author__ = "Bharath Ramsundar"
+__license__ = "GNU General Public License"
 
 #ELECTROSTATIC_JOULE_PER_MOL = 138.94238460104697e4 # units?
 # This is just a scaling factor, so it's set so as to keep the network
-# inputs roughly contained in 0-1 
+# inputs roughly contained in 0-1
 ELECTROSTATIC_JOULE_PER_MOL = 10.0
 # O-H distance is 0.96 A, N-H is 1.01 A. See
 # http://www.science.uwaterloo.ca/~cchieh/cact/c120/bondel.html
@@ -63,7 +65,7 @@ SALT_BRIDGE_CUTOFF = 5.5
 PI_PADDING = 0.75
 
 
-def hashtable_entry_add_one(hashtable, key, toadd = 1):
+def hashtable_entry_add_one(hashtable, key, toadd=1):
   """Increments hashtable entry if exists, else creates entry."""
   # note that dictionaries (hashtables) are passed by reference in python
   if hashtable.has_key(key):
@@ -101,9 +103,8 @@ def compute_hydrophobic_contacts(ligand, receptor):
   """
   # Now see if there's hydrophobic contacts (C-C contacts)
   hydrophobics = {
-    'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
-    'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
-    }
+      'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
+      'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0}
   for ligand_index in ligand.all_atoms:
     ligand_atom = ligand.all_atoms[ligand_index]
     for receptor_index in receptor.all_atoms:
@@ -111,7 +112,8 @@ def compute_hydrophobic_contacts(ligand, receptor):
       dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
       if dist < CONTACT_CUTOFF:
         if ligand_atom.element == "C" and receptor_atom.element == "C":
-          hydrophobic_key = (receptor_atom.side_chain_or_backbone() +
+          hydrophobic_key = (
+              receptor_atom.side_chain_or_backbone() +
               "_" + receptor_atom.structure)
           hashtable_entry_add_one(hydrophobics, hydrophobic_key)
   return hydrophobics
@@ -137,8 +139,8 @@ def compute_electrostatic_energy(ligand, receptor):
     A PDB object describing the receptor protein.
   """
   electrostatics = {}
-  for first, second in itertools.product(Binana.atom_types,
-    Binana.atom_types):
+  for first, second in itertools.product(
+      Binana.atom_types, Binana.atom_types):
     key = "_".join(sorted([first, second]))
     electrostatics[key] = 0
   for ligand_index in ligand.all_atoms:
@@ -146,7 +148,7 @@ def compute_electrostatic_energy(ligand, receptor):
     for receptor_index in receptor.all_atoms:
       receptor_atom = receptor.all_atoms[receptor_index]
       atomtypes = [clean_atomtype(atom) for atom in
-          [ligand_atom.atomtype, receptor_atom.atomtype]]
+                   [ligand_atom.atomtype, receptor_atom.atomtype]]
       key = "_".join(sorted(atomtypes))
       dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
       if dist < CONTACT_CUTOFF:
@@ -156,9 +158,9 @@ def compute_electrostatic_energy(ligand, receptor):
         # TODO(bramsundar): What are units of
         # ligand_charge/receptor_charge?
         coulomb_energy = ((ligand_charge * receptor_charge / dist)
-            * ELECTROSTATIC_JOULE_PER_MOL)
-        hashtable_entry_add_one(electrostatics,
-            key, coulomb_energy)
+                          * ELECTROSTATIC_JOULE_PER_MOL)
+        hashtable_entry_add_one(
+            electrostatics, key, coulomb_energy)
   return electrostatics
 
 
@@ -182,7 +184,8 @@ def compute_ligand_atom_counts(ligand):
   for atom_type in Binana.atom_types:
     ligand_atom_types[atom_type] = 0
   for ligand_index in ligand.all_atoms:
-    hashtable_entry_add_one(ligand_atom_types,
+    hashtable_entry_add_one(
+        ligand_atom_types,
         clean_atomtype(ligand.all_atoms[ligand_index].atomtype))
   return ligand_atom_types
 
@@ -204,9 +207,8 @@ def compute_active_site_flexibility(ligand, receptor):
 
   """
   active_site_flexibility = {
-    'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
-    'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0
-    }
+      'BACKBONE_ALPHA': 0, 'BACKBONE_BETA': 0, 'BACKBONE_OTHER': 0,
+      'SIDECHAIN_ALPHA': 0, 'SIDECHAIN_BETA': 0, 'SIDECHAIN_OTHER': 0}
   for ligand_index in ligand.all_atoms:
     ligand_atom = ligand.all_atoms[ligand_index]
     for receptor_index in receptor.all_atoms:
@@ -214,7 +216,7 @@ def compute_active_site_flexibility(ligand, receptor):
       dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
       if dist < CONTACT_CUTOFF:
         flexibility_key = (receptor_atom.side_chain_or_backbone() + "_"
-            + receptor_atom.structure)
+                           + receptor_atom.structure)
         hashtable_entry_add_one(active_site_flexibility, flexibility_key)
   return active_site_flexibility
 
@@ -245,8 +247,9 @@ def compute_pi_t(ligand, receptor):
           coords=np.array([rec_aromatic.plane_coeff[0],
                            rec_aromatic.plane_coeff[1],
                            rec_aromatic.plane_coeff[2]]))
-      angle_between_planes = (angle_between_points(
-          lig_aromatic_norm_vector, rec_aromatic_norm_vector)
+      angle_between_planes = (
+          angle_between_points(
+              lig_aromatic_norm_vector, rec_aromatic_norm_vector)
           * 180.0/math.pi)
       if (math.fabs(angle_between_planes-90) < 30.0
           or math.fabs(angle_between_planes-270) < 30.0):
@@ -287,9 +290,9 @@ def compute_pi_t(ligand, receptor):
           # point should fall within the ring whose plane it's
           # been projected into.
           if ((pt_on_receptor_plane.dist_to(rec_aromatic.center)
-            <= rec_aromatic.radius + PI_PADDING)
-            or (pt_on_ligand_plane.dist_to(lig_aromatic.center)
-            <= lig_aromatic.radius + PI_PADDING)):
+               <= rec_aromatic.radius + PI_PADDING) or
+              (pt_on_ligand_plane.dist_to(lig_aromatic.center)
+               <= lig_aromatic.radius + PI_PADDING)):
 
             # so it is in the ring on the projected plane.
             structure = receptor.all_atoms[rec_aromatic.indices[0]].structure
@@ -319,18 +322,18 @@ def compute_hydrogen_bonds(ligand, receptor):
     A PDB object describing the receptor protein.
   """
   hbonds = {
-    'HDONOR-LIGAND_BACKBONE_ALPHA': 0,
-    'HDONOR-LIGAND_BACKBONE_BETA': 0,
-    'HDONOR-LIGAND_BACKBONE_OTHER': 0,
-    'HDONOR-LIGAND_SIDECHAIN_ALPHA': 0,
-    'HDONOR-LIGAND_SIDECHAIN_BETA': 0,
-    'HDONOR-LIGAND_SIDECHAIN_OTHER': 0,
-    'HDONOR-RECEPTOR_BACKBONE_ALPHA': 0,
-    'HDONOR-RECEPTOR_BACKBONE_BETA': 0,
-    'HDONOR-RECEPTOR_BACKBONE_OTHER': 0,
-    'HDONOR-RECEPTOR_SIDECHAIN_ALPHA': 0,
-    'HDONOR-RECEPTOR_SIDECHAIN_BETA': 0,
-    'HDONOR-RECEPTOR_SIDECHAIN_OTHER': 0}
+      'HDONOR-LIGAND_BACKBONE_ALPHA': 0,
+      'HDONOR-LIGAND_BACKBONE_BETA': 0,
+      'HDONOR-LIGAND_BACKBONE_OTHER': 0,
+      'HDONOR-LIGAND_SIDECHAIN_ALPHA': 0,
+      'HDONOR-LIGAND_SIDECHAIN_BETA': 0,
+      'HDONOR-LIGAND_SIDECHAIN_OTHER': 0,
+      'HDONOR-RECEPTOR_BACKBONE_ALPHA': 0,
+      'HDONOR-RECEPTOR_BACKBONE_BETA': 0,
+      'HDONOR-RECEPTOR_BACKBONE_OTHER': 0,
+      'HDONOR-RECEPTOR_SIDECHAIN_ALPHA': 0,
+      'HDONOR-RECEPTOR_SIDECHAIN_BETA': 0,
+      'HDONOR-RECEPTOR_SIDECHAIN_OTHER': 0}
   for ligand_index in ligand.all_atoms:
     ligand_atom = ligand.all_atoms[ligand_index]
     for receptor_index in receptor.all_atoms:
@@ -342,7 +345,7 @@ def compute_hydrogen_bonds(ligand, receptor):
       if dist < CONTACT_CUTOFF:
         electronegative_atoms = ["O", "N", "F"]
         if ((ligand_atom.element in electronegative_atoms)
-          and (receptor_atom.element in electronegative_atoms)):
+            and (receptor_atom.element in electronegative_atoms)):
 
           hydrogens = []
           # TODO(rbharath): This is a horrible inner-loop search. Can
@@ -350,16 +353,16 @@ def compute_hydrogen_bonds(ligand, receptor):
           for atm_index in ligand.all_atoms:
             atom = ligand.all_atoms[atm_index]
             if atom.element == "H":
-              # Make sure to set comment (used below) 
+              # Make sure to set comment (used below)
               atom.comment = "LIGAND"
               if (atom.coordinates.dist_to(ligand_atom.coordinates)
-                    < H_BOND_DIST):
+                  < H_BOND_DIST):
                 hydrogens.append(atom)
 
           for atm_index in receptor.all_atoms:
             atom = receptor.all_atoms[atm_index]
             if atom.element == "H":
-              # Make sure to set comment (used below) 
+              # Make sure to set comment (used below)
               atom.comment = "RECEPTOR"
               if (atom.coordinates.dist_to(receptor_atom.coordinates)
                   < H_BOND_DIST):
@@ -369,13 +372,14 @@ def compute_hydrogen_bonds(ligand, receptor):
           # now we need to check the angles
           # TODO(rbharath): Rather than using this heuristic, it seems like
           # it might be better to just report the angle in the feature
-          # vector... 
+          # vector...
           for hydrogen in hydrogens:
             angle = math.fabs(180 - angle_between_three_points(
-              ligand_atom.coordinates, hydrogen.coordinates,
-              receptor_atom.coordinates) * 180.0 / math.pi)
-            if (angle <= H_BOND_ANGLE):
-              hbonds_key = ("HDONOR-" + hydrogen.comment + "_" +
+                ligand_atom.coordinates, hydrogen.coordinates,
+                receptor_atom.coordinates) * 180.0 / math.pi)
+            if angle <= H_BOND_ANGLE:
+              hbonds_key = (
+                  "HDONOR-" + hydrogen.comment + "_" +
                   receptor_atom.side_chain_or_backbone() + "_" +
                   receptor_atom.structure)
               hashtable_entry_add_one(hbonds, hbonds_key)
@@ -412,8 +416,9 @@ def compute_pi_pi_stacking(ligand, receptor):
             coords=np.array([rec_aromatic.plane_coeff[0],
                              rec_aromatic.plane_coeff[1],
                              rec_aromatic.plane_coeff[2]]))
-        angle_between_planes = (angle_between_points(
-            lig_aromatic_norm_vector, rec_aromatic_norm_vector)
+        angle_between_planes = (
+            angle_between_points(
+                lig_aromatic_norm_vector, rec_aromatic_norm_vector)
             * 180.0/math.pi)
 
         if (math.fabs(angle_between_planes-0) < 30.0
@@ -434,7 +439,7 @@ def compute_pi_pi_stacking(ligand, receptor):
                 ligand.all_atoms[ligand_ring_index].coordinates,
                 rec_aromatic.plane_coeff)
             if (pt_on_receptor_plane.dist_to(rec_aromatic.center)
-               <= rec_aromatic.radius + PI_PADDING):
+                <= rec_aromatic.radius + PI_PADDING):
               pi_pi = True
               break
 
@@ -475,22 +480,22 @@ def compute_pi_cation(ligand, receptor):
     protein to dock agains.
   """
   pi_cation = {
-    'PI-CATION_LIGAND-CHARGED_ALPHA': 0,
-    'PI-CATION_LIGAND-CHARGED_BETA': 0,
-    'PI-CATION_LIGAND-CHARGED_OTHER': 0,
-    'PI-CATION_RECEPTOR-CHARGED_ALPHA': 0,
-    'PI-CATION_RECEPTOR-CHARGED_BETA': 0,
-    'PI-CATION_RECEPTOR-CHARGED_OTHER': 0}
+      'PI-CATION_LIGAND-CHARGED_ALPHA': 0,
+      'PI-CATION_LIGAND-CHARGED_BETA': 0,
+      'PI-CATION_LIGAND-CHARGED_OTHER': 0,
+      'PI-CATION_RECEPTOR-CHARGED_ALPHA': 0,
+      'PI-CATION_RECEPTOR-CHARGED_BETA': 0,
+      'PI-CATION_RECEPTOR-CHARGED_OTHER': 0}
   for aromatic in receptor.aromatic_rings:
     for charged in ligand.charges:
       if charged.positive == True: # so only consider positive charges
-        if (charged.coordinates.dist_to(aromatic.center) < CATION_PI_CUTOFF):
+        if charged.coordinates.dist_to(aromatic.center) < CATION_PI_CUTOFF:
 
           # project the charged onto the plane of the aromatic
           charge_projected = project_point_onto_plane(
-              charged.coordinates,aromatic.plane_coeff)
+              charged.coordinates, aromatic.plane_coeff)
           if (charge_projected.dist_to(aromatic.center)
-            < aromatic.radius + PI_PADDING):
+              < aromatic.radius + PI_PADDING):
             structure = receptor.all_atoms[aromatic.indices[0]].structure
             if structure == "":
               # since it could be interacting with a cofactor or something
@@ -502,10 +507,10 @@ def compute_pi_cation(ligand, receptor):
   for aromatic in ligand.aromatic_rings:
     # now it's the ligand that has the aromatic group
     for charged in receptor.charges:
-      if charged.positive == True: # so only consider positive charges
-        if (charged.coordinates.dist_to(aromatic.center) < CATION_PI_CUTOFF):
+      if charged.positive: # so only consider positive charges
+        if charged.coordinates.dist_to(aromatic.center) < CATION_PI_CUTOFF:
           charge_projected = project_point_onto_plane(
-              charged.coordinates,aromatic.plane_coeff)
+              charged.coordinates, aromatic.plane_coeff)
           if (charge_projected.dist_to(aromatic.center)
               < aromatic.radius + PI_PADDING):
             structure = receptor.all_atoms[charged.indices[0]].structure
@@ -526,13 +531,13 @@ def compute_contacts(ligand, receptor):
   Parameters
   ----------
   ligand: PDB object
-    Should be loaded with the ligand in question. 
+    Should be loaded with the ligand in question.
   receptor: PDB object.
-    Should be loaded with the receptor in question. 
+    Should be loaded with the receptor in question.
   """
   ligand_receptor_contacts, ligand_receptor_close_contacts = {}, {}
-  for first, second in itertools.product(Binana.atom_types,
-    Binana.atom_types):
+  for first, second in itertools.product(
+      Binana.atom_types, Binana.atom_types):
     key = "_".join(sorted([first, second]))
     ligand_receptor_contacts[key] = 0
     ligand_receptor_close_contacts[key] = 0
@@ -542,14 +547,15 @@ def compute_contacts(ligand, receptor):
       receptor_atom = receptor.all_atoms[receptor_index]
 
       dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
-      key = "_".join(sorted([clean_atomtype(atom) for atom in
-          [ligand_atom.atomtype, receptor_atom.atomtype]]))
+      key = "_".join(
+          sorted([clean_atomtype(atom) for atom in
+                  [ligand_atom.atomtype, receptor_atom.atomtype]]))
       if dist < CONTACT_CUTOFF:
-        hashtable_entry_add_one(ligand_receptor_contacts,
-            key)
+        hashtable_entry_add_one(
+            ligand_receptor_contacts, key)
       if dist < CLOSE_CONTACT_CUTOFF:
-        hashtable_entry_add_one(ligand_receptor_close_contacts,
-            key)
+        hashtable_entry_add_one(
+            ligand_receptor_close_contacts, key)
   return ligand_receptor_close_contacts, ligand_receptor_contacts
 
 def compute_salt_bridges(ligand, receptor):
@@ -629,19 +635,21 @@ class Binana:
   # TODO(rbharath): What is atom type A here?
   atom_types = [
       "A", "AL", "AS", "B", "BE", "BR", "C", "CA", "CD", "CO", "CL", "CU",
-      "F", "FE", "H", "HG",  "HD", "I", "IR", "MG", "MN", "N", "NA", "NI",
+      "F", "FE", "H", "HG", "HD", "I", "IR", "MG", "MN", "N", "NA", "NI",
       "O", "OA", "OS", "P", "PT", "RE", "RH", "RU", "S", "SA", "SE", "SI",
       "SR", "V", "ZN"]
 
-  def num_features(self):
+  @staticmethod
+  def num_features():
     """Returns the length of Binana's feature vectors."""
     num_atoms = len(Binana.atom_types)
-    feature_len = (3*num_atoms*(num_atoms+1)/2 + num_atoms + 12 + 6 + 3 + 6 +
-        3 + 6 + 3 + 1)
+    feature_len = (
+        3*num_atoms*(num_atoms+1)/2 + num_atoms
+        + 12 + 6 + 3 + 6 + 3 + 6 + 3 + 1)
     return feature_len
 
-  def compute_input_vector_from_files(self, ligand_pdb_filename,
-      receptor_pdb_filename, line_header):
+  def compute_input_vector_from_files(
+      self, ligand_pdb_filename, receptor_pdb_filename, line_header):
     """Computes feature vector for ligand-receptor pair.
 
     Parameters
@@ -674,9 +682,9 @@ class Binana:
 
     rotatable_bonds_count = {'rot_bonds': ligand.rotatable_bonds_count}
     ligand_receptor_close_contacts, ligand_receptor_contacts = (
-      compute_contacts(ligand, receptor))
+        compute_contacts(ligand, receptor))
     ligand_receptor_electrostatics = (
-      compute_electrostatic_energy(ligand, receptor))
+        compute_electrostatic_energy(ligand, receptor))
     ligand_atom_counts = compute_ligand_atom_counts(ligand)
     hbonds = compute_hydrogen_bonds(ligand, receptor)
     hydrophobics = compute_hydrophobic_contacts(ligand, receptor)
@@ -684,17 +692,63 @@ class Binana:
     pi_cation = compute_pi_cation(ligand, receptor)
     t_shaped = compute_pi_t(ligand, receptor)
     active_site_flexibility = (
-      compute_active_site_flexibility(ligand, receptor))
+        compute_active_site_flexibility(ligand, receptor))
     salt_bridges = compute_salt_bridges(ligand, receptor)
 
     input_vector = []
     for features in [ligand_receptor_contacts,
-        ligand_receptor_electrostatics, ligand_atom_counts,
-        ligand_receptor_close_contacts, hbonds, hydrophobics, stacking,
-        pi_cation, t_shaped, active_site_flexibility, salt_bridges,
-        rotatable_bonds_count]:
+                     ligand_receptor_electrostatics, ligand_atom_counts,
+                     ligand_receptor_close_contacts, hbonds, hydrophobics,
+                     stacking, pi_cation, t_shaped,
+                     active_site_flexibility, salt_bridges,
+                     rotatable_bonds_count]:
       for key in sorted(features.keys()):
         input_vector.append(features[key])
-    if len(input_vector) != self.num_features():
-      raise ValueError("Feature length incorrect!")
+    if len(input_vector) != Binana.num_features():
+      raise ValueError("Feature length incorrect.")
     return input_vector
+
+class NNScoreComplexFeaturizer(ComplexFeaturizer):
+  """
+  Compute NNScore fingerprints for complexes.
+  """
+
+  def __init__(self):
+    self.binana = Binana()
+
+  def _featurize_complex(self, mol_pdb, protein_pdb):
+    """
+    Compute Binana fingerprint for complex.
+    """
+    ### OPEN TEMPDIR
+    tempdir = tempfile.mkdtemp()
+
+    mol_pdb_file = os.path.join(tempdir, "mol.pdb")
+    with open(mol_pdb_file, "w") as mol_f:
+      mol_f.writelines(mol_pdb)
+    protein_pdb_file = os.path.join(tempdir, "protein.pdb")
+    with open(protein_pdb_file, "w") as protein_f:
+      protein_f.writelines(protein_pdb)
+
+    mol_hyd_file = os.path.join(tempdir, "mol_hyd.pdb")
+    mol_pdbqt_file = os.path.join(tempdir, "mol_hyd.pdbqt")
+    hydrogenate_and_compute_partial_charges(
+        mol_pdb_file, "pdb", tempdir, mol_hyd_file, mol_pdbqt_file)
+
+    protein_hyd_file = os.path.join(tempdir, "protein_hyd.pdb")
+    protein_pdbqt_file = os.path.join(tempdir, "protein_hyd.pdbqt")
+    hydrogenate_and_compute_partial_charges(
+        protein_pdb_file, "pdb", tempdir, protein_hyd_file, protein_pdbqt_file)
+
+    mol_pdb_obj = PDB()
+    mol_pdb_obj.load_from_files(mol_pdb_file, mol_pdbqt_file)
+
+    protein_pdb_obj = PDB()
+    protein_pdb_obj.load_from_files(protein_pdb_file, protein_pdbqt_file)
+
+    features = self.binana.compute_input_vector(mol_pdb_obj, protein_pdb_obj)
+
+    ### CLOSE TEMPDIR
+    shutil.rmtree(tempdir)
+
+    return features

@@ -297,6 +297,7 @@ def read_mols(input_filename, mol_id_prefix=None, log_every_N=1000):
           names.append(None)
     mols = np.asarray(mols)
     names = np.asarray(names)
+    print "%d molecules read." % len(mols)
     return mols, names
 
 

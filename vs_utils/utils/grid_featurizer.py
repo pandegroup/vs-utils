@@ -10,7 +10,6 @@ import networkx as nx
 from collections import deque
 import hashlib
 
-
 def compute_centroid(coordinates):
   '''given molecule, an instance of class PDB, compute the x,y,z centroid of that molecule'''
 
